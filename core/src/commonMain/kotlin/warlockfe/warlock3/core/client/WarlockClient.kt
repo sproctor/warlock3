@@ -8,7 +8,15 @@ import warlockfe.warlock3.core.window.WindowInfo
 import kotlin.time.Instant
 
 interface WarlockClient {
+    // Text events here are the main window's lines: main-stream text, and that of any stream that
+    // falls back to main when its window is closed, whether or not that window is open. As in
+    // Wrayth, whose matches hear an open Thoughts window (no ifClosed, so main) but never a stream
+    // declared ifClosed=''.
     val eventFlow: SharedFlow<ClientEvent>
+
+    // Every line of every stream, main or not, for whoever wants one window's text. Lines are only
+    // sent while something is collecting, so nobody pays for them otherwise.
+    val streamLines: SharedFlow<ClientTextEvent>
 
     val roundTimeEnd: StateFlow<Long?>
     val castTimeEnd: StateFlow<Long?>

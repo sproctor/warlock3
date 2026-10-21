@@ -90,6 +90,20 @@ class LuaScriptInstanceTest {
         }
     }
 
+    /** [emitUntil] for a stream's line, sent to main as well when [inMain]. */
+    private suspend fun FakeWarlockClient.emitStreamLineUntil(
+        line: ClientTextEvent,
+        inMain: Boolean,
+        done: () -> Boolean,
+    ) {
+        withTimeout(10.seconds) {
+            while (!done()) {
+                emitStreamLine(line, inMain)
+                delay(50.milliseconds)
+            }
+        }
+    }
+
     private suspend fun LuaScriptInstance.awaitStopped(timeout: Duration = 30.seconds) {
         withTimeout(timeout) { statusFlow.first { it == ScriptStatus.Stopped } }
     }
@@ -347,7 +361,7 @@ class LuaScriptInstanceTest {
             )
         runBlocking {
             instance.start(client, "", onStop = {}, commandHandler = { client.sendCommand(it) })
-            client.emitUntil(ClientTextEvent("Bob says hi", "thoughts", inMain = false)) {
+            client.emitStreamLineUntil(ClientTextEvent("Bob says hi", "thoughts"), inMain = false) {
                 client.printedText().any { it.contains("from Bob") }
             }
             assertContains(client.printedText(), "thought Bob says hi")
@@ -355,7 +369,7 @@ class LuaScriptInstanceTest {
             assertTrue(soundPlayer.playedSounds.all { it == "ping.wav" })
             assertFalse(client.printedText().any { it.startsWith("main ") })
             // A stream that falls back to main is heard by both.
-            client.emitUntil(ClientTextEvent("Al says yo", "thoughts", inMain = true)) {
+            client.emitStreamLineUntil(ClientTextEvent("Al says yo", "thoughts"), inMain = true) {
                 client.printedText().any { it == "main Al says yo" }
             }
             assertContains(client.printedText(), "from Al")
@@ -363,6 +377,17 @@ class LuaScriptInstanceTest {
             instance.awaitStopped(10.seconds)
         }
         assertFalse(client.printedText().any { it.contains("Script error") })
+    }
+
+    @Test
+    fun onStreamLineWithoutAStreamNameSaysSo() {
+        val client = FakeWarlockClient()
+        val instance = createInlineInstance("""onStreamLine(function(line) echo(line) end)""")
+        runBlocking {
+            instance.start(client, "", onStop = {}, commandHandler = { client.sendCommand(it) })
+            instance.awaitStopped()
+        }
+        assertTrue(client.printedText().any { it.contains("Script error") && it.contains("onStreamLine needs the stream's name") })
     }
 
     @Test
@@ -379,7 +404,7 @@ class LuaScriptInstanceTest {
         runBlocking {
             instance.start(client, "", onStop = {}, commandHandler = { client.sendCommand(it) })
             repeat(10) {
-                client.emit(ClientTextEvent("a goblin thinks", "thoughts", inMain = false))
+                client.emitStreamLine(ClientTextEvent("a goblin thinks", "thoughts"), inMain = false)
                 delay(50.milliseconds)
             }
             assertFalse(client.printedText().contains("matched"))

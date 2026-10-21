@@ -9,7 +9,6 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.timeout
 import kotlinx.io.files.FileSystem
-import kotlinx.io.files.Path
 import warlockfe.warlock3.core.client.ClientNavEvent
 import warlockfe.warlock3.core.client.ClientPromptEvent
 import warlockfe.warlock3.core.client.ClientTextEvent
@@ -32,6 +31,7 @@ import warlockfe.warlock3.core.util.SoundPlayer
 import warlockfe.warlock3.core.util.parseArguments
 import warlockfe.warlock3.core.util.splitFirstWord
 import warlockfe.warlock3.scripting.util.ScriptLoggingLevel
+import warlockfe.warlock3.scripting.util.scriptSoundFile
 import kotlin.concurrent.atomics.AtomicInt
 import kotlin.concurrent.atomics.incrementAndFetch
 import kotlin.concurrent.atomics.update
@@ -97,10 +97,8 @@ class WslContext(
                     }
 
                     is ClientTextEvent -> {
-                        if (event.inMain) {
-                            listeners.forEach { (_, action) ->
-                                action(event.text)
-                            }
+                        listeners.forEach { (_, action) ->
+                            action(event.text)
                         }
                     }
 
@@ -324,14 +322,14 @@ class WslContext(
     ) {
         log(ScriptLoggingLevel.DEBUG, "waiting for text: $text")
         client.eventFlow.first {
-            it is ClientTextEvent && it.inMain && it.text.contains(other = text, ignoreCase = ignoreCase)
+            it is ClientTextEvent && it.text.contains(other = text, ignoreCase = ignoreCase)
         }
     }
 
     suspend fun waitForRegex(regex: Regex) {
         log(ScriptLoggingLevel.DEBUG, "waiting for regex: ${regex.pattern}")
         client.eventFlow.first {
-            it is ClientTextEvent && it.inMain && regex.containsMatchIn(it.text)
+            it is ClientTextEvent && regex.containsMatchIn(it.text)
         }
     }
 
@@ -355,7 +353,7 @@ class WslContext(
                         it
                     }
                 }.first { event ->
-                    if (event is ClientTextEvent && event.inMain && scriptInstance.status == ScriptStatus.Running) {
+                    if (event is ClientTextEvent && scriptInstance.status == ScriptStatus.Running) {
                         matches.firstOrNull { match ->
                             match.match(event.text, currentFrame)?.let { text ->
                                 log(ScriptLoggingLevel.DEBUG, "matched \"${match.label}\": $text")
@@ -471,10 +469,7 @@ class WslContext(
     }
 
     suspend fun playSound(name: String) {
-        // String-backed scripts have no file, so resolve relative to the script dir only when there is one.
-        val file = scriptInstance.file?.parent?.let { Path(it, name) } ?: Path(name)
-        val filename = if (fileSystem.exists(file)) file.toString() else name
-        val error = soundPlayer.playSound(filename)
+        val error = soundPlayer.playSound(scriptSoundFile(fileSystem, scriptInstance.file?.parent, name))
         if (error == null) {
             echo("Playing sound: $name")
         } else {

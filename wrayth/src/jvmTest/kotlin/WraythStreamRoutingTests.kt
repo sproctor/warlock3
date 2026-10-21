@@ -27,6 +27,7 @@ import warlockfe.warlock3.core.text.ResolvedStyle
 import warlockfe.warlock3.core.text.StyleLayer
 import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.text.WarlockColor
+import warlockfe.warlock3.core.text.WarlockStyle
 import warlockfe.warlock3.core.util.WarlockDirs
 import warlockfe.warlock3.core.window.BackgroundFlash
 import warlockfe.warlock3.core.window.PanelState
@@ -59,7 +60,7 @@ class WraythStreamRoutingTests {
         assertEquals(1, main.count { it.contains("never declared (\"nowhere\")") })
         assertTrue("a goblin from nowhere" in main)
         assertTrue("another goblin" in main)
-        assertTrue(ClientTextEvent("a goblin from nowhere", "main", inMain = true) in events)
+        assertTrue(ClientTextEvent("a goblin from nowhere", "main") in events.main)
     }
 
     @Test
@@ -75,13 +76,35 @@ class WraythStreamRoutingTests {
         assertEquals(listOf("a goblin thinks"), registry.lines("thoughts"))
         assertEquals(listOf("a goblin figurine"), registry.lines("inv"))
         assertFalse(registry.lines("main").any { it.contains("never declared") })
-        // No ifClosed means main, so a match would hear it; ifClosed='' means it would not.
-        assertTrue(ClientTextEvent("a goblin thinks", "thoughts", inMain = true) in events)
-        assertTrue(ClientTextEvent("a goblin figurine", "inv", inMain = false) in events)
+        // Every stream's line is on streamLines; only those that fall back to main reach the
+        // events triggers and matches hear: no ifClosed means main, ifClosed='' means nowhere.
+        assertTrue(ClientTextEvent("a goblin thinks", "thoughts") in events.streams)
+        assertTrue(ClientTextEvent("a goblin figurine", "inv") in events.streams)
+        assertTrue(ClientTextEvent("a goblin thinks", "thoughts") in events.main)
+        assertFalse(events.main.any { it.text == "a goblin figurine" })
     }
 
-    /** Feeds [lines] to a client, as the whole of what the server sends, and returns what it did. */
-    private fun run(vararg lines: String): Pair<RecordingWindowRegistry, List<ClientTextEvent>> =
+    @Test
+    fun printedTextReachesScriptsAsPlainText() {
+        val (_, events) = run("<mode id=\"GAME\"/>") { it.print(StyledString("ready", WarlockStyle.Echo)) }
+        assertTrue(ClientTextEvent("ready", "main") in events.main)
+        assertTrue(ClientTextEvent("ready", "main") in events.streams)
+    }
+
+    /** The text events a client sent: on eventFlow, and on streamLines. */
+    private class TextEvents(
+        val main: List<ClientTextEvent>,
+        val streams: List<ClientTextEvent>,
+    )
+
+    /**
+     * Feeds [lines] to a client, as the whole of what the server sends, and returns what it did.
+     * [beforeConnect] gets the client once its events are being collected.
+     */
+    private fun run(
+        vararg lines: String,
+        beforeConnect: suspend (WraythClient) -> Unit = {},
+    ): Pair<RecordingWindowRegistry, TextEvents> =
         runBlocking {
             val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
             val tempDir = Files.createTempDirectory("wrayth-routing").toString()
@@ -99,20 +122,29 @@ class WraythStreamRoutingTests {
                     socket = ScriptedSocket(lines.toList()),
                     commandListStore = null,
                 )
-            val events = mutableListOf<ClientTextEvent>()
-            val subscribed = CompletableDeferred<Unit>()
+            val main = mutableListOf<ClientTextEvent>()
+            val streams = mutableListOf<ClientTextEvent>()
+            val mainSubscribed = CompletableDeferred<Unit>()
+            val streamsSubscribed = CompletableDeferred<Unit>()
             scope.launch {
-                client.eventFlow.onSubscription { subscribed.complete(Unit) }.collect { event ->
+                client.eventFlow.onSubscription { mainSubscribed.complete(Unit) }.collect { event ->
                     if (event is ClientTextEvent) {
-                        synchronized(events) { events += event }
+                        synchronized(main) { main += event }
                     }
                 }
             }
-            subscribed.await()
+            scope.launch {
+                client.streamLines.onSubscription { streamsSubscribed.complete(Unit) }.collect { event ->
+                    synchronized(streams) { streams += event }
+                }
+            }
+            mainSubscribed.await()
+            streamsSubscribed.await()
+            beforeConnect(client)
             client.connect("key")
             withTimeout(10.seconds) { client.disconnected.first { it } }
             scope.cancel()
-            registry to synchronized(events) { events.toList() }
+            registry to TextEvents(synchronized(main) { main.toList() }, synchronized(streams) { streams.toList() })
         }
 }
 

@@ -10,15 +10,12 @@ sealed interface ClientEvent
 
 /**
  * A line of game text, from the stream [streamId] (null on a connection with only the one
- * stream). [inMain] says whether the line belongs to the main window: main-stream text, or text
- * from a stream that falls back to main when its window is closed, whether or not that window is
- * open. Triggers and match waits only see those lines, as in Wrayth, whose matches hear an open
- * Thoughts window (no `ifClosed`, so main) but not the inventory (`ifClosed=''`).
+ * stream). On [WarlockClient.eventFlow] these are the main window's lines, which is what
+ * triggers and match waits hear; [WarlockClient.streamLines] has every stream's.
  */
 data class ClientTextEvent(
     val text: String,
     val streamId: String?,
-    val inMain: Boolean = true,
 ) : ClientEvent
 
 data class ClientCompassEvent(

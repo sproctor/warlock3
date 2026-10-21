@@ -104,6 +104,10 @@ class TelnetClient(
     private val _eventFlow = MutableSharedFlow<ClientEvent>(extraBufferCapacity = 256)
     override val eventFlow: SharedFlow<ClientEvent> = _eventFlow.asSharedFlow()
 
+    // The one stream is main, so every line here is on [eventFlow] too.
+    private val _streamLines = MutableSharedFlow<ClientTextEvent>(extraBufferCapacity = 256)
+    override val streamLines: SharedFlow<ClientTextEvent> = _streamLines.asSharedFlow()
+
     private val _characterId = MutableStateFlow<String?>("$gameCode:$character".lowercase())
     override val characterId: StateFlow<String?> = _characterId.asStateFlow()
 
@@ -482,7 +486,7 @@ class TelnetClient(
         logSimple { plain }
         logComplete { plain }
         if (plain.isNotBlank()) {
-            notifyListeners(ClientTextEvent(plain, null))
+            notifyText(plain)
         }
     }
 
@@ -540,7 +544,7 @@ class TelnetClient(
                 }
             }
             if (!serverEcho) {
-                notifyListeners(ClientTextEvent(command, null))
+                notifyText(command)
             }
         }
     }
@@ -551,7 +555,7 @@ class TelnetClient(
                 finishLineIfShown()
                 getMainStream().appendLine(message)
             }
-            notifyListeners(ClientTextEvent(message.toText(), null))
+            notifyText(message.toText())
         }
     }
 
@@ -624,6 +628,12 @@ class TelnetClient(
 
     private suspend fun notifyListeners(event: ClientEvent) {
         _eventFlow.emit(event)
+    }
+
+    private suspend fun notifyText(text: String) {
+        val event = ClientTextEvent(text, null)
+        _streamLines.emit(event)
+        notifyListeners(event)
     }
 
     private suspend fun logSimple(message: () -> String) {

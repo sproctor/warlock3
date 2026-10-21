@@ -154,6 +154,12 @@ class WraythClient(
     private val _eventFlow = MutableSharedFlow<ClientEvent>(extraBufferCapacity = 256)
     override val eventFlow: SharedFlow<ClientEvent> = _eventFlow.asSharedFlow()
 
+    // Every stream's lines. With nobody collecting (no script wants one window's text) an emit
+    // returns at once, so the parse loop pays nothing for them; the buffer does the same job as
+    // [_eventFlow]'s for whoever is.
+    private val _streamLines = MutableSharedFlow<ClientTextEvent>(extraBufferCapacity = 256)
+    override val streamLines: SharedFlow<ClientTextEvent> = _streamLines.asSharedFlow()
+
     private val _characterId = MutableStateFlow<String?>(null)
     override val characterId: StateFlow<String?> = _characterId.asStateFlow()
 
@@ -870,28 +876,31 @@ class WraythClient(
         stream: TextStream,
         ignoreWhenBlank: Boolean,
     ) {
-        doAppendToStream(styledText, stream, ignoreWhenBlank)
+        val reachedMain = doAppendToStream(styledText, stream, ignoreWhenBlank)
         val text = styledText.toText()
         if (text.isNotBlank()) {
-            val inMain = stream.isMainStream || windows[stream.id]?.ifClosed == "main"
-            if (inMain) {
+            val event = ClientTextEvent(text, stream.id)
+            _streamLines.emit(event)
+            if (reachedMain) {
                 logSimple { text }
+                notifyListeners(event)
             }
-            notifyListeners(ClientTextEvent(text, stream.id, inMain))
         }
     }
 
+    /** Appends the line to [stream], and to the stream it falls back to; true if main got it. */
     private suspend fun doAppendToStream(
         styledText: StyledString,
         stream: TextStream,
         ignoreWhenBlank: Boolean,
-    ) {
+    ): Boolean {
         if (ignoreWhenBlank && styledText.isBlank()) {
-            return
+            return false
         }
         stream.appendLine(styledText, ignoreWhenBlank)
         if (stream.isMainStream) {
             isPrompting = false
+            return true
         } else {
             // send text to `ifClosed` stream, if stream isn't main
             windows[stream.id]?.ifClosed?.let { ifClosed ->
@@ -905,7 +914,9 @@ class WraythClient(
                     ignoreWhenBlank = ignoreWhenBlank,
                     showWhenClosed = stream.id,
                 )
+                return ifClosedStream.isMainStream
             }
+            return false
         }
     }
 
@@ -1003,7 +1014,7 @@ class WraythClient(
         withContext(ioDispatcher) {
             val stream = getMainStream()
             stream.appendLine(if (monospace) message.applyMonospace() else message)
-            notifyListeners(ClientTextEvent(message.toString(), stream.id))
+            notifyText(ClientTextEvent(message.toText(), stream.id))
         }
     }
 
@@ -1012,7 +1023,7 @@ class WraythClient(
             val styled = StyledString(command, WarlockStyle.Command)
             val stream = getMainStream()
             stream.appendPartialAndEol(if (monospace) styled.applyMonospace() else styled)
-            notifyListeners(ClientTextEvent(command, stream.id))
+            notifyText(ClientTextEvent(command, stream.id))
         }
     }
 
@@ -1032,6 +1043,12 @@ class WraythClient(
 
     private suspend fun notifyListeners(event: ClientEvent) {
         _eventFlow.emit(event)
+    }
+
+    // A main-window line written by the client itself rather than parsed from a stream.
+    private suspend fun notifyText(event: ClientTextEvent) {
+        _streamLines.emit(event)
+        notifyListeners(event)
     }
 
     fun setProxy(proxy: WarlockProxy) {
