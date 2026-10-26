@@ -91,6 +91,15 @@ class WraythStreamRoutingTests {
         assertTrue(ClientTextEvent("ready", "main") in events.streams)
     }
 
+    @Test
+    fun theClientsOwnStreamsAreOnStreamLinesOnly() {
+        val (_, events) = run("<mode id=\"GAME\"/>") { it.scriptDebug("from a script") }
+        assertTrue(ClientTextEvent("from a script", "scriptoutput") in events.streams)
+        assertFalse(events.main.any { it.text == "from a script" })
+        // Every line from the server is echoed to the debug stream.
+        assertTrue(ClientTextEvent("<mode id=\"GAME\"/>", "debug") in events.streams)
+    }
+
     /** The text events a client sent: on eventFlow, and on streamLines. */
     private class TextEvents(
         val main: List<ClientTextEvent>,

@@ -1028,11 +1028,24 @@ class WraythClient(
     }
 
     override suspend fun debug(message: String) {
-        doAppendToStream(StyledString(message), getStream("debug"), false)
+        appendClientLine(StyledString(message), getStream("debug"))
     }
 
     override suspend fun scriptDebug(message: String) {
-        doAppendToStream(StyledString(message), getStream("scriptoutput"), false)
+        appendClientLine(StyledString(message), getStream("scriptoutput"))
+    }
+
+    // A line the client writes to one of its own streams. It is on [streamLines], like every
+    // stream's, but not on [eventFlow], which has never carried these.
+    private suspend fun appendClientLine(
+        text: StyledString,
+        stream: TextStream,
+    ) {
+        doAppendToStream(text, stream, false)
+        val plain = text.toText()
+        if (plain.isNotBlank()) {
+            _streamLines.emit(ClientTextEvent(plain, stream.id))
+        }
     }
 
     override suspend fun getStream(name: String): TextStream = windowRegistry.getOrCreateStream(name)
@@ -1063,7 +1076,7 @@ class WraythClient(
         proxy.stdErr
             .onEach {
                 logger.d { "Proxy error: $it" }
-                doAppendToStream(StyledString(it, listOf(WarlockStyle.Error)), getStream("scriptoutput"), false)
+                appendClientLine(StyledString(it, listOf(WarlockStyle.Error)), getStream("scriptoutput"))
             }.catch {
                 logger.e(it) { "Error reading stderr" }
             }.launchIn(scope)

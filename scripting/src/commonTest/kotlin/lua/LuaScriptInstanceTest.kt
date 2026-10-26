@@ -380,6 +380,35 @@ class LuaScriptInstanceTest {
     }
 
     @Test
+    fun aLineSentRightAfterRegistrationIsHeardWithoutRepeating() {
+        val client = FakeWarlockClient()
+        val instance =
+            createInlineInstance(
+                """
+                onStreamLine("thoughts", function(line) echo("thought " .. line) end)
+                onLine(function(line) echo("main " .. line) end)
+                echo("registered")
+                """.trimIndent(),
+            )
+        runBlocking {
+            instance.start(client, "", onStop = {}, commandHandler = { client.sendCommand(it) })
+            withTimeout(10.seconds) {
+                while ("registered" !in client.printedText()) delay(1.milliseconds)
+            }
+            // Once each: a collector that subscribed late would miss them for good.
+            client.emitStreamLine(ClientTextEvent("only once", "thoughts"), inMain = false)
+            client.emit(ClientTextEvent("only once", "main"))
+            withTimeout(10.seconds) {
+                while ("thought only once" !in client.printedText() || "main only once" !in client.printedText()) {
+                    delay(10.milliseconds)
+                }
+            }
+            instance.stop()
+            instance.awaitStopped(10.seconds)
+        }
+    }
+
+    @Test
     fun onStreamLineWithoutAStreamNameSaysSo() {
         val client = FakeWarlockClient()
         val instance = createInlineInstance("""onStreamLine(function(line) echo(line) end)""")

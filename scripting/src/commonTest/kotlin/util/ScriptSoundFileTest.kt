@@ -34,7 +34,11 @@ class ScriptSoundFileTest {
         val absolute = Path(root, "sounds", "ping.wav")
         touch(absolute)
         // The same path again, under the script's directory: what joining would wrongly find.
-        touch(Path(scriptDir, absolute.toString()))
+        // Only where that can exist: a Windows absolute path's drive colon is not allowed partway
+        // through a path, so there is no such file to be misled by.
+        if (':' !in absolute.toString()) {
+            touch(Path(scriptDir, absolute.toString()))
+        }
         assertEquals(absolute.toString(), scriptSoundFile(SystemFileSystem, scriptDir, absolute.toString()))
     }
 }

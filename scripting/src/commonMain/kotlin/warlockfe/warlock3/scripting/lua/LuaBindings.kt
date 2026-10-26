@@ -5,6 +5,7 @@ import com.seanproctor.lua.LuaException
 import com.seanproctor.lua.LuaState
 import com.seanproctor.lua.LuaValue
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
@@ -380,9 +381,12 @@ internal class LuaBindings(
         if (events != null) return
         val events = Channel<ScriptEvent>(capacity = 1024, onBufferOverflow = BufferOverflow.DROP_OLDEST)
         this.events = events
+        // Undispatched, here and in [watchStream], so the collector subscribes on this thread
+        // before the handler's registration returns: the flows keep nothing for a late
+        // subscriber, and a line sent in between would be lost to a handler already in place.
         feeder =
-            instance.scope.launch {
-                launch {
+            instance.scope.launch(start = CoroutineStart.UNDISPATCHED) {
+                launch(start = CoroutineStart.UNDISPATCHED) {
                     client.eventFlow.collect { event ->
                         when (event) {
                             is ClientTextEvent -> {
@@ -411,7 +415,7 @@ internal class LuaBindings(
         if (streamFeeder != null) return
         val events = checkNotNull(events)
         streamFeeder =
-            instance.scope.launch {
+            instance.scope.launch(start = CoroutineStart.UNDISPATCHED) {
                 client.streamLines.collect { line ->
                     // A connection with only the one stream does not name it.
                     val name = (line.streamId ?: "main").lowercase()
