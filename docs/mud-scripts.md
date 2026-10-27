@@ -96,6 +96,20 @@ end)
 An error in a handler is shown to the player as a script error; the other
 handlers still run, and the script goes on.
 
+A handler hears what scripts write, its own script included: `echo()` and
+`print()` are main-window lines, so `onLine` and `onStreamLine("main")`
+hear them, and `log()` writes to the `"debug"` stream. A handler that writes
+to what it listens to must leave its own lines alone, with a pattern that
+does not match them, or it calls itself forever:
+
+```lua
+-- Loops: every echo is a new line for the same handler.
+onLine(function(line) echo("saw " .. line) end)
+
+-- Fine: the echoed line does not start with "You".
+onLine("^You ", function() echo("saw one") end)
+```
+
 ### The status bar
 
 ```lua
