@@ -41,7 +41,6 @@ import warlockfe.warlock3.core.util.WarlockDirs
 import warlockfe.warlock3.core.window.BackgroundFlash
 import warlockfe.warlock3.core.window.PanelState
 import warlockfe.warlock3.core.window.TextStream
-import warlockfe.warlock3.core.window.WindowMemoryUsage
 import warlockfe.warlock3.core.window.WindowRegistry
 import warlockfe.warlock3.wrayth.network.NetworkSocket
 import warlockfe.warlock3.wrayth.network.WraythClient
@@ -406,12 +405,6 @@ private class BenchWindowRegistry(
     }
 
     override fun getOrCreatePanel(name: String): PanelState = panels.computeIfAbsent(name) { ComposePanelState(name) }
-
-    override suspend fun memoryUsage(): WindowMemoryUsage =
-        WindowMemoryUsage(
-            streams = streams.values.map { it.memoryUsage() },
-            panelCount = panels.size,
-        )
 
     override fun setCharacterId(characterId: String) {
         workQueue.tag = characterId

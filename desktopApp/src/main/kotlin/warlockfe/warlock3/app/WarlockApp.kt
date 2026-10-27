@@ -73,7 +73,6 @@ fun DecoratedWindowScope.WarlockApp(
     }
 
     var showAboutDialog by remember { mutableStateOf(false) }
-    var showMemoryDialog by remember { mutableStateOf(false) }
     var sideBarVisible by remember { mutableStateOf(false) }
     val wraythFileLauncher =
         rememberFilePickerLauncher(
@@ -159,7 +158,6 @@ fun DecoratedWindowScope.WarlockApp(
         },
         showUpdateDialog = showUpdateDialog,
         showAboutDialog = { showAboutDialog = !showAboutDialog },
-        showMemoryDialog = { showMemoryDialog = true },
         exportSettings = { file ->
             runTransfer("Failed to export settings") {
                 file.writeText(transfer.exportAll())
@@ -250,12 +248,6 @@ fun DecoratedWindowScope.WarlockApp(
     }
     if (showAboutDialog) {
         AboutDialog(warlockVersion) { showAboutDialog = false }
-    }
-    if (showMemoryDialog) {
-        MemoryUsageDialog(
-            games = games,
-            onCloseRequest = { showMemoryDialog = false },
-        )
     }
     if (reconnecting) {
         DesktopReconnectingDialog(onGoToDashboard = goToDashboard)

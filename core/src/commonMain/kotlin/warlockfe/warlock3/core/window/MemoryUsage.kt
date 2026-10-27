@@ -33,18 +33,6 @@ data class StreamMemoryUsage(
     val estimatedBytes: Long,
 )
 
-/** What a connection's window registry is holding, across all of its streams and panels. */
-data class WindowMemoryUsage(
-    val streams: List<StreamMemoryUsage>,
-    val panelCount: Int,
-) {
-    val estimatedBytes: Long get() = streams.sumOf { it.estimatedBytes }
-
-    companion object {
-        val EMPTY = WindowMemoryUsage(streams = emptyList(), panelCount = 0)
-    }
-}
-
 /**
  * A rough per-object cost model for [StreamMemoryUsage.estimatedBytes].
  *

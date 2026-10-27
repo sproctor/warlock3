@@ -224,9 +224,6 @@ tasks.register<JavaExec>("streamNetworkBenchmark") {
                 .resolve("gc-bench-%p.log")
         jvmArgs("-Xlog:gc*,safepoint:file=$gcLogPath:time,uptime,level,tags:filecount=5,filesize=20M")
     }
-    if (project.hasProperty("zgc")) {
-        jvmArgs("-XX:+UseZGC")
-    }
 }
 
 // The default skin is authored as a directory (skin.json + referenced images) under skin/ and

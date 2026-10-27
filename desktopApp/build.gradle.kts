@@ -149,11 +149,6 @@ nucleus.application {
                 .resolve("gc-%p.log")
         jvmArgs += "-Xlog:gc*,safepoint:file=$gcLogPath:time,uptime,level,tags:filecount=5,filesize=20M"
     }
-    // Confirmation experiment: ./gradlew :desktopApp:run -Pzgc swaps in the low-pause collector. If the
-    // lag/STALL lines vanish under ZGC, the stalls were GC pauses; if they persist, it is pool/scheduling.
-    if (project.hasProperty("zgc")) {
-        jvmArgs += "-XX:+UseZGC"
-    }
 
     // Experimental native image of the desktop app (Tao windows, no AWT). The tracing agent's
     // metadata (`runWithNativeAgent`) is merged into src/main/resources/META-INF/native-image.

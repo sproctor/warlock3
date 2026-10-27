@@ -33,10 +33,6 @@ interface WindowRegistry {
 
     fun getOrCreatePanel(name: String): PanelState
 
-    // What this connection's streams and panels are currently retaining, for the memory usage view.
-    // Suspends because each stream reports from the work-queue coroutine that owns its buffers.
-    suspend fun memoryUsage(): WindowMemoryUsage
-
     // The latest background flash asked of each window, by window name: the view of that window
     // shows the colour for the time, with the fades asked for. A script asks for these (see
     // ScriptableClient). The fades are the caller's to keep within the total.

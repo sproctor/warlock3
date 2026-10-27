@@ -123,7 +123,6 @@ import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.core.text.WarlockStyle
 import warlockfe.warlock3.core.util.splitFirstWord
 import warlockfe.warlock3.core.window.WindowLocation
-import warlockfe.warlock3.core.window.WindowMemoryUsage
 import warlockfe.warlock3.core.window.WindowRegistry
 import warlockfe.warlock3.core.window.WindowType
 import kotlin.time.Duration.Companion.seconds
@@ -439,11 +438,6 @@ class GameViewModel(
 
     private val runningScripts =
         scriptManager.runningScripts.stateIn(viewModelScope, SharingStarted.Eagerly, persistentMapOf())
-
-    /** What this connection's windows are retaining, for the memory usage view. */
-    suspend fun memoryUsage(): WindowMemoryUsage = windowRegistry.memoryUsage()
-
-    val runningScriptCount: Int get() = runningScripts.value.size
 
     /** The background flashes scripts have asked of windows; the windows' views play them. */
     val backgroundFlashes = windowRegistry.backgroundFlashes
