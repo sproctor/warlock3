@@ -30,6 +30,7 @@ import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.text.WarlockStyle
 import warlockfe.warlock3.core.text.isSpecified
 import warlockfe.warlock3.core.util.SoundPlayer
+import warlockfe.warlock3.core.util.isFatal
 import warlockfe.warlock3.core.util.toWarlockColor
 import warlockfe.warlock3.scripting.util.scriptSoundFile
 import kotlin.math.roundToInt
@@ -76,8 +77,10 @@ internal class LuaBindings(
     // names. Only what a handler wants is gathered, since the rest would crowd it out of [events].
     // Touched on the script's thread only.
     private val gatherers = mutableListOf<Job>()
-    private var gatheringGame = false
-    private val watchedStreams = mutableSetOf<String>()
+
+    // What is being gathered: a stream's name as onStreamLine gave it (lowercased), or null for
+    // the main window's lines and GMCP, which onLine and onGmcp hear.
+    private val gathering = mutableSetOf<String?>()
 
     // The bootstrap's dispatchers, taken as handles so the globals can be removed.
     private lateinit var dispatchGmcp: LuaValue.Function
@@ -267,11 +270,12 @@ internal class LuaBindings(
             // uncaught-exception handler, which on Android ends the app.
             instance.scope.launch(NonCancellable) {
                 // A throw (an Error too: the audio stack can fail to load) is reported like a
-                // returned error.
+                // returned error, short of one the runtime cannot recover from.
                 val error =
                     try {
                         soundPlayer.playSound(scriptSoundFile(fileSystem, scriptDir, name))
                     } catch (e: Throwable) {
+                        if (e.isFatal()) throw e
                         e.message ?: e::class.simpleName ?: "unknown error"
                     }
                 // Reported, but not fatal: a missing sound should not end a script that is
@@ -412,8 +416,7 @@ internal class LuaBindings(
 
     /** Gathers the main window's lines and GMCP messages, for onLine and onGmcp handlers. */
     private fun gatherGame() {
-        if (gatheringGame) return
-        gatheringGame = true
+        if (!gathering.add(null)) return
         gather { events ->
             client.eventFlow.collect { event ->
                 when (event) {
@@ -433,9 +436,9 @@ internal class LuaBindings(
         }
     }
 
-    /** Gathers the lines of [stream] (lowercased), for onStreamLine handlers. */
+    /** Gathers the lines of [stream], for onStreamLine handlers, which name it lowercased. */
     private fun watchStream(stream: String) {
-        if (!watchedStreams.add(stream)) return
+        if (!gathering.add(stream)) return
         gather { events ->
             client.streamLines(stream).collect { line ->
                 events.trySend(ScriptEvent.StreamLine(line.text, stream))

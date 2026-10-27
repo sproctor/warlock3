@@ -133,6 +133,9 @@ class WraythClient(
     private val ioDispatcher: CoroutineDispatcher,
     private val socket: WarlockSocket,
     private val commandListStore: CommandListStore?,
+    // The lines of the streams scripts are watching; the parse loop skips the rest. Given only
+    // by a test, to see what is sent.
+    private val streamLineFeed: StreamLineFeed = StreamLineFeed(),
 ) : WarlockClient {
     private val writeContext = ioDispatcher.limitedParallelism(1)
 
@@ -155,9 +158,6 @@ class WraythClient(
     // seeing them all) once the buffer fills.
     private val _eventFlow = MutableSharedFlow<ClientEvent>(extraBufferCapacity = 256)
     override val eventFlow: SharedFlow<ClientEvent> = _eventFlow.asSharedFlow()
-
-    // The lines of the streams scripts are watching; the parse loop skips the rest.
-    private val streamLineFeed = StreamLineFeed()
 
     override fun streamLines(stream: String): Flow<ClientTextEvent> = streamLineFeed.linesOf(stream)
 

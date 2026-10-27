@@ -1,5 +1,6 @@
 package warlockfe.warlock3.core.client
 
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -12,9 +13,14 @@ import kotlinx.coroutines.flow.update
  * event, so the streams nobody is collecting cost it nothing: with one script watching "thoughts",
  * every other stream's lines, the debug stream's copy of every line from the server among them,
  * are passed over without being turned into text.
+ *
+ * Sending never waits: every collector, whichever stream it watches, reads the one buffer, and
+ * one that falls behind loses its oldest lines rather than holding up the game's parse loop, and
+ * every window with it. A collector that must not lose lines should hand them off and return.
  */
-class StreamLineFeed {
-    private val lines = MutableSharedFlow<ClientTextEvent>(extraBufferCapacity = 256)
+open class StreamLineFeed {
+    private val lines =
+        MutableSharedFlow<ClientTextEvent>(extraBufferCapacity = 256, onBufferOverflow = BufferOverflow.DROP_OLDEST)
 
     // How many collectors each stream has, by lowercased name.
     private val watchers = MutableStateFlow<Map<String, Int>>(emptyMap())
@@ -27,9 +33,12 @@ class StreamLineFeed {
         return watched.keys.any { it.equals(id, ignoreCase = true) }
     }
 
-    /** Sends [event] to [stream]'s collectors; only worth calling once [isWatched] says it has some. */
-    suspend fun emit(event: ClientTextEvent) {
-        lines.emit(event)
+    /**
+     * Sends [event] to the collectors of its stream, [ClientTextEvent.streamId]; only worth calling
+     * once [isWatched] says it has some.
+     */
+    open fun emit(event: ClientTextEvent) {
+        lines.tryEmit(event)
     }
 
     fun linesOf(stream: String): Flow<ClientTextEvent> {

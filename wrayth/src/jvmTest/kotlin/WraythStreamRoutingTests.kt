@@ -16,6 +16,7 @@ import kotlinx.coroutines.withTimeout
 import kotlinx.io.files.SystemFileSystem
 import warlockfe.warlock3.core.client.ClientTextEvent
 import warlockfe.warlock3.core.client.PanelObject
+import warlockfe.warlock3.core.client.StreamLineFeed
 import warlockfe.warlock3.core.client.WarlockSocket
 import warlockfe.warlock3.core.prefs.SettingsProblems
 import warlockfe.warlock3.core.prefs.config.ClientConfigStore
@@ -105,6 +106,21 @@ class WraythStreamRoutingTests {
         assertTrue(ClientTextEvent("<mode id=\"GAME\"/>", "debug") in events.streams)
     }
 
+    @Test
+    fun onlyTheWatchedStreamsAreSent() {
+        val feed = RecordingStreamLineFeed()
+        run(
+            "<mode id=\"GAME\"/>",
+            "<streamWindow id='thoughts' title='Thoughts'/>",
+            "<pushStream id='thoughts'/>a goblin thinks<popStream/>",
+            "a goblin arrives",
+            feed = feed,
+            watched = listOf("thoughts"),
+        )
+        // Not main's lines, nor the debug stream's copy of every line from the server.
+        assertEquals(listOf(ClientTextEvent("a goblin thinks", "thoughts")), feed.sent)
+    }
+
     /** The text events a client sent: on eventFlow, and on streamLines for the [WATCHED] streams. */
     private class TextEvents(
         val main: List<ClientTextEvent>,
@@ -117,6 +133,8 @@ class WraythStreamRoutingTests {
      */
     private fun run(
         vararg lines: String,
+        feed: StreamLineFeed = StreamLineFeed(),
+        watched: List<String> = WATCHED,
         beforeConnect: suspend (WraythClient) -> Unit = {},
     ): Pair<RecordingWindowRegistry, TextEvents> =
         runBlocking {
@@ -135,6 +153,7 @@ class WraythStreamRoutingTests {
                     ioDispatcher = Dispatchers.IO,
                     socket = ScriptedSocket(lines.toList()),
                     commandListStore = null,
+                    streamLineFeed = feed,
                 )
             val main = mutableListOf<ClientTextEvent>()
             val streams = mutableListOf<ClientTextEvent>()
@@ -147,7 +166,7 @@ class WraythStreamRoutingTests {
                 }
             }
             // Undispatched, so each is subscribed before the client connects.
-            for (stream in WATCHED) {
+            for (stream in watched) {
                 scope.launch(start = CoroutineStart.UNDISPATCHED) {
                     client.streamLines(stream).collect { event ->
                         synchronized(streams) { streams += event }
@@ -161,6 +180,17 @@ class WraythStreamRoutingTests {
             scope.cancel()
             registry to TextEvents(synchronized(main) { main.toList() }, synchronized(streams) { streams.toList() })
         }
+}
+
+/** Keeps every line a client sends to its stream collectors. */
+private class RecordingStreamLineFeed : StreamLineFeed() {
+    private val recorded: MutableList<ClientTextEvent> = java.util.Collections.synchronizedList(mutableListOf())
+    val sent: List<ClientTextEvent> get() = synchronized(recorded) { recorded.toList() }
+
+    override fun emit(event: ClientTextEvent) {
+        recorded += event
+        super.emit(event)
+    }
 }
 
 /** Serves [lines] in order and then reports the connection closed. */
