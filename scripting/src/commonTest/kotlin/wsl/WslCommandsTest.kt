@@ -517,7 +517,7 @@ class WslCommandsTest {
             val client = FakeWarlockClient()
             val ctx = buildTestContext(backgroundScope, client = client)
             ctx.command("addtextlistener", "found hello")
-            client.emit(ClientTextEvent("well hello there"))
+            client.emit(ClientTextEvent("well hello there", "main"))
             assertEquals("well hello there", ctx.lookupVariable("found")?.toString())
         }
 
@@ -528,7 +528,7 @@ class WslCommandsTest {
             val client = FakeWarlockClient()
             val ctx = buildTestContext(backgroundScope, client = client)
             ctx.command("addtextlistener", "found hello")
-            client.emit(ClientTextEvent("goodbye world"))
+            client.emit(ClientTextEvent("goodbye world", "main"))
             assertNull(ctx.lookupVariable("found"))
         }
 
@@ -539,7 +539,7 @@ class WslCommandsTest {
             val client = FakeWarlockClient()
             val ctx = buildTestContext(backgroundScope, client = client)
             ctx.command("addtextlistenerre", "amount /([0-9]+)/")
-            client.emit(ClientTextEvent("you have 42 coins"))
+            client.emit(ClientTextEvent("you have 42 coins", "main"))
             assertEquals("42", ctx.lookupVariable("amount")?.toString())
         }
 
@@ -551,7 +551,7 @@ class WslCommandsTest {
             val ctx = buildTestContext(backgroundScope, client = client)
             ctx.command("addtextlistener", "found")
             ctx.command("removetextlistener", "found")
-            client.emit(ClientTextEvent("anything"))
+            client.emit(ClientTextEvent("anything", "main"))
             assertNull(ctx.lookupVariable("found"))
         }
 
@@ -563,7 +563,7 @@ class WslCommandsTest {
             val ctx = buildTestContext(backgroundScope, client = client)
             ctx.command("addtextlistener", "found")
             ctx.command("cleartextlisteners")
-            client.emit(ClientTextEvent("anything"))
+            client.emit(ClientTextEvent("anything", "main"))
             assertNull(ctx.lookupVariable("found"))
         }
 }

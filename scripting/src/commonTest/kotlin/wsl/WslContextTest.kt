@@ -246,7 +246,7 @@ class WslContextTest {
             val ctx = makeContext(backgroundScope, file, lines, client = client)
             val received = mutableListOf<String>()
             ctx.addListener("l") { received += it }
-            client.emit(ClientTextEvent("hello world"))
+            client.emit(ClientTextEvent("hello world", "main"))
             assertEquals(listOf("hello world"), received)
         }
 
@@ -259,7 +259,7 @@ class WslContextTest {
             val received = mutableListOf<String>()
             ctx.addListener("l") { received += it }
             ctx.removeListener("l")
-            client.emit(ClientTextEvent("hello"))
+            client.emit(ClientTextEvent("hello", "main"))
             assertTrue(received.isEmpty())
         }
 
@@ -273,7 +273,7 @@ class WslContextTest {
             ctx.addListener("a") { received += it }
             ctx.addListener("b") { received += it }
             ctx.clearListeners()
-            client.emit(ClientTextEvent("hello"))
+            client.emit(ClientTextEvent("hello", "main"))
             assertTrue(received.isEmpty())
         }
 

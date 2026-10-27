@@ -14,6 +14,7 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.consumeEach
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -41,6 +42,7 @@ import warlockfe.warlock3.core.client.ClientTextEvent
 import warlockfe.warlock3.core.client.ClientWindowInfoEvent
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.client.SendCommandType
+import warlockfe.warlock3.core.client.StreamLineFeed
 import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.client.WarlockMenuData
@@ -131,6 +133,9 @@ class WraythClient(
     private val ioDispatcher: CoroutineDispatcher,
     private val socket: WarlockSocket,
     private val commandListStore: CommandListStore?,
+    // The lines of the streams scripts are watching; the parse loop skips the rest. Given by a
+    // test, to count what is sent.
+    private val streamLineFeed: StreamLineFeed = StreamLineFeed(),
 ) : WarlockClient {
     private val writeContext = ioDispatcher.limitedParallelism(1)
 
@@ -153,6 +158,8 @@ class WraythClient(
     // seeing them all) once the buffer fills.
     private val _eventFlow = MutableSharedFlow<ClientEvent>(extraBufferCapacity = 256)
     override val eventFlow: SharedFlow<ClientEvent> = _eventFlow.asSharedFlow()
+
+    override fun streamLines(stream: String): Flow<ClientTextEvent> = streamLineFeed.linesOf(stream)
 
     private val _characterId = MutableStateFlow<String?>(null)
     override val characterId: StateFlow<String?> = _characterId.asStateFlow()
@@ -189,6 +196,9 @@ class WraythClient(
     private var logName: String? = null
 
     private val windows = mutableMapOf<String, WraythStreamWindow>()
+
+    // Streams the game pushed to without declaring a window for them, already reported.
+    private val undeclaredStreams = mutableSetOf<String>()
 
     private val _windowInfo = MutableStateFlow<List<WindowInfo>>(emptyList())
     override val windowInfo = _windowInfo.asStateFlow()
@@ -376,7 +386,22 @@ class WraythClient(
             is WraythStreamEvent -> {
                 lineBuffer.discardComponent()
                 flushBuffer(true)
-                currentStream = getStream(event.id ?: "main")
+                val id = event.id ?: "main"
+                if (event.needsWindow && id != "main" && id !in windows) {
+                    // Wrayth reports this back to the server as an error and leaves the text where
+                    // it was, so it shows, and scripts match it, as if the push had not been sent.
+                    // Said once per stream, since a game that does it will do it on every line.
+                    if (undeclaredStreams.add(id)) {
+                        getMainStream().appendLine(
+                            StyledString(
+                                "The game sent text to a window it never declared (\"$id\"); showing it here instead",
+                                WarlockStyle.Error,
+                            ),
+                        )
+                    }
+                } else {
+                    currentStream = getStream(id)
+                }
             }
 
             is WraythClearStreamEvent -> {
@@ -852,27 +877,34 @@ class WraythClient(
         stream: TextStream,
         ignoreWhenBlank: Boolean,
     ) {
-        doAppendToStream(styledText, stream, ignoreWhenBlank)
-        if (stream.isMainStream || windows[stream.id]?.ifClosed == "main") {
-            val text = styledText.toText()
-            if (text.isNotBlank()) {
+        val reachedMain = doAppendToStream(styledText, stream, ignoreWhenBlank)
+        val publish = streamLineFeed.isWatched(stream.id)
+        // Most lines are in streams nobody is collecting: nothing more to do for them.
+        if (!reachedMain && !publish) return
+        val text = styledText.toText()
+        if (text.isNotBlank()) {
+            val event = ClientTextEvent(text, stream.id)
+            if (publish) streamLineFeed.send(event)
+            if (reachedMain) {
                 logSimple { text }
-                notifyListeners(ClientTextEvent(text))
+                notifyListeners(event)
             }
         }
     }
 
+    /** Appends the line to [stream], and to the stream it falls back to; true if main got it. */
     private suspend fun doAppendToStream(
         styledText: StyledString,
         stream: TextStream,
         ignoreWhenBlank: Boolean,
-    ) {
+    ): Boolean {
         if (ignoreWhenBlank && styledText.isBlank()) {
-            return
+            return false
         }
         stream.appendLine(styledText, ignoreWhenBlank)
         if (stream.isMainStream) {
             isPrompting = false
+            return true
         } else {
             // send text to `ifClosed` stream, if stream isn't main
             windows[stream.id]?.ifClosed?.let { ifClosed ->
@@ -886,7 +918,9 @@ class WraythClient(
                     ignoreWhenBlank = ignoreWhenBlank,
                     showWhenClosed = stream.id,
                 )
+                return ifClosedStream.isMainStream
             }
+            return false
         }
     }
 
@@ -982,25 +1016,42 @@ class WraythClient(
 
     override suspend fun print(message: StyledString) {
         withContext(ioDispatcher) {
-            getMainStream().appendLine(if (monospace) message.applyMonospace() else message)
-            notifyListeners(ClientTextEvent(message.toString()))
+            val stream = getMainStream()
+            stream.appendLine(if (monospace) message.applyMonospace() else message)
+            notifyText(ClientTextEvent(message.toText(), stream.id))
         }
     }
 
     suspend fun printCommand(command: String) {
         withContext(ioDispatcher) {
             val styled = StyledString(command, WarlockStyle.Command)
-            getMainStream().appendPartialAndEol(if (monospace) styled.applyMonospace() else styled)
-            notifyListeners(ClientTextEvent(command))
+            val stream = getMainStream()
+            stream.appendPartialAndEol(if (monospace) styled.applyMonospace() else styled)
+            notifyText(ClientTextEvent(command, stream.id))
         }
     }
 
     override suspend fun debug(message: String) {
-        doAppendToStream(StyledString(message), getStream("debug"), false)
+        appendClientLine(StyledString(message), getStream("debug"))
     }
 
     override suspend fun scriptDebug(message: String) {
-        doAppendToStream(StyledString(message), getStream("scriptoutput"), false)
+        appendClientLine(StyledString(message), getStream("scriptoutput"))
+    }
+
+    // A line the client writes to one of its own streams. It is on [streamLines], like every
+    // stream's, but not on [eventFlow], which has never carried these.
+    private suspend fun appendClientLine(
+        text: StyledString,
+        stream: TextStream,
+    ) {
+        doAppendToStream(text, stream, false)
+        // debug() has every line from the server: skip the copy unless someone wants it.
+        if (!streamLineFeed.isWatched(stream.id)) return
+        val plain = text.toText()
+        if (plain.isNotBlank()) {
+            streamLineFeed.send(ClientTextEvent(plain, stream.id))
+        }
     }
 
     override suspend fun getStream(name: String): TextStream = windowRegistry.getOrCreateStream(name)
@@ -1011,6 +1062,12 @@ class WraythClient(
 
     private suspend fun notifyListeners(event: ClientEvent) {
         _eventFlow.emit(event)
+    }
+
+    // A main-window line written by the client itself rather than parsed from a stream.
+    private suspend fun notifyText(event: ClientTextEvent) {
+        if (streamLineFeed.isWatched(event.streamId)) streamLineFeed.send(event)
+        notifyListeners(event)
     }
 
     fun setProxy(proxy: WarlockProxy) {
@@ -1025,7 +1082,7 @@ class WraythClient(
         proxy.stdErr
             .onEach {
                 logger.d { "Proxy error: $it" }
-                doAppendToStream(StyledString(it, listOf(WarlockStyle.Error)), getStream("scriptoutput"), false)
+                appendClientLine(StyledString(it, listOf(WarlockStyle.Error)), getStream("scriptoutput"))
             }.catch {
                 logger.e(it) { "Error reading stderr" }
             }.launchIn(scope)
