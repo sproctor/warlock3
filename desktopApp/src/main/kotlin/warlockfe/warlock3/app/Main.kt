@@ -93,6 +93,7 @@ import warlockfe.warlock3.compose.desktop.shim.WarlockOutlinedButton
 import warlockfe.warlock3.compose.desktop.theme.WarlockDesktopTheme
 import warlockfe.warlock3.compose.desktop.theme.WarlockTitleBar
 import warlockfe.warlock3.compose.desktop.ui.game.DesktopDockHost
+import warlockfe.warlock3.compose.desktop.ui.game.DetachedGameWindows
 import warlockfe.warlock3.compose.desktop.ui.game.LocalDesktopDockHost
 import warlockfe.warlock3.compose.desktop.ui.settings.DesktopCrashReportingNotice
 import warlockfe.warlock3.compose.generated.resources.Res
@@ -482,6 +483,13 @@ private class WarlockCommand : CliktCommand() {
                                 }
                             }
                         }
+                        // The windows torn off this window's dock, alongside it rather than inside
+                        // it. Draws nothing until the user detaches something.
+                        DetachedGameWindows(
+                            dockHost = dockHost,
+                            viewModel = connectedScreen?.viewModel,
+                            skin = skin,
+                        )
                     }
                 }
             }

@@ -44,6 +44,7 @@ import com.seanproctor.docking.state.DockableSpec
 import com.seanproctor.docking.state.DockingEvent
 import com.seanproctor.docking.state.DockingSettings
 import com.seanproctor.docking.state.EmptyAnchorVisibility
+import com.seanproctor.docking.ui.platformDockCapabilities
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.coroutineScope
@@ -72,7 +73,6 @@ import warlockfe.warlock3.compose.util.LocalBaseStyle
 import warlockfe.warlock3.core.text.toStyleDefinition
 import warlockfe.warlock3.core.window.WindowLocation
 import kotlin.time.Duration.Companion.seconds
-import com.seanproctor.docking.ui.platformDockCapabilities as dockingLibraryCapabilities
 
 const val MAIN_WINDOW_NAME = "main"
 
@@ -292,7 +292,7 @@ fun rememberGameDockState(
                         // against: currentAnchorOf reads a window's area from which side of main it
                         // sits on, so floating main away would leave every other window reading as
                         // the centre and scramble the arrangement on the next reconcile.
-                        floatable = name != MAIN_WINDOW_NAME && floatingGameWindows,
+                        floatable = name != MAIN_WINDOW_NAME && platformDockCapabilities.floatingWindows,
                         anchor = anchor,
                     ),
                 title = {
@@ -496,7 +496,7 @@ internal fun applyRestoredLayout(
                     // were left at - the layout JSON carries both. On a platform with no OS windows
                     // to put them back in, their contents are grafted into the main window instead,
                     // which is also how a layout detached on the desktop opens on a phone.
-                    mergeFloatingWindows = !floatingGameWindows,
+                    mergeFloatingWindows = !platformDockCapabilities.floatingWindows,
                 )
             }.onFailure { Logger.w(it) { "Discarding unreadable dock layout" } }
     }
@@ -572,7 +572,7 @@ internal fun reconcile(
                         // Company it can rejoin comes first; a new window is for one that was alone.
                         placementFromMemory(spot, state.layout) != null -> name to placementFromMemory(spot, state.layout)
 
-                        spot.detached && floatingGameWindows -> name to null
+                        spot.detached && platformDockCapabilities.floatingWindows -> name to null
 
                         else -> null
                     }
@@ -803,18 +803,7 @@ internal fun isDetached(
 internal fun opensDetached(window: OpenGameWindow): Boolean =
     window.location == WindowLocation.DETACHED &&
         !window.isMain &&
-        floatingGameWindows
-
-/**
- * Whether game windows can float in OS windows of their own: the docking library's answer for the
- * platform, unless the host app's window backend cannot open the AWT windows the library floats
- * them in (the desktop app on Nucleus's Tao windows, which has no AWT at all).
- */
-internal val floatingGameWindows: Boolean
-    get() = dockingLibraryCapabilities.floatingWindows && hostSupportsFloatingWindows
-
-/** False where the host app cannot open the docking library's floating windows. */
-internal expect val hostSupportsFloatingWindows: Boolean
+        platformDockCapabilities.floatingWindows
 
 /**
  * Where a window sat when it was closed, so that reopening can put it back there.

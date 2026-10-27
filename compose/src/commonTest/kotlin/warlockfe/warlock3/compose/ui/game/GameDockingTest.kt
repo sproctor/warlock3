@@ -13,6 +13,7 @@ import com.seanproctor.docking.persistence.restoreLayout
 import com.seanproctor.docking.state.DockState
 import com.seanproctor.docking.state.DockTarget
 import com.seanproctor.docking.state.DockableSpec
+import com.seanproctor.docking.ui.platformDockCapabilities
 import warlockfe.warlock3.compose.ui.window.WindowUiState
 import warlockfe.warlock3.core.window.WindowInfo
 import warlockfe.warlock3.core.window.WindowLocation
@@ -74,7 +75,7 @@ class GameDockingTest {
                                 // Mirrors production: detaching is gated on this, so a registrar
                                 // that left it at the default would let main float and would test
                                 // a rule the app does not have.
-                                floatable = name != MAIN_WINDOW_NAME && floatingGameWindows,
+                                floatable = name != MAIN_WINDOW_NAME && platformDockCapabilities.floatingWindows,
                                 anchor = anchor,
                             ),
                         title = { name },
@@ -592,7 +593,7 @@ class GameDockingTest {
     // Every detaching test below is desktop-only behaviour. On a platform with no OS windows to
     // detach into the capability is off, the menu item is never offered, and these would be
     // asserting that nothing happens - which the merge test at the bottom covers instead.
-    private fun assumeFloatingWindows(): Boolean = floatingGameWindows
+    private fun assumeFloatingWindows(): Boolean = platformDockCapabilities.floatingWindows
 
     // The game asks for a window of its own with location='detach', and the real client gives it
     // one. Before windows could be detached at all this was docked into the band with everything

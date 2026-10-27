@@ -42,7 +42,6 @@ import androidx.compose.ui.unit.dp
 import com.seanproctor.docking.jewel.JewelDocking
 import com.seanproctor.docking.spi.LocalDockingRenderer
 import com.seanproctor.docking.state.DockState
-import com.seanproctor.docking.ui.DockArea
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.jewel.ui.component.Text
@@ -232,7 +231,7 @@ fun DesktopGameView(
                 Box(Modifier.weight(1f).padding(2.dp)) {
                     JewelDocking {
                         CompositionLocalProvider(LocalDockingRenderer provides dockingRenderer) {
-                            DockArea(dockState, modifier = Modifier.fillMaxSize())
+                            GameDockArea(dockState, Modifier.fillMaxSize())
                         }
                     }
                 }
