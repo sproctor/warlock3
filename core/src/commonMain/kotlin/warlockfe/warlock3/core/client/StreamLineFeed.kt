@@ -73,11 +73,8 @@ class StreamLineFeed {
                             // The first loss now, the rest counted for when the collector stops:
                             // one that falls behind usually stays behind a while.
                             if (lost.incrementAndFetch() == 1L) {
-                                logger.w {
-                                    "A collector of stream \"$stream\" fell behind and is losing lines, from \"${line.text.take(
-                                        80,
-                                    )}\""
-                                }
+                                val first = line.text.take(80)
+                                logger.w { "A collector of stream \"$stream\" fell behind and is losing lines, from \"$first\"" }
                             }
                         },
                 )

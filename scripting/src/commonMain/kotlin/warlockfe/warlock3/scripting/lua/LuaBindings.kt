@@ -33,7 +33,9 @@ import warlockfe.warlock3.core.util.SoundPlayer
 import warlockfe.warlock3.core.util.isFatal
 import warlockfe.warlock3.core.util.toWarlockColor
 import warlockfe.warlock3.scripting.util.scriptSoundFile
-import kotlin.concurrent.Volatile
+import kotlin.concurrent.atomics.AtomicLong
+import kotlin.concurrent.atomics.ExperimentalAtomicApi
+import kotlin.concurrent.atomics.incrementAndFetch
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
@@ -50,6 +52,7 @@ import kotlin.time.Instant
  * [serveHandlers] then keeps the script alive after its last line, calling them on the script's
  * thread for each event, until the script is stopped or the connection closes.
  */
+@OptIn(ExperimentalAtomicApi::class)
 internal class LuaBindings(
     private val lua: LuaState,
     private val client: WarlockClient,
@@ -83,9 +86,8 @@ internal class LuaBindings(
     // the main window's lines and GMCP, which onLine and onGmcp hear.
     private val gathering = mutableSetOf<String?>()
 
-    // Whether [events] has lost one to the script falling behind; set by the gatherers.
-    @Volatile
-    private var droppedEvents = false
+    // How many events [events] has lost to the script falling behind; counted by the gatherers.
+    private val lostEvents = AtomicLong(0L)
 
     // The bootstrap's dispatchers, taken as handles so the globals can be removed.
     private lateinit var dispatchGmcp: LuaValue.Function
@@ -409,10 +411,10 @@ internal class LuaBindings(
     private fun gather(collect: suspend (Channel<ScriptEvent>) -> Unit) {
         val events =
             events ?: Channel<ScriptEvent>(capacity = 1024, onBufferOverflow = BufferOverflow.DROP_OLDEST) { event ->
-                // Logged once: a script that falls behind once usually stays behind a while.
-                if (!droppedEvents) {
-                    droppedEvents = true
-                    logger.w { "Script fell behind its handlers' events and lost some, from ${event.describe()}" }
+                // The first loss now, the rest counted for when the script ends, as a stream
+                // collector's are: one that falls behind usually stays behind a while.
+                if (lostEvents.incrementAndFetch() == 1L) {
+                    logger.w { "Script fell behind its handlers' events and is losing some, from ${event.describe()}" }
                 }
             }.also { events ->
                 this.events = events
@@ -475,6 +477,8 @@ internal class LuaBindings(
             }
         } finally {
             gatherers.forEach { it.cancel() }
+            val lost = lostEvents.load()
+            if (lost > 0) logger.w { "Script lost $lost of its handlers' events in all" }
         }
     }
 
