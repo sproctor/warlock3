@@ -24,6 +24,7 @@ import warlockfe.warlock3.compose.ui.window.ComposeTextStream
 import warlockfe.warlock3.compose.ui.window.StreamProfiling
 import warlockfe.warlock3.compose.ui.window.StreamWorkQueue
 import warlockfe.warlock3.core.client.ClientTextEvent
+import warlockfe.warlock3.core.prefs.SettingsProblems
 import warlockfe.warlock3.core.prefs.config.ClientConfigStore
 import warlockfe.warlock3.core.prefs.dao.ClientSettingDao
 import warlockfe.warlock3.core.prefs.models.ClientSettingEntity
@@ -141,7 +142,8 @@ private suspend fun runBenchmark(config: BenchConfig) {
     clientConfigStore.mutateClient { it.copy(logType = "NONE") }
     val warlockDirs = WarlockDirs(homeDir = tempDir, dataDir = tempDir, configDir = tempDir, logDir = tempDir)
     val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-    val clientSettings = ClientSettingRepository(InMemoryClientSettingDao(), clientConfigStore, warlockDirs)
+    val clientSettings =
+        ClientSettingRepository(InMemoryClientSettingDao(), clientConfigStore, warlockDirs, SettingsProblems(tempDir))
     val loggingRepository = LoggingRepository(clientSettings, appScope)
     val characterRepository = CharacterRepository(clientConfigStore)
 
