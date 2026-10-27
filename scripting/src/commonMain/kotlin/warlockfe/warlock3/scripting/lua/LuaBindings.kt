@@ -262,12 +262,18 @@ internal class LuaBindings(
             val name =
                 args.firstOrNull()?.asString()?.takeIf { it.isNotBlank() }
                     ?: throw IllegalArgumentException("playSound needs the sound file to play")
-            val file = scriptSoundFile(fileSystem, scriptDir, name)
             // Not waited for: loading the sound can take a while, and the script's other handlers
             // should not be held up meanwhile. NonCancellable, so a script that plays a sound and
             // ends at once, cancelling its scope, still has it played.
             instance.scope.launch(NonCancellable) {
-                val error = soundPlayer.playSound(file)
+                // A throw is reported like a returned error: escaping, it would cancel the
+                // script's scope, and end the script, over a sound.
+                val error =
+                    try {
+                        soundPlayer.playSound(scriptSoundFile(fileSystem, scriptDir, name))
+                    } catch (e: Exception) {
+                        e.message ?: e::class.simpleName ?: "unknown error"
+                    }
                 // Reported, but not fatal: a missing sound should not end a script that is
                 // otherwise doing its job.
                 if (error != null) {

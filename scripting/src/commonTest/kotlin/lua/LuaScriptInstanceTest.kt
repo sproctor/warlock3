@@ -456,6 +456,35 @@ class LuaScriptInstanceTest {
     }
 
     @Test
+    fun aSoundPlayerThatThrowsIsReportedAndTheScriptGoesOn() {
+        val client = FakeWarlockClient()
+        val soundPlayer =
+            object : SoundPlayer {
+                override suspend fun playSound(filename: String): String? = throw IllegalStateException("no audio device")
+            }
+        val instance =
+            createInstance(
+                """
+                playSound("ping.wav")
+                pause(0.5)
+                echo("still here")
+                """.trimIndent(),
+                soundPlayer = soundPlayer,
+            )
+        runBlocking {
+            instance.start(client, "", onStop = {}, commandHandler = { SendCommandType.COMMAND })
+            instance.awaitStopped()
+            withTimeout(10.seconds) {
+                while (client.printedText().none { it.contains("could not play") }) delay(10.milliseconds)
+            }
+        }
+        // The pause outlasts the throw, which, escaping, would have cancelled it.
+        val printed = client.printedText()
+        assertTrue(printed.any { it.contains("could not play \"ping.wav\": no audio device") }, printed.toString())
+        assertTrue("still here" in printed, printed.toString())
+    }
+
+    @Test
     fun onStreamLineWithoutAStreamNameSaysSo() {
         val client = FakeWarlockClient()
         val instance = createInlineInstance("""onStreamLine(function(line) echo(line) end)""")
