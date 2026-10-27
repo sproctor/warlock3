@@ -51,10 +51,11 @@ class FakeScriptManager : ScriptManager {
 }
 
 class FakeSoundPlayer : SoundPlayer {
-    val playedSounds = mutableListOf<String>()
+    private val played = Recorded<String>()
+    val playedSounds: List<String> get() = played.snapshot()
 
     override suspend fun playSound(filename: String): String? {
-        playedSounds += filename
+        played.add(filename)
         return null
     }
 }

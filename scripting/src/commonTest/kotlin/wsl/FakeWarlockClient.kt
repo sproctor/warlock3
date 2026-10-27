@@ -35,9 +35,12 @@ open class FakeWarlockClient(
     override val windowInfo = MutableStateFlow<List<WindowInfo>>(emptyList())
     override val disconnected = MutableStateFlow(false)
 
-    val sentCommands = mutableListOf<String>()
-    val printed = mutableListOf<StyledString>()
-    val scriptDebugMessages = mutableListOf<String>()
+    private val recordedCommands = Recorded<String>()
+    private val recordedPrints = Recorded<StyledString>()
+    private val recordedScriptDebug = Recorded<String>()
+    val sentCommands: List<String> get() = recordedCommands.snapshot()
+    val printed: List<StyledString> get() = recordedPrints.snapshot()
+    val scriptDebugMessages: List<String> get() = recordedScriptDebug.snapshot()
 
     private var currentTime: Instant = Instant.fromEpochSeconds(0)
 
@@ -65,19 +68,19 @@ open class FakeWarlockClient(
     override fun disconnect() = Unit
 
     override suspend fun sendCommand(line: String): SendCommandType {
-        sentCommands += line
+        recordedCommands.add(line)
         return SendCommandType.COMMAND
     }
 
     override suspend fun sendCommandDirect(command: String) {
-        sentCommands += command
+        recordedCommands.add(command)
     }
 
     override suspend fun sendWidgetCommand(
         command: String,
         echo: String?,
     ) {
-        sentCommands += command
+        recordedCommands.add(command)
     }
 
     override fun requestMenu(
@@ -86,13 +89,13 @@ open class FakeWarlockClient(
     ): Int = 0
 
     override suspend fun print(message: StyledString) {
-        printed += message
+        recordedPrints.add(message)
     }
 
     override suspend fun debug(message: String) = Unit
 
     override suspend fun scriptDebug(message: String) {
-        scriptDebugMessages += message
+        recordedScriptDebug.add(message)
     }
 
     override suspend fun getStream(name: String): TextStream = throw NotImplementedError("getStream not used in tests")
