@@ -22,11 +22,14 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.rememberWindowState
+import com.seanproctor.docking.model.DockNode
 import com.seanproctor.docking.model.WindowId
 import com.seanproctor.docking.spi.LocalDockingRenderer
 import com.seanproctor.docking.state.DockState
@@ -125,27 +128,100 @@ internal fun GameDockArea(
 }
 
 /**
- * Moves the detached window [windowId] by dragging this element. Where windows can be placed, the
- * docking system drives the move, so letting go over a dock area docks the window there. On native
- * Wayland only the compositor can move a window, so the drag is handed to it and docking back is
- * left to the title bar's dock button and the panel's own header.
+ * How a detached window's title bar drags: [bar] goes on the whole bar, [dockGrip], when there is
+ * one, on the part of it that drags the window into a dock.
+ *
+ * Where windows can be placed there is no [dockGrip]: the docking system moves the window with the
+ * pointer, so the whole bar both moves the window and, let go over a dock area, docks it there.
+ *
+ * On native Wayland no client can move its windows or see the pointer outside them, so the two are
+ * two places, as on Nucleus's own floating satellites: the bar hands the move to the compositor,
+ * and [dockGrip] drags the window through the platform's drag-and-drop session, as a panel header
+ * does - the window stays put, the compositor draws the drag icon, and letting go over a dock area
+ * docks it there. Only a window that can dock as a whole (one game window, or one tab group) has a
+ * [dockGrip]; any other has only the move.
  */
+internal class DetachedWindowDrag(
+    val bar: Modifier,
+    val dockGrip: Modifier?,
+)
+
 @Composable
-internal fun Modifier.detachedWindowDragArea(
+internal fun rememberDetachedWindowDrag(
     state: DockState,
     windowId: WindowId,
-): Modifier {
+    title: String,
+): DetachedWindowDrag {
     val window = LocalNucleusWindow.current
-    if (window.isPlaceable) return dockWindowDragArea(state, windowId)
-    val tao = window.unsafe.taoWindow ?: return this
-    return pointerInput(tao) {
-        awaitEachGesture {
-            awaitFirstDown()
-            // As Nucleus's own title bar does: the compositor's move starts with the first movement
-            // of the press, so a click on the bar stays a click.
-            val change = awaitPointerEvent().changes.firstOrNull()
-            if (change?.pressed == true) tao.dragWindow()
+    if (window.isPlaceable) return DetachedWindowDrag(Modifier.dockWindowDragArea(state, windowId), dockGrip = null)
+    val tao = window.unsafe.taoWindow ?: return DetachedWindowDrag(Modifier, dockGrip = null)
+    val move =
+        Modifier.pointerInput(tao) {
+            awaitEachGesture {
+                // Unconsumed only: the dock grip and the buttons take their own presses.
+                awaitFirstDown()
+                // As Nucleus's own title bar does: the compositor's move starts with the first
+                // movement of the press, so a click on the bar stays a click.
+                val change = awaitPointerEvent().changes.firstOrNull()
+                if (change?.pressed == true && !change.isConsumed) tao.dragWindow()
+            }
         }
+    val root = state.layout.window(windowId)?.root
+    if (root !is DockNode.Leaf && root !is DockNode.Tabs) return DetachedWindowDrag(move, dockGrip = null)
+    val gesture = remember { WindowGripGesture() }
+    val grip =
+        Modifier
+            .onPlaced { gesture.coordinates = it }
+            .transferDragHandle(
+                key = windowId,
+                window = tao,
+                begin = {
+                    if (state.windowHost.startWindowDrag(windowId, gesture.positionInWindow())) {
+                        WindowTransferDrag(state, title)
+                    } else {
+                        null
+                    }
+                },
+                gesture = gesture,
+            )
+    return DetachedWindowDrag(move, grip)
+}
+
+/** A title bar's gesture: hands over at once, remembering where it was for the window drag. */
+private class WindowGripGesture : TransferDragGesture {
+    var coordinates: LayoutCoordinates? = null
+    private var lastPosition = Offset.Zero
+
+    /** The last position the gesture saw, in the window's root rather than the grip. */
+    fun positionInWindow(): Offset = coordinates?.takeIf { it.isAttached }?.localToRoot(lastPosition) ?: lastPosition
+
+    override fun onStart(pressPosition: Offset) {
+        lastPosition = pressPosition
+    }
+
+    override fun onDrag(position: Offset): Boolean {
+        lastPosition = position
+        return true
+    }
+}
+
+/** The platform session of a detached window dragged by its title bar. */
+private class WindowTransferDrag(
+    private val state: DockState,
+    override val title: String,
+) : TransferDrag {
+    override val ghostSizePx: Size = GhostCardSizePx
+
+    override val ghostSource: TransferGhostSource = TransferGhostSource.None
+
+    // A drop, not endPlatformDrag: released over no window, a window drag leaves the window where
+    // it is, where ending the platform drag would tear its contents off into another one.
+    override fun end() {
+        state.windowHost.drop()
+    }
+
+    override fun cancel() {
+        state.windowHost.cancel()
     }
 }
 
