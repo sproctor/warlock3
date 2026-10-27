@@ -14,8 +14,11 @@ interface WarlockClient {
     // declared ifClosed=''.
     val eventFlow: SharedFlow<ClientEvent>
 
-    // Every line of every stream, main or not, for whoever wants one window's text. Lines are only
-    // sent while something is collecting, so nobody pays for them otherwise.
+    // The completed lines of every stream, main or not, for whoever wants one window's text: the
+    // game's, and those the client writes itself (print, debug, script output). Not prompts or
+    // partial lines, and not text shown while the game has the parser off (raw mode, as in
+    // character creation), none of which [eventFlow] carries either. Lines are only sent while
+    // something is collecting, so nobody pays for them otherwise.
     val streamLines: SharedFlow<ClientTextEvent>
 
     val roundTimeEnd: StateFlow<Long?>

@@ -4,12 +4,24 @@ import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
 import kotlinx.io.files.SystemTemporaryDirectory
 import kotlin.random.Random
+import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class ScriptSoundFileTest {
     private val root = Path(SystemTemporaryDirectory, "script-sound-${Random.nextLong().toULong()}")
     private val scriptDir = Path(root, "scripts")
+
+    @AfterTest
+    fun removeTheFiles() = deleteTree(root)
+
+    private fun deleteTree(path: Path) {
+        if (!SystemFileSystem.exists(path)) return
+        if (SystemFileSystem.metadataOrNull(path)?.isDirectory == true) {
+            SystemFileSystem.list(path).forEach { deleteTree(it) }
+        }
+        SystemFileSystem.delete(path)
+    }
 
     private fun touch(path: Path) {
         path.parent?.let { SystemFileSystem.createDirectories(it) }

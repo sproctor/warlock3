@@ -10,6 +10,7 @@ import io.ktor.utils.io.ByteWriteChannel
 import io.ktor.utils.io.readAvailable
 import io.ktor.utils.io.writeFully
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
@@ -85,6 +86,7 @@ class TelnetClientTests {
     private lateinit var fromClient: ByteReadChannel
     private lateinit var toClient: ByteWriteChannel
     private val events = mutableListOf<ClientEvent>()
+    private val streamLines = mutableListOf<ClientTextEvent>()
 
     @BeforeTest
     fun setUp() =
@@ -129,6 +131,10 @@ class TelnetClientTests {
                     socket = socket,
                 )
             scope.launch { client.eventFlow.collect { synchronized(events) { events += it } } }
+            // Subscribed before anything is sent: stream lines are only published to a collector.
+            scope.launch(start = CoroutineStart.UNDISPATCHED) {
+                client.streamLines.collect { synchronized(streamLines) { streamLines += it } }
+            }
 
             val accepted = async { server.accept() }
             socket.connect("127.0.0.1", port, tls = false)
@@ -188,6 +194,8 @@ class TelnetClientTests {
 
     private fun eventsSnapshot(): List<ClientEvent> = synchronized(events) { events.toList() }
 
+    private fun streamLinesSnapshot(): List<ClientTextEvent> = synchronized(streamLines) { streamLines.toList() }
+
     @Test
     fun characterIsIdentifiedFromTheConnection() {
         assertEquals("mud.example:bob", client.characterId.value)
@@ -209,6 +217,21 @@ class TelnetClientTests {
 
             val texts = await("text events") { eventsSnapshot().filterIsInstance<ClientTextEvent>().takeIf { it.size == 2 } }
             assertEquals(listOf("Hello world", "Second line"), texts.map { it.text })
+        }
+
+    @Test
+    fun streamLinesCarryTheGamesTextAndTheClientsOwnStreams() =
+        runBlocking<Unit> {
+            send("A line\r\n")
+            client.debug("a debug line")
+            val lines =
+                await("stream lines") {
+                    streamLinesSnapshot().takeIf { lines -> lines.any { it.text == "A line" } && lines.any { it.text == "a debug line" } }
+                }
+            // The game's text is the one stream, which is not named; Warlock's own streams are.
+            assertTrue(ClientTextEvent("A line", null) in lines)
+            assertTrue(ClientTextEvent("a debug line", "debug") in lines)
+            assertTrue(eventsSnapshot().none { it is ClientTextEvent && it.text == "a debug line" })
         }
 
     @Test

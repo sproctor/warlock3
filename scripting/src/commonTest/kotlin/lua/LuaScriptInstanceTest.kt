@@ -1,6 +1,12 @@
 package warlockfe.warlock3.scripting.lua
 
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalForInheritanceCoroutinesApi
+import kotlinx.coroutines.IO
+import kotlinx.coroutines.Runnable
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -15,14 +21,17 @@ import warlockfe.warlock3.core.client.ClientEvent
 import warlockfe.warlock3.core.client.ClientGmcpEvent
 import warlockfe.warlock3.core.client.ClientPromptEvent
 import warlockfe.warlock3.core.client.ClientTextEvent
+import warlockfe.warlock3.core.client.SendCommandType
 import warlockfe.warlock3.core.prefs.repositories.VariableRepository
 import warlockfe.warlock3.core.script.ScriptStatus
+import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.core.util.SoundPlayer
 import warlockfe.warlock3.scripting.wsl.FakeScriptManager
 import warlockfe.warlock3.scripting.wsl.FakeSoundPlayer
 import warlockfe.warlock3.scripting.wsl.FakeWarlockClient
 import warlockfe.warlock3.scripting.wsl.newTestConfigStore
+import kotlin.coroutines.CoroutineContext
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
@@ -365,7 +374,10 @@ class LuaScriptInstanceTest {
                 client.printedText().any { it.contains("from Bob") }
             }
             assertContains(client.printedText(), "thought Bob says hi")
-            assertTrue(soundPlayer.playedSounds.isNotEmpty())
+            // Played without the script waiting for it.
+            withTimeout(10.seconds) {
+                while (soundPlayer.playedSounds.isEmpty()) delay(10.milliseconds)
+            }
             assertTrue(soundPlayer.playedSounds.all { it == "ping.wav" })
             assertFalse(client.printedText().any { it.startsWith("main ") })
             // A stream that falls back to main is heard by both.
@@ -379,33 +391,68 @@ class LuaScriptInstanceTest {
         assertFalse(client.printedText().any { it.contains("Script error") })
     }
 
+    @OptIn(ExperimentalForInheritanceCoroutinesApi::class)
     @Test
-    fun aLineSentRightAfterRegistrationIsHeardWithoutRepeating() {
-        val client = FakeWarlockClient()
+    fun handlersAreListeningByTheTimeTheirRegistrationReturns() {
+        // The flows keep nothing for a late subscriber, so a handler is only safe to register if
+        // its collector is subscribed when the registration returns. Reading a variable reads
+        // the character id straight away on the script's thread; whatever is subscribed by then
+        // was in time. Every dispatch is held up, so a collector that waits to be dispatched
+        // before subscribing is plainly late rather than late by microseconds.
+        val subscribers = mutableListOf<Int>()
+        val client =
+            object : FakeWarlockClient() {
+                private val backing = MutableStateFlow<String?>("testchar")
+                override val characterId =
+                    object : MutableStateFlow<String?> by backing {
+                        override var value: String?
+                            get() {
+                                subscribers += eventFlow.subscriptionCount.value
+                                subscribers += streamLines.subscriptionCount.value
+                                return backing.value
+                            }
+                            set(value) {
+                                backing.value = value
+                            }
+                    }
+            }
         val instance =
-            createInlineInstance(
-                """
-                onStreamLine("thoughts", function(line) echo("thought " .. line) end)
-                onLine(function(line) echo("main " .. line) end)
-                echo("registered")
-                """.trimIndent(),
+            LuaScriptInstance(
+                id = 1L,
+                name = "inline",
+                file = null,
+                content =
+                    """
+                    onLine(function(line) end)
+                    onStreamLine("thoughts", function(line) end)
+                    local _ = variables.probe
+                    exit()
+                    """.trimIndent(),
+                variableRepository = VariableRepository(newTestConfigStore()),
+                soundPlayer = FakeSoundPlayer(),
+                scriptManager = FakeScriptManager(),
+                fileSystem = SystemFileSystem,
+                dispatcher = HeldUpDispatcher(200.milliseconds),
             )
         runBlocking {
             instance.start(client, "", onStop = {}, commandHandler = { client.sendCommand(it) })
-            withTimeout(10.seconds) {
-                while ("registered" !in client.printedText()) delay(1.milliseconds)
-            }
-            // Once each: a collector that subscribed late would miss them for good.
-            client.emitStreamLine(ClientTextEvent("only once", "thoughts"), inMain = false)
-            client.emit(ClientTextEvent("only once", "main"))
-            withTimeout(10.seconds) {
-                while ("thought only once" !in client.printedText() || "main only once" !in client.printedText()) {
-                    delay(10.milliseconds)
-                }
-            }
-            instance.stop()
-            instance.awaitStopped(10.seconds)
+            instance.awaitStopped()
         }
+        assertEquals(listOf(1, 1), subscribers)
+    }
+
+    @Test
+    fun aScriptThatPlaysASoundAndEndsStillHasItPlayed() {
+        val soundPlayer = FakeSoundPlayer()
+        val instance = createInstance("""playSound("ping.wav")""", soundPlayer = soundPlayer)
+        runBlocking {
+            instance.start(FakeWarlockClient(), "", onStop = {}, commandHandler = { SendCommandType.COMMAND })
+            instance.awaitStopped()
+            withTimeout(10.seconds) {
+                while (soundPlayer.playedSounds.isEmpty()) delay(10.milliseconds)
+            }
+        }
+        assertEquals(listOf("ping.wav"), soundPlayer.playedSounds)
     }
 
     @Test
@@ -649,5 +696,23 @@ class LuaScriptInstanceTest {
             instance.stop()
             instance.awaitStopped(10.seconds)
         }
+    }
+}
+
+/** [Dispatchers.IO], with every dispatch held up by [delay] first. */
+private class HeldUpDispatcher(
+    private val delay: Duration,
+) : CoroutineDispatcher() {
+    override fun dispatch(
+        context: CoroutineContext,
+        block: Runnable,
+    ) {
+        Dispatchers.IO.dispatch(
+            context,
+            Runnable {
+                runBlocking { delay(delay) }
+                block.run()
+            },
+        )
     }
 }

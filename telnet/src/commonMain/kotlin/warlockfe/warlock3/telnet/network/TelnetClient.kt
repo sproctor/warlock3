@@ -572,10 +572,13 @@ class TelnetClient(
         stream: TextStream,
     ) {
         stream.appendLine(styledText)
-        // On [streamLines] like every stream's line; not on [eventFlow], which has never had these.
-        val plain = styledText.toText()
-        if (plain.isNotBlank()) {
-            _streamLines.emit(ClientTextEvent(plain, stream.id))
+        // On [streamLines] like every stream's line, when someone is collecting; not on
+        // [eventFlow], which has never had these.
+        if (_streamLines.subscriptionCount.value > 0) {
+            val plain = styledText.toText()
+            if (plain.isNotBlank()) {
+                _streamLines.emit(ClientTextEvent(plain, stream.id))
+            }
         }
         // A closed window's text shows in the window it names instead, in that window's style.
         windows[stream.id]?.ifClosed?.let { ifClosed ->

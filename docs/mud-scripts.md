@@ -85,9 +85,10 @@ onLine("^Roundtime: (%d+) sec", function(seconds)
 end)
 
 -- Every line of one stream (one window's text), with or without a pattern as
--- for onLine. A telnet game has only the one stream, "main"; on a Simutronics
--- game this hears "thoughts", "death" and the rest, even the ones onLine does
--- not because they never reach the main window.
+-- for onLine. A telnet game's text is all "main", besides Warlock's own
+-- "debug" and "scriptoutput"; on a Simutronics game this hears "thoughts",
+-- "death" and the rest, even the ones onLine does not because they never
+-- reach the main window.
 onStreamLine("thoughts", function(line)
     playSound("ping.wav")
 end)

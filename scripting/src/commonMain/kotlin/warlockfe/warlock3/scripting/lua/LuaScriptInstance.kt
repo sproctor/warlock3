@@ -5,6 +5,7 @@ import com.seanproctor.lua.LuaState
 import com.seanproctor.lua.LuaSyntaxError
 import com.seanproctor.lua.LuaValue
 import com.seanproctor.lua.StdLib
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -45,13 +46,15 @@ class LuaScriptInstance(
     private val soundPlayer: SoundPlayer,
     private val scriptManager: ScriptManager,
     private val fileSystem: FileSystem,
+    // Where the script runs and waits; only a test has reason to choose another.
+    dispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : ScriptInstance {
     internal val statusFlow = MutableStateFlow(ScriptStatus.NotStarted)
 
     override val status: ScriptStatus
         get() = statusFlow.value
 
-    internal val scope = CoroutineScope(Dispatchers.IO)
+    internal val scope = CoroutineScope(dispatcher)
 
     override fun start(
         client: WarlockClient,

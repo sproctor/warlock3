@@ -7,6 +7,7 @@ import com.seanproctor.lua.LuaValue
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
@@ -262,7 +263,10 @@ internal class LuaBindings(
                 args.firstOrNull()?.asString()?.takeIf { it.isNotBlank() }
                     ?: throw IllegalArgumentException("playSound needs the sound file to play")
             val file = scriptSoundFile(fileSystem, scriptDir, name)
-            blocking {
+            // Not waited for: loading the sound can take a while, and the script's other handlers
+            // should not be held up meanwhile. NonCancellable, so a script that plays a sound and
+            // ends at once, cancelling its scope, still has it played.
+            instance.scope.launch(NonCancellable) {
                 val error = soundPlayer.playSound(file)
                 // Reported, but not fatal: a missing sound should not end a script that is
                 // otherwise doing its job.
@@ -417,9 +421,12 @@ internal class LuaBindings(
         streamFeeder =
             instance.scope.launch(start = CoroutineStart.UNDISPATCHED) {
                 client.streamLines.collect { line ->
-                    // A connection with only the one stream does not name it.
-                    val name = (line.streamId ?: "main").lowercase()
-                    if (name in watchedStreams) {
+                    // A connection with only the one stream does not name it. Compared without
+                    // lowercasing, as most lines are in streams nobody watches; the handlers get
+                    // the watched (lowercased) name.
+                    val id = line.streamId ?: "main"
+                    val name = watchedStreams.firstOrNull { it.equals(id, ignoreCase = true) }
+                    if (name != null) {
                         events.trySend(ScriptEvent.StreamLine(line.text, name))
                     }
                 }

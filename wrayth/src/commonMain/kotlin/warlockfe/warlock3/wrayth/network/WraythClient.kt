@@ -877,10 +877,13 @@ class WraythClient(
         ignoreWhenBlank: Boolean,
     ) {
         val reachedMain = doAppendToStream(styledText, stream, ignoreWhenBlank)
+        val publish = streamLinesWanted()
+        // Most lines are in streams nobody is collecting: nothing more to do for them.
+        if (!reachedMain && !publish) return
         val text = styledText.toText()
         if (text.isNotBlank()) {
             val event = ClientTextEvent(text, stream.id)
-            _streamLines.emit(event)
+            if (publish) _streamLines.emit(event)
             if (reachedMain) {
                 logSimple { text }
                 notifyListeners(event)
@@ -1042,11 +1045,15 @@ class WraythClient(
         stream: TextStream,
     ) {
         doAppendToStream(text, stream, false)
+        // debug() has every line from the server: skip the copy unless someone wants it.
+        if (!streamLinesWanted()) return
         val plain = text.toText()
         if (plain.isNotBlank()) {
             _streamLines.emit(ClientTextEvent(plain, stream.id))
         }
     }
+
+    private fun streamLinesWanted(): Boolean = _streamLines.subscriptionCount.value > 0
 
     override suspend fun getStream(name: String): TextStream = windowRegistry.getOrCreateStream(name)
 
