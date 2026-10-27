@@ -95,7 +95,7 @@ class TelnetClient(
     private val ioDispatcher: CoroutineDispatcher,
     private val socket: TelnetSocket,
     // The game's one stream is main, whose lines are all on [eventFlow] too; the client's own
-    // debug and scriptoutput streams are not. Given by the caller to read its counts.
+    // debug and scriptoutput streams are not. Given by a test, to count what is sent.
     private val streamLineFeed: StreamLineFeed = StreamLineFeed(),
 ) : WarlockClient,
     ScriptableClient {
@@ -580,7 +580,7 @@ class TelnetClient(
         if (streamLineFeed.isWatched(stream.id)) {
             val plain = styledText.toText()
             if (plain.isNotBlank()) {
-                streamLineFeed.emit(ClientTextEvent(plain, stream.id))
+                streamLineFeed.send(ClientTextEvent(plain, stream.id))
             }
         }
         // A closed window's text shows in the window it names instead, in that window's style.
@@ -643,7 +643,7 @@ class TelnetClient(
 
     private suspend fun notifyText(text: String) {
         val event = ClientTextEvent(text, null)
-        if (streamLineFeed.isWatched(null)) streamLineFeed.emit(event)
+        if (streamLineFeed.isWatched(null)) streamLineFeed.send(event)
         notifyListeners(event)
     }
 

@@ -60,7 +60,7 @@ open class FakeWarlockClient(
         line: ClientTextEvent,
         inMain: Boolean,
     ) {
-        streamLineFeed.emit(line)
+        streamLineFeed.send(line)
         if (inMain) eventFlow.emit(line)
     }
 

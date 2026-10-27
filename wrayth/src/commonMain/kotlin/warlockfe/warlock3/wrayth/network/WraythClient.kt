@@ -133,8 +133,8 @@ class WraythClient(
     private val ioDispatcher: CoroutineDispatcher,
     private val socket: WarlockSocket,
     private val commandListStore: CommandListStore?,
-    // The lines of the streams scripts are watching; the parse loop skips the rest. Given by the
-    // caller to read its counts.
+    // The lines of the streams scripts are watching; the parse loop skips the rest. Given by a
+    // test, to count what is sent.
     private val streamLineFeed: StreamLineFeed = StreamLineFeed(),
 ) : WarlockClient {
     private val writeContext = ioDispatcher.limitedParallelism(1)
@@ -884,7 +884,7 @@ class WraythClient(
         val text = styledText.toText()
         if (text.isNotBlank()) {
             val event = ClientTextEvent(text, stream.id)
-            if (publish) streamLineFeed.emit(event)
+            if (publish) streamLineFeed.send(event)
             if (reachedMain) {
                 logSimple { text }
                 notifyListeners(event)
@@ -1050,7 +1050,7 @@ class WraythClient(
         if (!streamLineFeed.isWatched(stream.id)) return
         val plain = text.toText()
         if (plain.isNotBlank()) {
-            streamLineFeed.emit(ClientTextEvent(plain, stream.id))
+            streamLineFeed.send(ClientTextEvent(plain, stream.id))
         }
     }
 
@@ -1066,7 +1066,7 @@ class WraythClient(
 
     // A main-window line written by the client itself rather than parsed from a stream.
     private suspend fun notifyText(event: ClientTextEvent) {
-        if (streamLineFeed.isWatched(event.streamId)) streamLineFeed.emit(event)
+        if (streamLineFeed.isWatched(event.streamId)) streamLineFeed.send(event)
         notifyListeners(event)
     }
 

@@ -412,7 +412,7 @@ internal class LuaBindings(
                 // Logged once: a script that falls behind once usually stays behind a while.
                 if (!droppedEvents) {
                     droppedEvents = true
-                    logger.w { "Script fell behind its handlers' events and lost some, $event first" }
+                    logger.w { "Script fell behind its handlers' events and lost some, from ${event.describe()}" }
                 }
             }.also { events ->
                 this.events = events
@@ -595,6 +595,14 @@ private sealed interface ScriptEvent {
         val name: String,
         val data: String,
     ) : ScriptEvent
+
+    /** For a log: what the event was, without a GMCP message's whole payload. */
+    fun describe(): String =
+        when (this) {
+            is Line -> "the line \"${text.take(80)}\""
+            is StreamLine -> "the $stream line \"${text.take(80)}\""
+            is Gmcp -> "the GMCP message $name"
+        }
 }
 
 private sealed class Matcher(

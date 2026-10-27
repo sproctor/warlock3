@@ -28,8 +28,8 @@ class StreamLineFeedTest {
             assertFalse(feed.isWatched("main"))
             assertFalse(feed.isWatched(null))
             // Main's first, so it has been passed over by the time the thoughts line is heard.
-            feed.emit(ClientTextEvent("a goblin says", "main"))
-            feed.emit(ClientTextEvent("a goblin thinks", "thoughts"))
+            feed.send(ClientTextEvent("a goblin says", "main"))
+            feed.send(ClientTextEvent("a goblin thinks", "thoughts"))
             awaitHeard(heard)
             collector.cancelAndJoin()
             assertFalse(feed.isWatched("thoughts"))
@@ -46,7 +46,7 @@ class StreamLineFeedTest {
                     feed.linesOf("main").collect { synchronized(heard) { heard += it } }
                 }
             assertTrue(feed.isWatched(null))
-            feed.emit(ClientTextEvent("A line", null))
+            feed.send(ClientTextEvent("A line", null))
             awaitHeard(heard)
             collector.cancelAndJoin()
             assertEquals(listOf(ClientTextEvent("A line", null)), synchronized(heard) { heard.toList() })
@@ -69,15 +69,16 @@ class StreamLineFeedTest {
                     feed.linesOf("thoughts").collect { synchronized(heard) { heard += it } }
                 }
             // Sent without waiting on the collector, which cannot run until they all are.
-            repeat(300) { feed.emit(ClientTextEvent("line $it", "thoughts")) }
-            assertTrue(feed.linesDropped > 0)
+            repeat(300) { feed.send(ClientTextEvent("line $it", "thoughts")) }
             withTimeout(10.seconds) {
                 while (synchronized(heard) { heard.lastOrNull()?.text } != "line 299") yield()
             }
             collector.cancelAndJoin()
-            // Every line either heard or counted lost; the newest buffer's worth all heard.
-            val lines = synchronized(heard) { heard.map { it.text } }
-            assertEquals(300L, lines.size + feed.linesDropped)
-            assertEquals((44 until 300).map { "line $it" }, lines.takeLast(256))
+            // Some lost, in one stretch, and the newest all heard, in order.
+            val lines = synchronized(heard) { heard.map { it.text.removePrefix("line ").toInt() } }
+            assertTrue(lines.size < 300)
+            assertEquals(299, lines.last())
+            assertTrue(lines.zipWithNext().all { (a, b) -> b > a })
+            assertEquals(1, lines.zipWithNext().count { (a, b) -> b != a + 1 })
         }
 }
