@@ -305,7 +305,7 @@ class WraythClient(
         scope.launch {
             socket.write(key + "\n")
             logger.d { "Sent key" }
-            socket.write("/FE:WRAYTH /VERSION:1.0.1.28 /P:WIN_UNKNOWN /XML\n")
+            socket.write("/FE:WRAYTH /VERSION:1.0.1.28 /P:SAGA /XML\n")
             logger.d { "Sent FE info" }
 
             val protocolHandler = WraythProtocolHandler()
