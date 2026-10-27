@@ -9,12 +9,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import dev.nucleusframework.window.DecoratedWindowScope
 import io.github.vinceglb.filekit.dialogs.FileKitDialogSettings
 import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
 import io.github.vinceglb.filekit.utils.toKotlinxIoPath
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
-import org.jetbrains.jewel.window.DecoratedWindowScope
 import warlockfe.warlock3.compose.AppContainer
 import warlockfe.warlock3.compose.desktop.shim.WarlockAlertDialog
 import warlockfe.warlock3.compose.desktop.shim.WarlockButton
@@ -73,7 +73,6 @@ fun DecoratedWindowScope.WarlockApp(
     }
 
     var showAboutDialog by remember { mutableStateOf(false) }
-    var showMemoryDialog by remember { mutableStateOf(false) }
     var sideBarVisible by remember { mutableStateOf(false) }
     val wraythFileLauncher =
         rememberFilePickerLauncher(
@@ -159,7 +158,6 @@ fun DecoratedWindowScope.WarlockApp(
         },
         showUpdateDialog = showUpdateDialog,
         showAboutDialog = { showAboutDialog = !showAboutDialog },
-        showMemoryDialog = { showMemoryDialog = true },
         exportSettings = { file ->
             runTransfer("Failed to export settings") {
                 file.writeText(transfer.exportAll())
@@ -250,12 +248,6 @@ fun DecoratedWindowScope.WarlockApp(
     }
     if (showAboutDialog) {
         AboutDialog(warlockVersion) { showAboutDialog = false }
-    }
-    if (showMemoryDialog) {
-        MemoryUsageDialog(
-            games = games,
-            onCloseRequest = { showMemoryDialog = false },
-        )
     }
     if (reconnecting) {
         DesktopReconnectingDialog(onGoToDashboard = goToDashboard)

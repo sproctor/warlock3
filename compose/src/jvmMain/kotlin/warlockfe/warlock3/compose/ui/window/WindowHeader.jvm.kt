@@ -22,15 +22,15 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.unit.dp
+import dev.nucleusframework.window.tao.TaoPointerIcons
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.jewel.ui.component.Text
 import warlockfe.warlock3.compose.desktop.ui.game.WindowMenuButton
 import warlockfe.warlock3.compose.desktop.ui.game.gameChrome
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.drag_indicator
-import java.awt.Cursor
 
-private val moveCursor = PointerIcon(Cursor(Cursor.MOVE_CURSOR))
+private val moveCursor = TaoPointerIcons.Move
 
 @Composable
 actual fun WindowHeader(

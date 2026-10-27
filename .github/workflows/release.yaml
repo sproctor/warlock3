@@ -50,22 +50,31 @@ jobs:
           tag="$(git describe --tags --abbrev=0)"
           echo "RELEASE_VERSION=$tag" >> "$GITHUB_ENV"
 
-      # JBR 25 (via actions/setup-java jetbrains), Linux packaging tools + Xvfb, Node, and Gradle.
+      # JDK 25 to run Gradle, Linux packaging tools + Xvfb, and Gradle. The Nucleus plugin
+      # downloads the Node.js that electron-builder runs under.
       - name: Set up build environment
-        uses: sproctor/potassium/.github/actions/setup-potassium@v0.7.1
+        uses: NucleusFramework/Nucleus/.github/actions/setup-nucleus@v3.0.0-dev-202610200221
         with:
           java-version: '25'
           packaging-tools: 'true'
           setup-gradle: 'true'
-          setup-node: 'true'
 
-      # Import the Developer ID Application cert into a temporary keychain so Potassium can
+      # setup-nucleus installs Temurin, but the app runs and ships under JBR 25 (Jewel's decorated
+      # window needs it), which the jbrRuntime toolchain in desktopApp/build.gradle.kts resolves.
+      # Install it here so that lookup finds a local JDK instead of downloading one per runner.
+      - name: Set up JetBrains Runtime
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'jetbrains'
+          java-version: '25'
+
+      # Import the Developer ID Application cert into a temporary keychain so Nucleus can
       # codesign + notarize at package time. Its path reaches the macOS signing config via the
       # MAC_KEYCHAIN_PATH env on the build step below.
       - name: Set up macOS signing
         id: signing
         if: runner.os == 'macOS'
-        uses: sproctor/potassium/.github/actions/setup-macos-signing@v0.7.1
+        uses: NucleusFramework/Nucleus/.github/actions/setup-macos-signing@v3.0.0-dev-202610200221
         with:
           certificate-base64: ${{ secrets.MAC_CERTIFICATES_P12 }}
           certificate-password: ${{ secrets.MAC_CERTIFICATES_PASSWORD }}
@@ -90,9 +99,8 @@ jobs:
         # those, and only those -- a compile error has to fail on the first attempt
         # rather than burn three builds on every runner before reporting it.
         #
-        # Retrying that last one re-submits to Apple: Potassium saves the submission ID but
-        # never resumes a poll from it, so the in-progress submission is abandoned and a new
-        # one uploaded. That costs a round trip, which is still less than the manual job
+        # Retrying that last one re-submits to Apple unless the notarization task resumes the
+        # saved submission. That costs a round trip, which is still less than the manual job
         # re-run it replaces (which re-submits too, after recompiling from scratch).
         run: |
           transient='Unexpected end of file from server|socket hang up|Connection reset|Connection timed out|Read timed out|ECONNRESET|ETIMEDOUT|EAI_AGAIN|ENOTFOUND|The Internet connection appears to be offline|Could not (GET|HEAD|resolve)|429 Too Many Requests|502 Bad Gateway|503 Service|Remote host terminated the handshake'
@@ -132,28 +140,28 @@ jobs:
           name: release-assets-${{ runner.os }}-${{ matrix.arch }}
           retention-days: 3
           path: |
-            desktopApp/build/potassium/binaries/**/*.dmg
-            desktopApp/build/potassium/binaries/**/*.pkg
-            desktopApp/build/potassium/binaries/**/*.exe
-            desktopApp/build/potassium/binaries/**/*.msi
-            desktopApp/build/potassium/binaries/**/*.appx
-            desktopApp/build/potassium/binaries/**/*.deb
-            desktopApp/build/potassium/binaries/**/*.rpm
-            desktopApp/build/potassium/binaries/**/*.AppImage
-            desktopApp/build/potassium/binaries/**/*.snap
-            desktopApp/build/potassium/binaries/**/*.flatpak
-            desktopApp/build/potassium/binaries/**/*.zip
-            desktopApp/build/potassium/binaries/**/*.tar
-            desktopApp/build/potassium/binaries/**/*.7z
-            desktopApp/build/potassium/binaries/**/*.blockmap
-            desktopApp/build/potassium/binaries/**/signing-metadata.json
-            desktopApp/build/potassium/binaries/**/packaging-metadata.json
+            desktopApp/build/compose/binaries/**/*.dmg
+            desktopApp/build/compose/binaries/**/*.pkg
+            desktopApp/build/compose/binaries/**/*.exe
+            desktopApp/build/compose/binaries/**/*.msi
+            desktopApp/build/compose/binaries/**/*.appx
+            desktopApp/build/compose/binaries/**/*.deb
+            desktopApp/build/compose/binaries/**/*.rpm
+            desktopApp/build/compose/binaries/**/*.AppImage
+            desktopApp/build/compose/binaries/**/*.snap
+            desktopApp/build/compose/binaries/**/*.flatpak
+            desktopApp/build/compose/binaries/**/*.zip
+            desktopApp/build/compose/binaries/**/*.tar
+            desktopApp/build/compose/binaries/**/*.7z
+            desktopApp/build/compose/binaries/**/*.blockmap
+            desktopApp/build/compose/binaries/**/signing-metadata.json
+            desktopApp/build/compose/binaries/**/packaging-metadata.json
             # electron-builder update manifests, uploaded to the release as-is.
-            desktopApp/build/potassium/binaries/**/latest*.yml
-            desktopApp/build/potassium/binaries/**/beta*.yml
-            desktopApp/build/potassium/binaries/**/alpha*.yml
-            !desktopApp/build/potassium/binaries/**/app/**
-            !desktopApp/build/potassium/binaries/**/runtime/**
+            desktopApp/build/compose/binaries/**/latest*.yml
+            desktopApp/build/compose/binaries/**/beta*.yml
+            desktopApp/build/compose/binaries/**/alpha*.yml
+            !desktopApp/build/compose/binaries/**/app/**
+            !desktopApp/build/compose/binaries/**/runtime/**
           if-no-files-found: error
 
   android:
@@ -246,16 +254,40 @@ jobs:
           set -euo pipefail
           TAG="${GITHUB_REF_NAME}"
           echo "TAG=$TAG" >> "$GITHUB_ENV"
+          echo "VERSION=${TAG#v}" >> "$GITHUB_ENV"
+          case "$TAG" in
+            *-alpha*) echo "CHANNEL=alpha" >> "$GITHUB_ENV" ;;
+            *-beta*) echo "CHANNEL=beta" >> "$GITHUB_ENV" ;;
+            *) echo "CHANNEL=latest" >> "$GITHUB_ENV" ;;
+          esac
           if [[ "$TAG" == *-alpha* || "$TAG" == *-beta* ]]; then
             echo "RELEASE_TYPE=prerelease" >> "$GITHUB_ENV"
           else
             echo "RELEASE_TYPE=release" >> "$GITHUB_ENV"
           fi
 
-      # Uploads installers + electron-builder's latest-*.yml, unioning the shared-name
-      # macOS/Windows manifests across arches (Linux manifests are already per-arch).
+      # One manifest per OS into artifacts/update-yml/, unioning every arch's installers (Linux
+      # x64 and arm64 share <channel>-linux.yml, as do the two macOS arches in <channel>-mac.yml).
+      - name: Generate update manifests
+        uses: NucleusFramework/Nucleus/.github/actions/generate-update-yml@v3.0.0-dev-202610200221
+        with:
+          artifacts-path: artifacts
+          version: ${{ env.VERSION }}
+          channel: ${{ env.CHANNEL }}
+
+      # Installs from the Potassium era read <channel>-linux-arm64.yml on arm64. Their updater
+      # picks the file matching its own arch out of a manifest, so the merged Linux one serves
+      # them as-is. Keep publishing it under the old name until those installs have moved over.
+      - name: Keep the arm64 Linux manifest name for Potassium-era installs
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp "artifacts/update-yml/${CHANNEL}-linux.yml" "artifacts/update-yml/${CHANNEL}-linux-arm64.yml"
+
+      # Uploads installers plus the manifests in artifacts/update-yml/; per-runner manifests in
+      # the build artifacts are skipped in favor of those.
       - name: Publish release
-        uses: sproctor/potassium/.github/actions/publish-github-release@v0.7.1
+        uses: NucleusFramework/Nucleus/.github/actions/publish-release@v3.0.0-dev-202610200221
         with:
           artifacts-path: artifacts
           tag: ${{ env.TAG }}

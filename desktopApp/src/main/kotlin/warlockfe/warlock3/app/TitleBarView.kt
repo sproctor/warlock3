@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import dev.nucleusframework.window.DecoratedWindowScope
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.dialogs.FileKitDialogSettings
 import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
@@ -38,9 +39,7 @@ import org.jetbrains.jewel.foundation.theme.LocalContentColor
 import org.jetbrains.jewel.ui.component.PopupMenu
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.separator
-import org.jetbrains.jewel.window.DecoratedWindowScope
-import org.jetbrains.jewel.window.TitleBar
-import org.jetbrains.jewel.window.utils.DesktopPlatform
+import warlockfe.warlock3.compose.desktop.theme.WarlockTitleBar
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.space_dashboard
 import warlockfe.warlock3.compose.generated.resources.space_dashboard_filled
@@ -65,7 +64,6 @@ internal fun DecoratedWindowScope.TitleBarView(
     runScript: (Path) -> Unit,
     showUpdateDialog: () -> Unit,
     showAboutDialog: () -> Unit,
-    showMemoryDialog: () -> Unit,
     exportSettings: (File) -> Unit,
     exportCharacterSettings: (File) -> Unit,
     importSettings: (File) -> Unit,
@@ -82,13 +80,13 @@ internal fun DecoratedWindowScope.TitleBarView(
             }
         }
     val exportFileSaveLauncher =
-        rememberFileSaverLauncher { file ->
+        rememberFileSaverLauncher(dialogSettings = FileKitDialogSettings.createDefault()) { file ->
             if (file != null) {
                 exportSettings(file.file)
             }
         }
     val exportCharacterFileSaveLauncher =
-        rememberFileSaverLauncher { file ->
+        rememberFileSaverLauncher(dialogSettings = FileKitDialogSettings.createDefault()) { file ->
             if (file != null) {
                 exportCharacterSettings(file.file)
             }
@@ -101,7 +99,7 @@ internal fun DecoratedWindowScope.TitleBarView(
                 importSettings(file.file)
             }
         }
-    TitleBar {
+    WarlockTitleBar {
         Row(Modifier.align(Alignment.Start).padding(start = 8.dp)) {
             if (isConnected) {
                 val windowsShape = RoundedCornerShape(5.dp)
@@ -173,15 +171,13 @@ internal fun DecoratedWindowScope.TitleBarView(
                         items =
                             listOf(
                                 AppMenuItem("Updates", onClick = showUpdateDialog),
-                                AppMenuItem("Memory usage...", onClick = showMemoryDialog),
                                 AppMenuItem("About", onClick = showAboutDialog),
                             ),
                     ),
                 )
-            if (DesktopPlatform.Current == DesktopPlatform.MacOS) {
-                AppMenuBar(menus)
-            } else {
-                // The native MenuBar isn't shown off macOS, so render the same menus as popups.
+            // Compose's native MenuBar is AWT, which a Tao window does not have, so every OS gets
+            // the menus as popups in the title bar.
+            run {
                 var openMenu by remember { mutableStateOf<String?>(null) }
                 menus.forEach { menu ->
                     Box {

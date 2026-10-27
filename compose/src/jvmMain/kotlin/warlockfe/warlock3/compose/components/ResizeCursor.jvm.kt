@@ -1,7 +1,7 @@
 package warlockfe.warlock3.compose.components
 
 import androidx.compose.ui.input.pointer.PointerIcon
-import java.awt.Cursor
+import dev.nucleusframework.window.tao.TaoPointerIcons
 
 actual fun getResizeCursor(isHorizontal: Boolean): PointerIcon =
-    PointerIcon(Cursor(if (isHorizontal) Cursor.E_RESIZE_CURSOR else Cursor.S_RESIZE_CURSOR))
+    if (isHorizontal) TaoPointerIcons.ResizeEastWest else TaoPointerIcons.ResizeNorthSouth

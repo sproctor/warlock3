@@ -1,9 +1,7 @@
-import com.seanproctor.potassium.dsl.LinuxTargetFormat
-import com.seanproctor.potassium.dsl.MacOSTargetFormat
-import com.seanproctor.potassium.dsl.ReleaseChannel
-import com.seanproctor.potassium.dsl.ReleaseType
-import com.seanproctor.potassium.dsl.WindowsTargetFormat
-import com.seanproctor.potassium.tasks.AbstractPotassiumTask
+import dev.nucleusframework.desktop.application.dsl.ReleaseChannel
+import dev.nucleusframework.desktop.application.dsl.ReleaseType
+import dev.nucleusframework.desktop.application.dsl.TargetFormat
+import dev.nucleusframework.desktop.tasks.AbstractNucleusTask
 import org.jetbrains.compose.reload.gradle.AbstractComposeHotRun
 
 plugins {
@@ -11,7 +9,7 @@ plugins {
     alias(libs.plugins.compose)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.compose.hot.reload)
-    alias(libs.plugins.potassium)
+    alias(libs.plugins.nucleus)
 }
 
 dependencies {
@@ -21,7 +19,8 @@ dependencies {
 
     implementation(compose.desktop.currentOs)
 
-    implementation(libs.jewel.decorated.window)
+    implementation(libs.nucleus.application)
+    implementation(libs.nucleus.decorated.window.tao)
 
     implementation(libs.jewel.standalone)
 
@@ -34,14 +33,14 @@ dependencies {
     implementation(libs.appdirs)
     implementation(libs.filekit.dialogs)
 
-    implementation(libs.kotlinx.coroutines.swing)
     implementation(libs.kotlinx.serialization.json)
 
     // No logging dependency: Kermit comes from :core, which also carries the slf4j provider that
     // routes slf4j-using libraries into it. Crash reporting comes from :compose (see SentryCrashReporter.kt).
 
     // In-app updates
-    implementation(libs.potassium.updater)
+    implementation(libs.nucleus.updater)
+    implementation(libs.nucleus.core.runtime)
 
     testImplementation(kotlin("test"))
 }
@@ -57,7 +56,7 @@ kotlin {
     }
 }
 
-// TODO: verify version fits potassium tag pattern
+// TODO: verify version fits nucleus tag pattern
 val resolvedReleaseVersion: String? =
     System
         .getenv("RELEASE_VERSION")
@@ -67,7 +66,7 @@ val resolvedReleaseVersion: String? =
 
 val releaseVersion: String = resolvedReleaseVersion ?: "0.0.0-dev"
 
-// JBR 25 is what gets bundled into installers (via Potassium) and
+// JBR 25 is what gets bundled into installers (via Nucleus) and
 // what `:desktopApp:run` launches under for local dev. Compilation happens
 // under the project toolchain (Temurin) - JBR is only used at runtime.
 val jbrRuntime =
@@ -77,7 +76,7 @@ val jbrRuntime =
         vendor = JvmVendorSpec.JETBRAINS
     }
 
-// Potassium's javaHome is a plain String, so reading it resolves the JBR toolchain during
+// Nucleus's javaHome is a plain String, so reading it resolves the JBR toolchain during
 // configuration - on every build that configures this project, whether or not it will ever run or
 // package the app. That made a JBR install a prerequisite for merely compiling, so CI had to fetch
 // one for all three jobs, and setup-java resolves JBR through a GitHub API call that goes out
@@ -90,28 +89,28 @@ val skipJbr = (findProperty("jbrSkip") as? String)?.toBoolean() == true
 // Compose Hot Reload launches the app itself, and defaults to whatever JetBrains Runtime it
 // finds rather than the one the app is built against - which lands on JBR 21 here and dies with
 // "JewelTheme has been compiled by a more recent version of the Java Runtime (class file 69.0)".
-// Point it at the same JBR 25 potassium runs and packages under.
+// Point it at the same JBR 25 nucleus runs and packages under.
 tasks.withType<AbstractComposeHotRun>().configureEach {
     javaLauncher = jbrRuntime
 }
 
-// Left unset, potassium's javaHome silently falls back to the JVM Gradle is running on, so a
+// Left unset, nucleus's javaHome silently falls back to the JVM Gradle is running on, so a
 // packaging task under this flag would build an installer around Temurin 21 for an app compiled to
 // class file 69 and die on launch for every user - the v3.1.0-beta.21 failure. Refuse instead of
 // shipping that, since the flag exists only so builds that never touch the app can skip the JBR.
 if (skipJbr) {
-    tasks.withType<AbstractPotassiumTask>().configureEach {
+    tasks.withType<AbstractNucleusTask>().configureEach {
         doFirst {
             error(
                 "$name runs or packages the desktop app, which must happen under JBR 25, but " +
-                    "jbrSkip left potassium's javaHome unset. Drop -PjbrSkip / " +
+                    "jbrSkip left nucleus's javaHome unset. Drop -PjbrSkip / " +
                     "ORG_GRADLE_PROJECT_jbrSkip for anything that runs or packages the app.",
             )
         }
     }
 }
 
-potassium {
+nucleus.application {
     mainClass = "warlockfe.warlock3.app.MainKt"
 
     // Run + package under JBR 25 even though the rest of the build uses
@@ -125,6 +124,11 @@ potassium {
 
     // SQLite calls a restricted method
     jvmArgs += "--enable-native-access=ALL-UNNAMED"
+
+    // JBR's Wayland toolkit uses this as the window app_id, which desktops match against the
+    // installed .desktop file's basename (the package name) to pick the launcher icon. Unset, it
+    // falls back to the main class plus arguments, and the window shows a generic icon.
+    jvmArgs += "-Dawt.app.id=warlock"
 
     // Jewel 0.40.0's IntUiTheme unconditionally initializes its macOS platform services, whose
     // static init pries open sun.awt via sun.misc.Unsafe on every OS, and JDK 24+ prints a one-time
@@ -145,111 +149,126 @@ potassium {
                 .resolve("gc-%p.log")
         jvmArgs += "-Xlog:gc*,safepoint:file=$gcLogPath:time,uptime,level,tags:filecount=5,filesize=20M"
     }
-    // Confirmation experiment: ./gradlew :desktopApp:run -Pzgc swaps in the low-pause collector. If the
-    // lag/STALL lines vanish under ZGC, the stalls were GC pauses; if they persist, it is pool/scheduling.
-    if (project.hasProperty("zgc")) {
-        jvmArgs += "-XX:+UseZGC"
+
+    // Experimental native image of the desktop app (Tao windows, no AWT). The tracing agent's
+    // metadata (`runWithNativeAgent`) is merged into src/main/resources/META-INF/native-image.
+    graalvm {
+        isEnabled = true
+        javaLanguageVersion = 25
+        imageName = "warlock"
+        // The game protocol is decoded as windows-1252, which native-image leaves out by default.
+        allCharsets = true
+        nativeImageConfigBaseDir.set(layout.projectDirectory.dir("src/main/resources/META-INF/native-image/warlock"))
     }
 
-    appName = "Warlock"
-    packageName = "warlock"
-    packageVersion = releaseVersion
-    description = "Warlock Front-end"
-    vendor = "Warlock Project"
-    copyright = "Copyright 2026 Sean Proctor"
-    homepage = "https://warlockfe.github.io/"
-    licenseFile.set(project.file("../LICENSE"))
+    nativeDistributions {
+        // Nucleus takes one format list and builds the current OS's share of it. Zip and Tar are
+        // current-OS archive formats, so each is added only on the OS that ships it: Zip alongside Dmg
+        // so the macOS auto-updater has a non-installer artifact to pull, Tar for Linux.
+        val os = System.getProperty("os.name").lowercase()
+        targetFormats(
+            *buildList {
+                add(TargetFormat.Nsis)
+                add(TargetFormat.Dmg)
+                add(TargetFormat.Deb)
+                add(TargetFormat.AppImage)
+                if (os.contains("mac")) add(TargetFormat.Zip)
+                if (os.contains("linux")) add(TargetFormat.Tar)
+            }.toTypedArray(),
+        )
 
-    modules(
-        "jdk.accessibility",
-        "java.instrument",
-        "java.management",
-        // HotSpotDiagnosticMXBean, which the memory usage dialog's heap dump goes through. Not part
-        // of java.management, so without this the packaged app can see heap totals but cannot dump.
-        "jdk.management",
-        "jdk.dynalink",
-        "jdk.security.auth",
-        "jdk.unsupported",
-    )
+        appName = "Warlock"
+        packageName = "warlock"
+        packageVersion = releaseVersion
+        description = "Warlock Front-end"
+        vendor = "Warlock Project"
+        copyright = "Copyright 2026 Sean Proctor"
+        homepage = "https://warlockfe.github.io/"
+        licenseFile.set(project.file("../LICENSE"))
 
-    cleanupNativeLibs = true
-    artifactName = "\${name}-\${version}-\${os}-\${arch}.\${ext}"
+        modules(
+            "jdk.accessibility",
+            "java.instrument",
+            "java.management",
+            // HotSpotDiagnosticMXBean, which the memory usage dialog's heap dump goes through. Not part
+            // of java.management, so without this the packaged app can see heap totals but cannot dump.
+            "jdk.management",
+            "jdk.dynalink",
+            "jdk.security.auth",
+            "jdk.unsupported",
+        )
 
-    publish {
-        github {
-            enabled = true
-            owner = "sproctor"
-            repo = "warlock3"
-            channel =
-                when {
-                    releaseVersion.contains("beta") -> ReleaseChannel.Beta
-                    releaseVersion.contains("alpha") -> ReleaseChannel.Alpha
-                    else -> ReleaseChannel.Latest
-                }
-            releaseType =
-                when (channel) {
-                    ReleaseChannel.Latest -> ReleaseType.Release
-                    else -> ReleaseType.Prerelease
-                }
+        cleanupNativeLibs = true
+        artifactName = "\${name}-\${version}-\${os}-\${arch}.\${ext}"
+
+        publish {
+            github {
+                enabled = true
+                owner = "sproctor"
+                repo = "warlock3"
+                channel =
+                    when {
+                        releaseVersion.contains("beta") -> ReleaseChannel.Beta
+                        releaseVersion.contains("alpha") -> ReleaseChannel.Alpha
+                        else -> ReleaseChannel.Latest
+                    }
+                releaseType =
+                    when (channel) {
+                        ReleaseChannel.Latest -> ReleaseType.Release
+                        else -> ReleaseType.Prerelease
+                    }
+            }
         }
-    }
 
-    windows {
-        // NSIS installer
-        targetFormats(WindowsTargetFormat.Nsis)
+        windows {
+            iconFile.set(project.file("../icons/icon.ico"))
+            menu = true
+            // see https://wixtoolset.org/documentation/manual/v3/howtos/general/generate_guids.html
+            upgradeUuid = "939087B2-4E18-49D1-A55C-1F0BFB116664"
 
-        iconFile.set(project.file("../icons/icon.ico"))
-        menu = true
-        // see https://wixtoolset.org/documentation/manual/v3/howtos/general/generate_guids.html
-        upgradeUuid = "939087B2-4E18-49D1-A55C-1F0BFB116664"
-
-        // Azure Trusted Signing — Auth comes from the standard Azure
-        // service-principal env vars (AZURE_CLIENT_ID /
-        // AZURE_CLIENT_SECRET) consumed by electron-builder's signing tool,
-        // or from an interactive `az login` session.
-        // Signing is gated on the az CLI being able to obtain a token for
-        // the code-signing resource, so local builds without Azure access
-        // still produce unsigned binaries.
-        signing {
-            enabled = true
-            azureTenantId = "dfe2ba9a-411b-4907-b6b0-59fe59aefc2d"
-            azureEndpoint = "https://eus.codesigning.azure.net"
-            azureCodeSigningAccountName = "scrapgolem"
-            azureCertificateProfileName = "signing"
-            timestampServer = "http://timestamp.digicert.com"
+            // Azure Trusted Signing — Auth comes from the standard Azure
+            // service-principal env vars (AZURE_CLIENT_ID /
+            // AZURE_CLIENT_SECRET) consumed by electron-builder's signing tool,
+            // or from an interactive `az login` session.
+            // Signing is gated on the az CLI being able to obtain a token for
+            // the code-signing resource, so local builds without Azure access
+            // still produce unsigned binaries.
+            signing {
+                enabled = true
+                azureTenantId = "dfe2ba9a-411b-4907-b6b0-59fe59aefc2d"
+                azureEndpoint = "https://eus.codesigning.azure.net"
+                azureCodeSigningAccountName = "scrapgolem"
+                azureCertificateProfileName = "signing"
+                timestampServer = "http://timestamp.digicert.com"
+            }
         }
-    }
-    macOS {
-        // Zip alongside Dmg so the macOS auto-updater has a non-installer artifact to pull.
-        targetFormats(MacOSTargetFormat.Dmg, MacOSTargetFormat.Zip)
-
-        iconFile.set(project.file("../icons/icon.icns"))
-        bundleID = "warlockfe.warlock3"
-        // Sign + notarize each per-arch build at package time (no universal/lipo step anymore).
-        // In CI the Developer ID Application cert is imported into a temporary keychain whose path
-        // arrives via MAC_KEYCHAIN_PATH; locally the identity resolves from the login keychain.
-        // Only the macOS packaging tasks consume this, so it is inert on Linux/Windows runners.
-        signing {
-            sign.set(true)
-            identity.set("Developer ID Application: Sean Proctor (DBNJ4AR55X)")
-            System.getenv("MAC_KEYCHAIN_PATH")?.takeIf { it.isNotBlank() }?.let { keychain.set(it) }
+        macOS {
+            iconFile.set(project.file("../icons/icon.icns"))
+            bundleID = "warlockfe.warlock3"
+            // Sign + notarize each per-arch build at package time (no universal/lipo step anymore).
+            // In CI the Developer ID Application cert is imported into a temporary keychain whose path
+            // arrives via MAC_KEYCHAIN_PATH; locally the identity resolves from the login keychain.
+            // Only the macOS packaging tasks consume this, so it is inert on Linux/Windows runners.
+            signing {
+                sign.set(true)
+                identity.set("Developer ID Application: Sean Proctor (DBNJ4AR55X)")
+                System.getenv("MAC_KEYCHAIN_PATH")?.takeIf { it.isNotBlank() }?.let { keychain.set(it) }
+            }
+            notarization {
+                appleID.set("sproctor@gmail.com")
+                // App-specific password for notarytool; absent locally means notarization is skipped.
+                password.set(providers.environmentVariable("NOTARY_PWD"))
+                teamID.set("DBNJ4AR55X")
+            }
         }
-        notarization {
-            appleID.set("sproctor@gmail.com")
-            // App-specific password for notarytool; absent locally means notarization is skipped.
-            password.set(providers.environmentVariable("NOTARY_PWD"))
-            teamID.set("DBNJ4AR55X")
+        linux {
+            iconFile.set(project.file("../icons/icon-512.png"))
+            debMaintainer = "Sean Proctor <sproctor@gmail.com>"
         }
-    }
-    linux {
-        targetFormats(LinuxTargetFormat.Deb, LinuxTargetFormat.AppImage, LinuxTargetFormat.Tar)
-
-        iconFile.set(project.file("../icons/icon-512.png"))
-        debMaintainer = "Sean Proctor <sproctor@gmail.com>"
     }
 
     // The shipped app is built via packageDistributionForCurrentOS (the default
-    // build type, which never runs ProGuard). Potassium enables ProGuard on the
+    // build type, which never runs ProGuard). Nucleus enables ProGuard on the
     // release build type by default; disable it explicitly so no *Release*
     // packaging task can minify. (ProGuard here only shrank ~13%, with
     // obfuscation and optimization already off, so it wasn't worth the keep-rule

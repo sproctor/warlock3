@@ -52,7 +52,6 @@ import warlockfe.warlock3.core.window.BackgroundFlash
 import warlockfe.warlock3.core.window.PanelState
 import warlockfe.warlock3.core.window.TextStream
 import warlockfe.warlock3.core.window.WindowLocation
-import warlockfe.warlock3.core.window.WindowMemoryUsage
 import warlockfe.warlock3.core.window.WindowRegistry
 import warlockfe.warlock3.telnet.network.TelnetClient
 import warlockfe.warlock3.telnet.network.TelnetSocket
@@ -540,8 +539,6 @@ private class FakeWindowRegistry : WindowRegistry {
     ) {}
 
     override fun getOrCreatePanel(name: String): PanelState = synchronized(panels) { panels.getOrPut(name) { FakePanelState(name) } }
-
-    override suspend fun memoryUsage(): WindowMemoryUsage = error("unused")
 
     override fun setCharacterId(characterId: String) {
         assignedCharacterId = characterId

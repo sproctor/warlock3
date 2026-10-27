@@ -16,7 +16,7 @@ kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", versi
 kotlinx-benchmark = { id = "org.jetbrains.kotlinx.benchmark", version.ref = "kotlinx-benchmark" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint-gradle" }
-potassium = { id = "com.seanproctor.potassium", version.ref = "potassium" }
+nucleus = { id = "dev.nucleusframework", version.ref = "nucleus" }
 room-schema = { id = "androidx.room3", version.ref = "room"  }
 
 [versions]
@@ -36,7 +36,7 @@ compose-material3 = "1.12.0-alpha03"
 ##             ⬆ = "1.13.0-alpha01"
 ##             ⬆ = "1.13.0-alpha02"
 colorpicker = "1.3.0"
-compose-docking = "0.3.1"
+compose-docking = "0.4.0"
 fastscroller = "0.3.2"
 filekit = "0.16.0"
 intellij = "262.10968.63"
@@ -69,7 +69,7 @@ ktor = "3.6.0"
 lua-kmp = "0.1.1"
 lwjgl = "3.4.3"
 okio = "3.18.2"
-potassium = "0.7.1"
+nucleus = "3.0.0-dev-202610230652"
 room = "3.0.3"
 sentryKotlin = "0.29.0"
 slf4j = "2.0.20"
@@ -132,7 +132,10 @@ lwjgl-openal = { module = "org.lwjgl:lwjgl-openal", version.ref = "lwjgl" }
 # AndroidX versions still contain stubs for desktop, so we can't migrate yet
 navigation3-ui = { module = "org.jetbrains.androidx.navigation3:navigation3-ui", version.ref = "navigation3" }
 okio = { module = "com.squareup.okio:okio", version.ref = "okio" }
-potassium-updater = { module = "com.seanproctor:potassium-updater", version.ref = "potassium" }
+nucleus-updater = { module = "dev.nucleusframework:nucleus.updater-runtime", version.ref = "nucleus" }
+nucleus-core-runtime = { module = "dev.nucleusframework:nucleus.core-runtime", version.ref = "nucleus" }
+nucleus-application = { module = "dev.nucleusframework:nucleus.nucleus-application", version.ref = "nucleus" }
+nucleus-decorated-window-tao = { module = "dev.nucleusframework:nucleus.decorated-window-tao", version.ref = "nucleus" }
 reorderable = { module = "sh.calvin.reorderable:reorderable", version.ref = "reorderable" }
 room-compiler = { module = "androidx.room3:room3-compiler", version.ref = "room" }
 room-runtime = { module = "androidx.room3:room3-runtime", version.ref = "room" }

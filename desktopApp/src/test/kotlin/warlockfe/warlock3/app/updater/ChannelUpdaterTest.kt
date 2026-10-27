@@ -1,10 +1,10 @@
 package warlockfe.warlock3.app.updater
 
-import com.seanproctor.potassium.updater.UpdateFile
-import com.seanproctor.potassium.updater.UpdateInfo
-import com.seanproctor.potassium.updater.UpdateLevel
-import com.seanproctor.potassium.updater.UpdateResult
-import com.seanproctor.potassium.updater.exception.NetworkException
+import dev.nucleusframework.updater.UpdateFile
+import dev.nucleusframework.updater.UpdateInfo
+import dev.nucleusframework.updater.UpdateLevel
+import dev.nucleusframework.updater.UpdateResult
+import dev.nucleusframework.updater.exception.NetworkException
 import warlockfe.warlock3.core.prefs.ReleaseChannelSetting
 import kotlin.test.Test
 import kotlin.test.assertEquals

@@ -31,12 +31,8 @@ import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.DialogWindow
-import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.WindowState
-import androidx.compose.ui.window.application
-import androidx.compose.ui.window.rememberDialogState
 import androidx.compose.ui.window.rememberWindowState
 import androidx.room3.Room
 import androidx.room3.RoomDatabase
@@ -55,13 +51,16 @@ import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.versionOption
 import com.github.ajalt.clikt.parameters.types.boolean
 import com.github.ajalt.clikt.parameters.types.int
-import com.seanproctor.potassium.updater.AppImageIntegration
-import com.seanproctor.potassium.updater.AppImageIntegrationResult
-import com.seanproctor.potassium.updater.AppImageIntegrationStatus
-import com.seanproctor.potassium.updater.PotassiumUpdater
-import com.seanproctor.potassium.updater.UpdateInfo
-import com.seanproctor.potassium.updater.UpdateResult
-import com.seanproctor.potassium.updater.provider.GitHubProvider
+import dev.nucleusframework.application.DecoratedWindow
+import dev.nucleusframework.application.nucleusApplication
+import dev.nucleusframework.core.runtime.AppImageIntegration
+import dev.nucleusframework.core.runtime.AppImageIntegrationResult
+import dev.nucleusframework.core.runtime.AppImageIntegrationStatus
+import dev.nucleusframework.core.runtime.NucleusApp
+import dev.nucleusframework.updater.NucleusUpdater
+import dev.nucleusframework.updater.UpdateInfo
+import dev.nucleusframework.updater.UpdateResult
+import dev.nucleusframework.updater.provider.GitHubProvider
 import io.github.vinceglb.filekit.FileKit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
@@ -82,9 +81,6 @@ import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.HorizontalProgressBar
 import org.jetbrains.jewel.ui.component.Text
-import org.jetbrains.jewel.window.DecoratedWindow
-import org.jetbrains.jewel.window.styling.LocalTitleBarStyle
-import org.jetbrains.jewel.window.utils.DesktopPlatform
 import warlockfe.warlock3.app.updater.ChannelUpdater
 import warlockfe.warlock3.app.updater.channelsToCheck
 import warlockfe.warlock3.compose.AppContainer
@@ -92,12 +88,13 @@ import warlockfe.warlock3.compose.TelnetConnectResult
 import warlockfe.warlock3.compose.crash.CrashReporting
 import warlockfe.warlock3.compose.desktop.shim.WarlockAlertDialog
 import warlockfe.warlock3.compose.desktop.shim.WarlockButton
+import warlockfe.warlock3.compose.desktop.shim.WarlockDialog
 import warlockfe.warlock3.compose.desktop.shim.WarlockOutlinedButton
 import warlockfe.warlock3.compose.desktop.theme.WarlockDesktopTheme
+import warlockfe.warlock3.compose.desktop.theme.WarlockTitleBar
 import warlockfe.warlock3.compose.desktop.ui.game.DesktopDockHost
 import warlockfe.warlock3.compose.desktop.ui.game.DetachedGameWindows
 import warlockfe.warlock3.compose.desktop.ui.game.LocalDesktopDockHost
-import warlockfe.warlock3.compose.desktop.ui.game.RegisterGameDockWindow
 import warlockfe.warlock3.compose.desktop.ui.settings.DesktopCrashReportingNotice
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.app_icon
@@ -106,7 +103,6 @@ import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.compose.observeSkin
 import warlockfe.warlock3.compose.openPrefsDatabase
 import warlockfe.warlock3.compose.util.LocalSkin
-import warlockfe.warlock3.compose.util.LocalWindowComponent
 import warlockfe.warlock3.compose.util.SentryCrashReporter
 import warlockfe.warlock3.compose.util.rememberSafeClipboard
 import warlockfe.warlock3.core.client.JavaProxy
@@ -125,16 +121,16 @@ import warlockfe.warlock3.core.sge.parseSalCredentials
 import warlockfe.warlock3.core.util.DesktopSoundPlayer
 import warlockfe.warlock3.core.util.WarlockDirs
 import warlockfe.warlock3.wrayth.network.NetworkSocket
-import java.awt.Dimension
 import java.io.File
 import kotlin.system.exitProcess
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.TimeSource
 
-private val version = System.getProperty("app.version")?.takeIf { it.isNotBlank() }
+private val version = NucleusApp.version?.takeIf { it.isNotBlank() }
 
-// Potassium always bakes in -Dapp.version, including for `./gradlew run`, where it defaults to
-// "0.0.0-dev". Treat any 0.0.0.x (or absent) version as a dev build with no real release behind it.
+// Nucleus bakes the version into the app's generated properties, including for `./gradlew run`,
+// where it is "0.0.0-dev". Treat any 0.0.0.x (or absent) version as a dev build with no real
+// release behind it.
 private val isDev = version?.startsWith("0.0.0") ?: true
 
 private class WarlockCommand : CliktCommand() {
@@ -229,7 +225,10 @@ private class WarlockCommand : CliktCommand() {
         val updater = buildUpdater(clientSettings)
         val updateSupported = updater.isUpdateSupported()
 
-        application {
+        // Tao windows: the native event loop owns the main thread and there is no AWT in the process.
+        // Multiple Warlock processes are allowed, as before, rather than forwarding a second
+        // launch to the first.
+        nucleusApplication(enableSingleInstance = false) {
             val themeSetting by appContainer.clientSettings.observeTheme().collectAsState(ThemeSetting.AUTO)
             val darkMode =
                 when (themeSetting) {
@@ -266,7 +265,7 @@ private class WarlockCommand : CliktCommand() {
                     }
                 }
 
-                // Dev builds (version "0.0.0-dev", injected by Potassium for `./gradlew run`) have no
+                // Dev builds (version "0.0.0-dev", injected by Nucleus for `./gradlew run`) have no
                 // real release to update to, so skip the network update check.
                 if (!isDev) {
                     LaunchedEffect(Unit) {
@@ -361,10 +360,7 @@ private class WarlockCommand : CliktCommand() {
                                     position = position,
                                 )
                             }
-                        // Where this window's game screen publishes its dock state. Detached game
-                        // windows are real OS windows, and the application scope is the only place
-                        // Compose opens one from, so they are hosted out here rather than by the
-                        // game screen that owns them.
+                        // Where this window's game screen publishes its dock state.
                         val dockHost = remember { DesktopDockHost() }
                         val subtitle by gameState.getTitle().collectAsState("loading")
                         val title = "Warlock - $subtitle"
@@ -406,26 +402,15 @@ private class WarlockCommand : CliktCommand() {
                             state = windowState,
                             icon = appIcon,
                             onCloseRequest = { closeGame() },
+                            minimumSize = DpSize(240.dp, 240.dp),
                         ) {
-                            window.minimumSize = Dimension(240, 240)
-                            // On Linux, Jewel draws its own (Windows-style) window buttons; round them
-                            // into GNOME-style controls, dimmed while the window is in the background.
-                            val titleBarStyle =
-                                if (DesktopPlatform.Current == DesktopPlatform.Linux) {
-                                    LocalTitleBarStyle.current.withRoundedPaneButtons(active = state.isActive)
-                                } else {
-                                    LocalTitleBarStyle.current
-                                }
                             CompositionLocalProvider(
-                                LocalWindowComponent provides window,
                                 LocalSkin provides skin,
-                                LocalTitleBarStyle provides titleBarStyle,
                                 LocalDesktopDockHost provides dockHost,
                                 // A copy that cannot open the system clipboard must not take the
                                 // app down with it; see [SafeClipboard].
                                 LocalClipboard provides rememberSafeClipboard(),
                             ) {
-                                RegisterGameDockWindow(dockHost)
                                 if (crashReportingConsent == null && !crashNoticeClosed && gameState == games.first()) {
                                     DesktopCrashReportingNotice(
                                         crashReporting = appContainer.crashReporting,
@@ -549,19 +534,20 @@ private class WarlockCommand : CliktCommand() {
     ): Nothing {
         logger.e { problem.message }
         System.err.println(problem.message)
-        application {
+        nucleusApplication(enableSingleInstance = false) {
             WarlockDesktopTheme(isDark = isSystemInDarkTheme()) {
                 // A top-level window rather than the WarlockAlertDialog used everywhere else. That
                 // one is a DialogWindow, and a dialog with no application window to own it draws
                 // nothing at all while `application` keeps waiting for a window to close -- which
                 // leaves the app hung and invisible, a worse version of the failure being reported.
-                Window(
+                DecoratedWindow(
                     onCloseRequest = ::exitApplication,
                     title = "Warlock cannot start",
                     state = rememberWindowState(size = DpSize(520.dp, 280.dp)),
                     resizable = false,
                     icon = painterResource(Res.drawable.app_icon),
                 ) {
+                    WarlockTitleBar { Text("Warlock cannot start") }
                     Column(
                         modifier =
                             Modifier
@@ -823,7 +809,7 @@ private class WarlockCommand : CliktCommand() {
         val channelSetting = runBlocking { clientSettings.getReleaseChannel() }
         return ChannelUpdater(
             channelSetting.channelsToCheck(resolvedVersion).map { channelName ->
-                PotassiumUpdater {
+                NucleusUpdater {
                     provider = GitHubProvider(owner = "sproctor", repo = "warlock3")
                     channel = channelName
                     currentVersion = resolvedVersion
@@ -836,7 +822,7 @@ private class WarlockCommand : CliktCommand() {
 fun main(args: Array<String>) =
     WarlockCommand()
         .versionOption(version ?: "Development")
-        // Potassium packs the Linux AppImage via electron-builder, whose AppRun injects --no-sandbox
+        // Nucleus packs the Linux AppImage via electron-builder, whose AppRun injects --no-sandbox
         // when the kernel blocks unprivileged user namespaces (Ubuntu 24.04+ default), assuming an
         // Electron binary. We're a JVM app with no sandbox to disable, so drop the flag rather than
         // abort startup on an unknown option.
@@ -852,18 +838,13 @@ private fun AppImageIntegrationDialog(
     var error: String? by remember { mutableStateOf(null) }
     val scope = rememberCoroutineScope()
 
-    DialogWindow(
+    WarlockDialog(
         onCloseRequest = onDismiss,
         title = "Add Warlock to your applications?",
-        icon = painterResource(Res.drawable.app_icon),
-        state = rememberDialogState(width = 440.dp, height = 240.dp),
+        width = 440.dp,
+        height = 280.dp,
     ) {
-        Column(
-            Modifier
-                .fillMaxSize()
-                .background(JewelTheme.globalColors.panelBackground)
-                .padding(8.dp),
-        ) {
+        Column(Modifier.fillMaxSize()) {
             Text(
                 "Warlock is running from an AppImage, which the desktop cannot show in menus " +
                     "or the dock with the right icon until a launcher entry is installed.",
@@ -931,18 +912,13 @@ private fun UpdateDialog(
     var downloadedFile: File? by remember { mutableStateOf(null) }
     val scope = rememberCoroutineScope()
 
-    DialogWindow(
+    WarlockDialog(
         onCloseRequest = onDismiss,
         title = "Warlock update available",
-        icon = painterResource(Res.drawable.app_icon),
-        state = rememberDialogState(width = 400.dp, height = 300.dp),
+        width = 400.dp,
+        height = 340.dp,
     ) {
-        Column(
-            Modifier
-                .fillMaxSize()
-                .background(JewelTheme.globalColors.panelBackground)
-                .padding(8.dp),
-        ) {
+        Column(Modifier.fillMaxSize()) {
             Text("Current version: ${updater.currentVersion}")
             if (updateSupported) {
                 Text("Update version: ${availableUpdate?.version ?: "No update available"}")
