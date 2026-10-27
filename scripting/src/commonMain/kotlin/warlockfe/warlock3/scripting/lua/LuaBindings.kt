@@ -33,6 +33,7 @@ import warlockfe.warlock3.core.util.SoundPlayer
 import warlockfe.warlock3.core.util.isFatal
 import warlockfe.warlock3.core.util.toWarlockColor
 import warlockfe.warlock3.scripting.util.scriptSoundFile
+import kotlin.concurrent.Volatile
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
@@ -81,6 +82,10 @@ internal class LuaBindings(
     // What is being gathered: a stream's name as onStreamLine gave it (lowercased), or null for
     // the main window's lines and GMCP, which onLine and onGmcp hear.
     private val gathering = mutableSetOf<String?>()
+
+    // Whether [events] has lost one to the script falling behind; set by the gatherers.
+    @Volatile
+    private var droppedEvents = false
 
     // The bootstrap's dispatchers, taken as handles so the globals can be removed.
     private lateinit var dispatchGmcp: LuaValue.Function
@@ -266,8 +271,9 @@ internal class LuaBindings(
             // Not waited for: loading the sound can take a while, and the script's other handlers
             // should not be held up meanwhile. NonCancellable, so a script that plays a sound and
             // ends at once, cancelling its scope, still has it played.
-            // Nothing may escape it: not the script's child, it would hand a throw to the app's
-            // uncaught-exception handler, which on Android ends the app.
+            // Not the script's child, so a throw escaping it goes to the app's uncaught-exception
+            // handler, which on Android ends the app: only one the runtime cannot recover from
+            // is let through.
             instance.scope.launch(NonCancellable) {
                 // A throw (an Error too: the audio stack can fail to load) is reported like a
                 // returned error, short of one the runtime cannot recover from.
@@ -402,7 +408,13 @@ internal class LuaBindings(
     // between would be lost to a handler already in place.
     private fun gather(collect: suspend (Channel<ScriptEvent>) -> Unit) {
         val events =
-            events ?: Channel<ScriptEvent>(capacity = 1024, onBufferOverflow = BufferOverflow.DROP_OLDEST).also { events ->
+            events ?: Channel<ScriptEvent>(capacity = 1024, onBufferOverflow = BufferOverflow.DROP_OLDEST) { event ->
+                // Logged once: a script that falls behind once usually stays behind a while.
+                if (!droppedEvents) {
+                    droppedEvents = true
+                    logger.w { "Script fell behind its handlers' events and lost some, $event first" }
+                }
+            }.also { events ->
                 this.events = events
                 // The script is about the connection: it ends when the connection does.
                 gatherers +=

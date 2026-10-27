@@ -94,6 +94,9 @@ class TelnetClient(
     private val fileLogging: LoggingRepository,
     private val ioDispatcher: CoroutineDispatcher,
     private val socket: TelnetSocket,
+    // The game's one stream is main, whose lines are all on [eventFlow] too; the client's own
+    // debug and scriptoutput streams are not. Given by the caller to read its counts.
+    private val streamLineFeed: StreamLineFeed = StreamLineFeed(),
 ) : WarlockClient,
     ScriptableClient {
     private val logger = Logger.withTag("TelnetClient")
@@ -105,10 +108,6 @@ class TelnetClient(
 
     private val _eventFlow = MutableSharedFlow<ClientEvent>(extraBufferCapacity = 256)
     override val eventFlow: SharedFlow<ClientEvent> = _eventFlow.asSharedFlow()
-
-    // The game's one stream is main, whose lines are all on [eventFlow] too; the client's own
-    // debug and scriptoutput streams are not.
-    private val streamLineFeed = StreamLineFeed()
 
     override fun streamLines(stream: String): Flow<ClientTextEvent> = streamLineFeed.linesOf(stream)
 

@@ -57,4 +57,27 @@ class StreamLineFeedTest {
             while (synchronized(heard) { heard.isEmpty() }) yield()
         }
     }
+
+    @Test
+    fun aCollectorThatFallsBehindLosesItsOldestLinesAndTheSenderGoesOn() =
+        runBlocking {
+            val feed = StreamLineFeed()
+            val heard = mutableListOf<ClientTextEvent>()
+            // Runs only when this thread is free: until then, every line waits in its buffer.
+            val collector =
+                launch(start = CoroutineStart.UNDISPATCHED) {
+                    feed.linesOf("thoughts").collect { synchronized(heard) { heard += it } }
+                }
+            // Sent without waiting on the collector, which cannot run until they all are.
+            repeat(300) { feed.emit(ClientTextEvent("line $it", "thoughts")) }
+            assertTrue(feed.linesDropped > 0)
+            withTimeout(10.seconds) {
+                while (synchronized(heard) { heard.lastOrNull()?.text } != "line 299") yield()
+            }
+            collector.cancelAndJoin()
+            // Every line either heard or counted lost; the newest buffer's worth all heard.
+            val lines = synchronized(heard) { heard.map { it.text } }
+            assertEquals(300L, lines.size + feed.linesDropped)
+            assertEquals((44 until 300).map { "line $it" }, lines.takeLast(256))
+        }
 }

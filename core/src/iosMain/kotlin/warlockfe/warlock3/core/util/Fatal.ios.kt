@@ -1,4 +1,5 @@
 package warlockfe.warlock3.core.util
 
-// Kotlin/Native ends the process itself on running out of memory, so nothing reaches a catch.
-actual fun Throwable.isFatal(): Boolean = false
+// Kotlin/Native throws OutOfMemoryError when an allocation fails; a stack overflow is not
+// thrown at all, it ends the process.
+actual fun Throwable.isFatal(): Boolean = this is OutOfMemoryError

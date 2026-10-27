@@ -108,17 +108,19 @@ class WraythStreamRoutingTests {
 
     @Test
     fun onlyTheWatchedStreamsAreSent() {
-        val feed = RecordingStreamLineFeed()
-        run(
-            "<mode id=\"GAME\"/>",
-            "<streamWindow id='thoughts' title='Thoughts'/>",
-            "<pushStream id='thoughts'/>a goblin thinks<popStream/>",
-            "a goblin arrives",
-            feed = feed,
-            watched = listOf("thoughts"),
-        )
-        // Not main's lines, nor the debug stream's copy of every line from the server.
-        assertEquals(listOf(ClientTextEvent("a goblin thinks", "thoughts")), feed.sent)
+        val feed = StreamLineFeed()
+        val (_, events) =
+            run(
+                "<mode id=\"GAME\"/>",
+                "<streamWindow id='thoughts' title='Thoughts'/>",
+                "<pushStream id='thoughts'/>a goblin thinks<popStream/>",
+                "a goblin arrives",
+                feed = feed,
+                watched = listOf("thoughts"),
+            )
+        assertEquals(listOf(ClientTextEvent("a goblin thinks", "thoughts")), events.streams)
+        // That line alone: not main's, nor the debug stream's copy of every line from the server.
+        assertEquals(1L, feed.linesSent)
     }
 
     /** The text events a client sent: on eventFlow, and on streamLines for the [WATCHED] streams. */
@@ -180,17 +182,6 @@ class WraythStreamRoutingTests {
             scope.cancel()
             registry to TextEvents(synchronized(main) { main.toList() }, synchronized(streams) { streams.toList() })
         }
-}
-
-/** Keeps every line a client sends to its stream collectors. */
-private class RecordingStreamLineFeed : StreamLineFeed() {
-    private val recorded: MutableList<ClientTextEvent> = java.util.Collections.synchronizedList(mutableListOf())
-    val sent: List<ClientTextEvent> get() = synchronized(recorded) { recorded.toList() }
-
-    override fun emit(event: ClientTextEvent) {
-        recorded += event
-        super.emit(event)
-    }
 }
 
 /** Serves [lines] in order and then reports the connection closed. */

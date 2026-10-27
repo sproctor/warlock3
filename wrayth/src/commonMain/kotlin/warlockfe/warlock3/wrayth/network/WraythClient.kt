@@ -133,8 +133,8 @@ class WraythClient(
     private val ioDispatcher: CoroutineDispatcher,
     private val socket: WarlockSocket,
     private val commandListStore: CommandListStore?,
-    // The lines of the streams scripts are watching; the parse loop skips the rest. Given only
-    // by a test, to see what is sent.
+    // The lines of the streams scripts are watching; the parse loop skips the rest. Given by the
+    // caller to read its counts.
     private val streamLineFeed: StreamLineFeed = StreamLineFeed(),
 ) : WarlockClient {
     private val writeContext = ioDispatcher.limitedParallelism(1)
