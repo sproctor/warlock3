@@ -132,8 +132,10 @@ class TelnetClientTests {
                 )
             scope.launch { client.eventFlow.collect { synchronized(events) { events += it } } }
             // Subscribed before anything is sent: stream lines are only published to a collector.
-            scope.launch(start = CoroutineStart.UNDISPATCHED) {
-                client.streamLines.collect { synchronized(streamLines) { streamLines += it } }
+            for (stream in listOf("main", "debug")) {
+                scope.launch(start = CoroutineStart.UNDISPATCHED) {
+                    client.streamLines(stream).collect { synchronized(streamLines) { streamLines += it } }
+                }
             }
 
             val accepted = async { server.accept() }

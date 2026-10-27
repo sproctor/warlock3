@@ -1,5 +1,6 @@
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
@@ -47,6 +48,10 @@ import kotlin.time.Duration.Companion.seconds
 // Which stream game text lands in, checked against the real Wrayth client in utils/wrayth-lab: a
 // <pushStream> to a window nobody declared is refused there, and the text stays in main.
 class WraythStreamRoutingTests {
+    private companion object {
+        val WATCHED = listOf("main", "thoughts", "inv", "nowhere", "debug", "scriptoutput")
+    }
+
     @Test
     fun aPushToAnUndeclaredStreamStaysInMainAndIsReportedOnce() {
         val (registry, events) =
@@ -100,7 +105,7 @@ class WraythStreamRoutingTests {
         assertTrue(ClientTextEvent("<mode id=\"GAME\"/>", "debug") in events.streams)
     }
 
-    /** The text events a client sent: on eventFlow, and on streamLines. */
+    /** The text events a client sent: on eventFlow, and on streamLines for the [WATCHED] streams. */
     private class TextEvents(
         val main: List<ClientTextEvent>,
         val streams: List<ClientTextEvent>,
@@ -134,7 +139,6 @@ class WraythStreamRoutingTests {
             val main = mutableListOf<ClientTextEvent>()
             val streams = mutableListOf<ClientTextEvent>()
             val mainSubscribed = CompletableDeferred<Unit>()
-            val streamsSubscribed = CompletableDeferred<Unit>()
             scope.launch {
                 client.eventFlow.onSubscription { mainSubscribed.complete(Unit) }.collect { event ->
                     if (event is ClientTextEvent) {
@@ -142,13 +146,15 @@ class WraythStreamRoutingTests {
                     }
                 }
             }
-            scope.launch {
-                client.streamLines.onSubscription { streamsSubscribed.complete(Unit) }.collect { event ->
-                    synchronized(streams) { streams += event }
+            // Undispatched, so each is subscribed before the client connects.
+            for (stream in WATCHED) {
+                scope.launch(start = CoroutineStart.UNDISPATCHED) {
+                    client.streamLines(stream).collect { event ->
+                        synchronized(streams) { streams += event }
+                    }
                 }
             }
             mainSubscribed.await()
-            streamsSubscribed.await()
             beforeConnect(client)
             client.connect("key")
             withTimeout(10.seconds) { client.disconnected.first { it } }

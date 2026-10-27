@@ -14,6 +14,7 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.consumeEach
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -41,6 +42,7 @@ import warlockfe.warlock3.core.client.ClientTextEvent
 import warlockfe.warlock3.core.client.ClientWindowInfoEvent
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.client.SendCommandType
+import warlockfe.warlock3.core.client.StreamLineFeed
 import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.client.WarlockMenuData
@@ -154,11 +156,10 @@ class WraythClient(
     private val _eventFlow = MutableSharedFlow<ClientEvent>(extraBufferCapacity = 256)
     override val eventFlow: SharedFlow<ClientEvent> = _eventFlow.asSharedFlow()
 
-    // Every stream's lines. With nobody collecting (no script wants one window's text) an emit
-    // returns at once, so the parse loop pays nothing for them; the buffer does the same job as
-    // [_eventFlow]'s for whoever is.
-    private val _streamLines = MutableSharedFlow<ClientTextEvent>(extraBufferCapacity = 256)
-    override val streamLines: SharedFlow<ClientTextEvent> = _streamLines.asSharedFlow()
+    // The lines of the streams scripts are watching; the parse loop skips the rest.
+    private val streamLineFeed = StreamLineFeed()
+
+    override fun streamLines(stream: String): Flow<ClientTextEvent> = streamLineFeed.linesOf(stream)
 
     private val _characterId = MutableStateFlow<String?>(null)
     override val characterId: StateFlow<String?> = _characterId.asStateFlow()
@@ -877,13 +878,13 @@ class WraythClient(
         ignoreWhenBlank: Boolean,
     ) {
         val reachedMain = doAppendToStream(styledText, stream, ignoreWhenBlank)
-        val publish = streamLinesWanted()
+        val publish = streamLineFeed.isWatched(stream.id)
         // Most lines are in streams nobody is collecting: nothing more to do for them.
         if (!reachedMain && !publish) return
         val text = styledText.toText()
         if (text.isNotBlank()) {
             val event = ClientTextEvent(text, stream.id)
-            if (publish) _streamLines.emit(event)
+            if (publish) streamLineFeed.emit(event)
             if (reachedMain) {
                 logSimple { text }
                 notifyListeners(event)
@@ -1046,14 +1047,12 @@ class WraythClient(
     ) {
         doAppendToStream(text, stream, false)
         // debug() has every line from the server: skip the copy unless someone wants it.
-        if (!streamLinesWanted()) return
+        if (!streamLineFeed.isWatched(stream.id)) return
         val plain = text.toText()
         if (plain.isNotBlank()) {
-            _streamLines.emit(ClientTextEvent(plain, stream.id))
+            streamLineFeed.emit(ClientTextEvent(plain, stream.id))
         }
     }
-
-    private fun streamLinesWanted(): Boolean = _streamLines.subscriptionCount.value > 0
 
     override suspend fun getStream(name: String): TextStream = windowRegistry.getOrCreateStream(name)
 
@@ -1067,7 +1066,7 @@ class WraythClient(
 
     // A main-window line written by the client itself rather than parsed from a stream.
     private suspend fun notifyText(event: ClientTextEvent) {
-        _streamLines.emit(event)
+        if (streamLineFeed.isWatched(event.streamId)) streamLineFeed.emit(event)
         notifyListeners(event)
     }
 

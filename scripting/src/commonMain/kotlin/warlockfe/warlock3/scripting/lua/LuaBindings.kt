@@ -32,7 +32,6 @@ import warlockfe.warlock3.core.text.isSpecified
 import warlockfe.warlock3.core.util.SoundPlayer
 import warlockfe.warlock3.core.util.toWarlockColor
 import warlockfe.warlock3.scripting.util.scriptSoundFile
-import kotlin.concurrent.Volatile
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
@@ -71,15 +70,14 @@ internal class LuaBindings(
     // while events arrive; the oldest go if it falls that far behind, since a line handler is
     // reading a live stream, not a log.
     private var events: Channel<ScriptEvent>? = null
-    private var feeder: Job? = null
 
-    // The streams that onStreamLine handlers asked for, lowercased. Only their lines are gathered:
-    // the rest would only be passed over, and would crowd the lines that are wanted out of the
-    // buffer. Replaced, never changed in place: written on the script's thread, read by the
-    // gatherer.
-    @Volatile
-    private var watchedStreams: Set<String> = emptySet()
-    private var streamFeeder: Job? = null
+    // What gathers the events, each started when a handler first wants it: the game's main-window
+    // lines and GMCP for onLine and onGmcp, and one stream's lines for each stream onStreamLine
+    // names. Only what a handler wants is gathered, since the rest would crowd it out of [events].
+    // Touched on the script's thread only.
+    private val gatherers = mutableListOf<Job>()
+    private var gatheringGame = false
+    private val watchedStreams = mutableSetOf<String>()
 
     // The bootstrap's dispatchers, taken as handles so the globals can be removed.
     private lateinit var dispatchGmcp: LuaValue.Function
@@ -265,21 +263,27 @@ internal class LuaBindings(
             // Not waited for: loading the sound can take a while, and the script's other handlers
             // should not be held up meanwhile. NonCancellable, so a script that plays a sound and
             // ends at once, cancelling its scope, still has it played.
+            // Nothing may escape it: not the script's child, it would hand a throw to the app's
+            // uncaught-exception handler, which on Android ends the app.
             instance.scope.launch(NonCancellable) {
-                // A throw is reported like a returned error: escaping, it would cancel the
-                // script's scope, and end the script, over a sound.
+                // A throw (an Error too: the audio stack can fail to load) is reported like a
+                // returned error.
                 val error =
                     try {
                         soundPlayer.playSound(scriptSoundFile(fileSystem, scriptDir, name))
-                    } catch (e: Exception) {
+                    } catch (e: Throwable) {
                         e.message ?: e::class.simpleName ?: "unknown error"
                     }
                 // Reported, but not fatal: a missing sound should not end a script that is
                 // otherwise doing its job.
                 if (error != null) {
-                    client.print(
-                        StyledString("Script error: playSound: could not play \"$name\": $error", style = WarlockStyle.Error),
-                    )
+                    try {
+                        client.print(
+                            StyledString("Script error: playSound: could not play \"$name\": $error", style = WarlockStyle.Error),
+                        )
+                    } catch (e: Exception) {
+                        logger.w(e) { "Could not report that \"$name\" did not play" }
+                    }
                 }
             }
             emptyList()
@@ -374,8 +378,10 @@ internal class LuaBindings(
         }
         // Called with a stream's name by onStreamLine, with nothing by the other handlers.
         lua.register("__keepAlive") { args ->
-            startGathering()
-            (args.firstOrNull() as? LuaValue.Str)?.let { watchStream(it.value) }
+            when (val stream = args.firstOrNull()) {
+                is LuaValue.Str -> watchStream(stream.value)
+                else -> gatherGame()
+            }
             emptyList()
         }
         lua.eval(WARLOCK_BOOTSTRAP, "=(warlock)")
@@ -387,56 +393,54 @@ internal class LuaBindings(
         lua.setGlobal("__dispatchStreamLine", LuaValue.Nil)
     }
 
-    private fun startGathering() {
-        if (events != null) return
-        val events = Channel<ScriptEvent>(capacity = 1024, onBufferOverflow = BufferOverflow.DROP_OLDEST)
-        this.events = events
-        // Undispatched, here and in [watchStream], so the collector subscribes on this thread
-        // before the handler's registration returns: the flows keep nothing for a late
-        // subscriber, and a line sent in between would be lost to a handler already in place.
-        feeder =
-            instance.scope.launch(start = CoroutineStart.UNDISPATCHED) {
-                launch(start = CoroutineStart.UNDISPATCHED) {
-                    client.eventFlow.collect { event ->
-                        when (event) {
-                            is ClientTextEvent -> {
-                                events.trySend(ScriptEvent.Line(event.text))
-                            }
-
-                            is ClientGmcpEvent -> {
-                                events.trySend(ScriptEvent.Gmcp(event.name, event.data))
-                            }
-
-                            else -> {
-                                Unit
-                            }
-                        }
-                    }
-                }
+    // Undispatched, every gatherer, so it subscribes on this thread before the handler's
+    // registration returns: the flows keep nothing for a late subscriber, and a line sent in
+    // between would be lost to a handler already in place.
+    private fun gather(collect: suspend (Channel<ScriptEvent>) -> Unit) {
+        val events =
+            events ?: Channel<ScriptEvent>(capacity = 1024, onBufferOverflow = BufferOverflow.DROP_OLDEST).also { events ->
+                this.events = events
                 // The script is about the connection: it ends when the connection does.
-                client.disconnected.first { it }
-                events.close()
+                gatherers +=
+                    instance.scope.launch {
+                        client.disconnected.first { it }
+                        events.close()
+                    }
             }
+        gatherers += instance.scope.launch(start = CoroutineStart.UNDISPATCHED) { collect(events) }
     }
 
-    /** Gathers the lines of [stream] as well, for an onStreamLine handler; after [startGathering]. */
-    private fun watchStream(stream: String) {
-        watchedStreams = watchedStreams + stream
-        if (streamFeeder != null) return
-        val events = checkNotNull(events)
-        streamFeeder =
-            instance.scope.launch(start = CoroutineStart.UNDISPATCHED) {
-                client.streamLines.collect { line ->
-                    // A connection with only the one stream does not name it. Compared without
-                    // lowercasing, as most lines are in streams nobody watches; the handlers get
-                    // the watched (lowercased) name.
-                    val id = line.streamId ?: "main"
-                    val name = watchedStreams.firstOrNull { it.equals(id, ignoreCase = true) }
-                    if (name != null) {
-                        events.trySend(ScriptEvent.StreamLine(line.text, name))
+    /** Gathers the main window's lines and GMCP messages, for onLine and onGmcp handlers. */
+    private fun gatherGame() {
+        if (gatheringGame) return
+        gatheringGame = true
+        gather { events ->
+            client.eventFlow.collect { event ->
+                when (event) {
+                    is ClientTextEvent -> {
+                        events.trySend(ScriptEvent.Line(event.text))
+                    }
+
+                    is ClientGmcpEvent -> {
+                        events.trySend(ScriptEvent.Gmcp(event.name, event.data))
+                    }
+
+                    else -> {
+                        Unit
                     }
                 }
             }
+        }
+    }
+
+    /** Gathers the lines of [stream] (lowercased), for onStreamLine handlers. */
+    private fun watchStream(stream: String) {
+        if (!watchedStreams.add(stream)) return
+        gather { events ->
+            client.streamLines(stream).collect { line ->
+                events.trySend(ScriptEvent.StreamLine(line.text, stream))
+            }
+        }
     }
 
     /**
@@ -455,8 +459,7 @@ internal class LuaBindings(
                 dispatch(event)
             }
         } finally {
-            feeder?.cancel()
-            streamFeeder?.cancel()
+            gatherers.forEach { it.cancel() }
         }
     }
 
@@ -705,6 +708,9 @@ private val WARLOCK_BOOTSTRAP =
         if handler == nil then
             handler = pattern
             pattern = nil
+        end
+        if type(handler) ~= "function" then
+            error("onStreamLine needs a function to call, like onStreamLine(\"thoughts\", function(line) ... end)", 2)
         end
         stream = lower(stream)
         streamHandlers[#streamHandlers + 1] = { stream = stream, pattern = pattern, handler = handler }

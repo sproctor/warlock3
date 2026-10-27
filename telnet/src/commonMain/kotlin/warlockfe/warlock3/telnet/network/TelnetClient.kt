@@ -6,6 +6,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -32,6 +33,7 @@ import warlockfe.warlock3.core.client.PanelObject
 import warlockfe.warlock3.core.client.Percentage
 import warlockfe.warlock3.core.client.ScriptableClient
 import warlockfe.warlock3.core.client.SendCommandType
+import warlockfe.warlock3.core.client.StreamLineFeed
 import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.client.WarlockMenuData
 import warlockfe.warlock3.core.compass.Direction
@@ -104,9 +106,11 @@ class TelnetClient(
     private val _eventFlow = MutableSharedFlow<ClientEvent>(extraBufferCapacity = 256)
     override val eventFlow: SharedFlow<ClientEvent> = _eventFlow.asSharedFlow()
 
-    // The one stream is main, so every line here is on [eventFlow] too.
-    private val _streamLines = MutableSharedFlow<ClientTextEvent>(extraBufferCapacity = 256)
-    override val streamLines: SharedFlow<ClientTextEvent> = _streamLines.asSharedFlow()
+    // The game's one stream is main, whose lines are all on [eventFlow] too; the client's own
+    // debug and scriptoutput streams are not.
+    private val streamLineFeed = StreamLineFeed()
+
+    override fun streamLines(stream: String): Flow<ClientTextEvent> = streamLineFeed.linesOf(stream)
 
     private val _characterId = MutableStateFlow<String?>("$gameCode:$character".lowercase())
     override val characterId: StateFlow<String?> = _characterId.asStateFlow()
@@ -574,10 +578,10 @@ class TelnetClient(
         stream.appendLine(styledText)
         // On [streamLines] like every stream's line, when someone is collecting; not on
         // [eventFlow], which has never had these.
-        if (_streamLines.subscriptionCount.value > 0) {
+        if (streamLineFeed.isWatched(stream.id)) {
             val plain = styledText.toText()
             if (plain.isNotBlank()) {
-                _streamLines.emit(ClientTextEvent(plain, stream.id))
+                streamLineFeed.emit(ClientTextEvent(plain, stream.id))
             }
         }
         // A closed window's text shows in the window it names instead, in that window's style.
@@ -640,7 +644,7 @@ class TelnetClient(
 
     private suspend fun notifyText(text: String) {
         val event = ClientTextEvent(text, null)
-        _streamLines.emit(event)
+        if (streamLineFeed.isWatched(null)) streamLineFeed.emit(event)
         notifyListeners(event)
     }
 

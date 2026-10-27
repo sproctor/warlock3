@@ -1,5 +1,6 @@
 package warlockfe.warlock3.core.client
 
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import warlockfe.warlock3.core.text.StyledString
@@ -14,12 +15,13 @@ interface WarlockClient {
     // declared ifClosed=''.
     val eventFlow: SharedFlow<ClientEvent>
 
-    // The completed lines of every stream, main or not, for whoever wants one window's text: the
-    // game's, and those the client writes itself (print, debug, script output). Not prompts or
-    // partial lines, and not text shown while the game has the parser off (raw mode, as in
-    // character creation), none of which [eventFlow] carries either. Lines are only sent while
-    // something is collecting, so nobody pays for them otherwise.
-    val streamLines: SharedFlow<ClientTextEvent>
+    // The completed lines of one stream (the text of one window, "main" or another, named in any
+    // case), for whoever wants that window's text: the game's, and those the client writes itself
+    // (print, debug, script output). Not prompts or partial lines, and not text shown while the
+    // game has the parser off (raw mode, as in character creation), none of which [eventFlow]
+    // carries either. A stream's lines are only gathered while something is collecting them, so
+    // nobody pays for the streams nobody watches.
+    fun streamLines(stream: String): Flow<ClientTextEvent>
 
     val roundTimeEnd: StateFlow<Long?>
     val castTimeEnd: StateFlow<Long?>

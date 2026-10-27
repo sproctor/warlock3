@@ -5,6 +5,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import warlockfe.warlock3.core.client.ClientEvent
 import warlockfe.warlock3.core.client.ClientTextEvent
 import warlockfe.warlock3.core.client.SendCommandType
+import warlockfe.warlock3.core.client.StreamLineFeed
 import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.client.WarlockMenuData
 import warlockfe.warlock3.core.text.StyledString
@@ -20,7 +21,9 @@ open class FakeWarlockClient(
     characterId: String? = "testchar",
 ) : WarlockClient {
     override val eventFlow = MutableSharedFlow<ClientEvent>(extraBufferCapacity = 64)
-    override val streamLines = MutableSharedFlow<ClientTextEvent>(extraBufferCapacity = 64)
+    val streamLineFeed = StreamLineFeed()
+
+    override fun streamLines(stream: String) = streamLineFeed.linesOf(stream)
 
     override val roundTimeEnd = MutableStateFlow<Long?>(null)
     override val castTimeEnd = MutableStateFlow<Long?>(null)
@@ -57,7 +60,7 @@ open class FakeWarlockClient(
         line: ClientTextEvent,
         inMain: Boolean,
     ) {
-        streamLines.emit(line)
+        streamLineFeed.emit(line)
         if (inMain) eventFlow.emit(line)
     }
 

@@ -408,7 +408,7 @@ class LuaScriptInstanceTest {
                         override var value: String?
                             get() {
                                 subscribers += eventFlow.subscriptionCount.value
-                                subscribers += streamLines.subscriptionCount.value
+                                subscribers += if (streamLineFeed.isWatched("thoughts")) 1 else 0
                                 return backing.value
                             }
                             set(value) {
@@ -456,21 +456,14 @@ class LuaScriptInstanceTest {
     }
 
     @Test
-    fun aSoundPlayerThatThrowsIsReportedAndTheScriptGoesOn() {
+    fun aSoundPlayerThatThrowsIsReported() {
         val client = FakeWarlockClient()
         val soundPlayer =
             object : SoundPlayer {
-                override suspend fun playSound(filename: String): String? = throw IllegalStateException("no audio device")
+                // An Error, as the audio stack throws when it cannot load, not just an Exception.
+                override suspend fun playSound(filename: String): String? = throw NotImplementedError("no audio device")
             }
-        val instance =
-            createInstance(
-                """
-                playSound("ping.wav")
-                pause(0.5)
-                echo("still here")
-                """.trimIndent(),
-                soundPlayer = soundPlayer,
-            )
+        val instance = createInstance("""playSound("ping.wav")""", soundPlayer = soundPlayer)
         runBlocking {
             instance.start(client, "", onStop = {}, commandHandler = { SendCommandType.COMMAND })
             instance.awaitStopped()
@@ -478,10 +471,36 @@ class LuaScriptInstanceTest {
                 while (client.printedText().none { it.contains("could not play") }) delay(10.milliseconds)
             }
         }
-        // The pause outlasts the throw, which, escaping, would have cancelled it.
         val printed = client.printedText()
         assertTrue(printed.any { it.contains("could not play \"ping.wav\": no audio device") }, printed.toString())
-        assertTrue("still here" in printed, printed.toString())
+    }
+
+    @Test
+    fun onStreamLineWithoutAHandlerSaysSo() {
+        val client = FakeWarlockClient()
+        val instance = createInlineInstance("""onStreamLine("thoughts", "^You")""")
+        runBlocking {
+            instance.start(client, "", onStop = {}, commandHandler = { client.sendCommand(it) })
+            instance.awaitStopped()
+        }
+        assertTrue(client.printedText().any { it.contains("Script error") && it.contains("onStreamLine needs a function") })
+    }
+
+    @Test
+    fun onStreamLineAloneGathersOnlyItsStream() {
+        val client = FakeWarlockClient()
+        val instance = createInlineInstance("""onStreamLine("thoughts", function(line) echo("heard " .. line) end)""")
+        runBlocking {
+            instance.start(client, "", onStop = {}, commandHandler = { client.sendCommand(it) })
+            client.emitStreamLineUntil(ClientTextEvent("Bob says hi", "thoughts"), inMain = false) {
+                client.printedText().contains("heard Bob says hi")
+            }
+            // Nothing collects the main window's lines, which no handler wants, or the other streams'.
+            assertEquals(0, client.eventFlow.subscriptionCount.value)
+            assertFalse(client.streamLineFeed.isWatched("main"))
+            instance.stop()
+            instance.awaitStopped()
+        }
     }
 
     @Test

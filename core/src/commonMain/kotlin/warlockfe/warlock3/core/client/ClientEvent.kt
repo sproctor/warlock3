@@ -11,7 +11,7 @@ sealed interface ClientEvent
 /**
  * A line of game text, from the stream [streamId] (null on a connection with only the one
  * stream). On [WarlockClient.eventFlow] these are the main window's lines, which is what
- * triggers and match waits hear; [WarlockClient.streamLines] has every stream's.
+ * triggers and match waits hear; [WarlockClient.streamLines] has any one stream's.
  */
 data class ClientTextEvent(
     val text: String,
