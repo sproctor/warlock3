@@ -28,6 +28,7 @@ import warlockfe.warlock3.core.client.ClientPromptEvent
 import warlockfe.warlock3.core.client.ClientTextEvent
 import warlockfe.warlock3.core.client.HandBlock
 import warlockfe.warlock3.core.client.ScriptableClient
+import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.prefs.repositories.VariableRepository
 import warlockfe.warlock3.core.script.ScriptInstance
@@ -103,13 +104,46 @@ internal class LuaBindings(
     // The bootstrap's dispatchers, taken as handles so the globals can be removed.
     private lateinit var dispatchGmcp: LuaValue.Function
     private lateinit var dispatchLine: LuaValue.Function
+    private lateinit var dispatchInput: LuaValue.Function
+
+    // Where a line from /put goes: to waitForInput while the script is in it, and to the onInput
+    // handlers once there are any. Called on whatever thread ran the /put.
+    @Volatile
+    private var inputWaiter: Channel<String>? = null
+
+    @Volatile
+    private var inputHandled = false
 
     fun install() {
         startFeeding()
-        bind("echo") { args ->
-            val text = args.firstOrNull()?.asString() ?: ""
-            blocking { client.print(StyledString(text, style = WarlockStyle.Echo)) }
+        // __echo(text1, input1, text2, input2, ...): one line, each part plain where its input is
+        // false, or a link that sends the input to this script with /put.
+        bind("__echo") { args ->
+            val parts =
+                args.chunked(2).map { part ->
+                    val text = part[0].asString() ?: ""
+                    val input = (part.getOrNull(1) as? LuaValue.Str)?.value
+                    if (input == null) {
+                        StyledString(text, style = WarlockStyle.Echo)
+                    } else {
+                        val action = WarlockAction.SendCommand("/put ${instance.id} $input")
+                        StyledString(text, listOf(WarlockStyle.Echo, WarlockStyle.Link(action)))
+                    }
+                }
+            val line = parts.reduceOrNull { line, part -> line + part } ?: StyledString("", style = WarlockStyle.Echo)
+            blocking { client.print(line) }
             emptyList()
+        }
+        bind("waitForInput") { args ->
+            val waiter = Channel<String>(Channel.UNLIMITED)
+            inputWaiter = waiter
+            val text =
+                try {
+                    waitServing(timeoutArg(args.firstOrNull())) { waiter.receive() }
+                } finally {
+                    inputWaiter = null
+                }
+            listOf(text?.let { LuaValue.Str(it) } ?: LuaValue.Nil)
         }
         bind("put") { args ->
             val command = args.firstOrNull()?.asString()
@@ -379,11 +413,19 @@ internal class LuaBindings(
             startGathering()
             emptyList()
         }
+        lua.register("__listenForInput") {
+            startGathering()
+            inputHandled = true
+            emptyList()
+        }
+        instance.inputListener = ::takeInput
         lua.eval(WARLOCK_BOOTSTRAP, "=(warlock)")
         dispatchGmcp = lua.getGlobal("__dispatchGmcp") as LuaValue.Function
         dispatchLine = lua.getGlobal("__dispatchLine") as LuaValue.Function
+        dispatchInput = lua.getGlobal("__dispatchInput") as LuaValue.Function
         lua.setGlobal("__dispatchGmcp", LuaValue.Nil)
         lua.setGlobal("__dispatchLine", LuaValue.Nil)
+        lua.setGlobal("__dispatchInput", LuaValue.Nil)
     }
 
     /**
@@ -447,8 +489,17 @@ internal class LuaBindings(
         }
     }
 
+    private fun takeInput(text: String): Boolean {
+        var taken = inputWaiter?.trySend(text)?.isSuccess == true
+        if (inputHandled) {
+            taken = handlerEvents?.trySend(ScriptEvent.Input(text))?.isSuccess == true || taken
+        }
+        return taken
+    }
+
     /** Lets go of the connection when the script ends. */
     fun close() {
+        instance.inputListener = null
         removeTap?.invoke()
         removeTap = null
         feeder?.cancel()
@@ -459,6 +510,10 @@ internal class LuaBindings(
             when (event) {
                 is ScriptEvent.Line -> {
                     lua.call(dispatchLine, listOf(LuaValue.Str(event.text)))
+                }
+
+                is ScriptEvent.Input -> {
+                    lua.call(dispatchInput, listOf(LuaValue.Str(event.text)))
                 }
 
                 is ScriptEvent.Gmcp -> {
@@ -913,6 +968,10 @@ private sealed interface ScriptEvent {
         val name: String,
         val data: String,
     ) : ScriptEvent
+
+    data class Input(
+        val text: String,
+    ) : ScriptEvent
 }
 
 private sealed interface WaitOutcome<out T> {
@@ -972,6 +1031,8 @@ private val WARLOCK_BOOTSTRAP =
     local matchWait = __matchWait
     local checkStatus = __checkStatus
     local keepAlive = __keepAlive
+    local listenForInput = __listenForInput
+    local echoHost = __echo
     local protocolHost = __protocolLines
     local statusHost = status
     local waitLines = __waitLines
@@ -986,6 +1047,8 @@ private val WARLOCK_BOOTSTRAP =
     __matchWait = nil
     __checkStatus = nil
     __keepAlive = nil
+    __listenForInput = nil
+    __echo = nil
     __protocolLines = nil
     __waitLines = nil
     __clearLines = nil
@@ -996,7 +1059,8 @@ private val WARLOCK_BOOTSTRAP =
     __storage = nil
 
     -- Kept here so a script that reassigns these globals cannot break the API.
-    local load, ipairs, pcall, error, type, tostring, setmetatable = load, ipairs, pcall, error, type, tostring, setmetatable
+    local load, ipairs, pcall, error, type, tostring, setmetatable, getmetatable =
+        load, ipairs, pcall, error, type, tostring, setmetatable, getmetatable
     local lower, sub, match = string.lower, string.sub, string.match
     local pack, unpack, concat = table.pack, table.unpack, table.concat
     local globals = _ENV
@@ -1006,6 +1070,35 @@ private val WARLOCK_BOOTSTRAP =
         if text == nil then return nil end
         return load("return " .. text, "=(warlock)", "t", {})()
     end
+
+    -- link(label [, input]): a part of an echoed line that, clicked, sends input (the label, if
+    -- none is given) to this script, for waitForInput or onInput.
+    local linkKind = {}
+    function link(label, input)
+        label = tostring(label)
+        if input == nil then input = label end
+        return setmetatable({ label = label, input = tostring(input) }, linkKind)
+    end
+
+    -- echo(...): writes one line made of the arguments, text and links alike.
+    function echo(...)
+        local args = pack(...)
+        local parts = {}
+        for i = 1, args.n do
+            local part = args[i]
+            if getmetatable(part) == linkKind then
+                parts[#parts + 1] = part.label
+                parts[#parts + 1] = part.input
+            else
+                parts[#parts + 1] = part == nil and "" or tostring(part)
+                parts[#parts + 1] = false
+            end
+        end
+        echoHost(unpack(parts))
+    end
+
+    -- echoLink(label [, input]): a line that is just the one link.
+    function echoLink(label, input) echo(link(label, input)) end
 
     -- Reads and writes go straight to the character's stored variables.
     variables = setmetatable({}, {
@@ -1242,6 +1335,7 @@ private val WARLOCK_BOOTSTRAP =
     -- stopped or the connection closes.
     local gmcpHandlers = {}
     local lineHandlers = {}
+    local inputHandlers = {}
 
     -- onGmcp("Char.Vitals", function(data, name) ... end): called with the message's JSON as a
     -- table (nil when it had none) for every message with that name or under that package, so a
@@ -1261,6 +1355,13 @@ private val WARLOCK_BOOTSTRAP =
         end
         lineHandlers[#lineHandlers + 1] = { pattern = pattern, handler = handler }
         keepAlive()
+    end
+
+    -- onInput(function(text) ... end): called with each line the user sends the script with
+    -- /put, as the links from echoLink do.
+    function onInput(handler)
+        inputHandlers[#inputHandlers + 1] = handler
+        listenForInput()
     end
 
     -- Every handler gets its turn even if an earlier one failed; the first failure is then
@@ -1289,6 +1390,14 @@ private val WARLOCK_BOOTSTRAP =
             if lowered == entry.name or sub(lowered, 1, #entry.name + 1) == entry.name .. "." then
                 calls[#calls + 1] = pack(entry.handler, data, name)
             end
+        end
+        callAll(calls)
+    end
+
+    function __dispatchInput(text)
+        local calls = {}
+        for _, handler in ipairs(inputHandlers) do
+            calls[#calls + 1] = pack(handler, text)
         end
         callAll(calls)
     end

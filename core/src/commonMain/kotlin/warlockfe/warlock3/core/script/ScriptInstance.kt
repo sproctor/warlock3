@@ -20,4 +20,10 @@ interface ScriptInstance {
     fun suspend()
 
     fun resume()
+
+    /**
+     * Passes the script a line the user sent it with `/put`. Returns whether the script was
+     * listening for one; a script that wasn't never sees it.
+     */
+    fun input(text: String): Boolean = false
 }

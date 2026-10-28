@@ -26,6 +26,7 @@ import warlockfe.warlock3.core.script.ScriptStatus
 import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.text.WarlockStyle
 import warlockfe.warlock3.core.util.parseArguments
+import kotlin.concurrent.Volatile
 
 /** Thrown by the script bindings to unwind a script that has been stopped. */
 class StopException : Exception("Script stopped")
@@ -112,6 +113,13 @@ class LuaScriptInstance(
     override fun resume() {
         setStatus(ScriptStatus.Running)
     }
+
+    // Set by the bindings while the script runs: takes a line from /put, if the script is
+    // listening for one.
+    @Volatile
+    internal var inputListener: ((String) -> Boolean)? = null
+
+    override fun input(text: String): Boolean = inputListener?.invoke(text) ?: false
 
     internal fun setStatus(newStatus: ScriptStatus) {
         statusFlow.value = newStatus

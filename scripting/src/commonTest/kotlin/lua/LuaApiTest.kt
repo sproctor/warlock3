@@ -19,6 +19,7 @@ import warlockfe.warlock3.core.client.ClientTextEvent
 import warlockfe.warlock3.core.client.LineInterceptor
 import warlockfe.warlock3.core.client.ProtocolTap
 import warlockfe.warlock3.core.client.SendCommandType
+import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.prefs.repositories.VariableRepository
 import warlockfe.warlock3.core.script.ScriptData
@@ -476,6 +477,79 @@ class LuaApiTest {
             withTimeout(10.seconds) {
                 while (client.text().none { it.contains("a handler cannot wait") }) delay(20.milliseconds)
             }
+            instance.stop()
+            instance.awaitStopped()
+        }
+    }
+
+    @Test
+    fun linksSendInputThatTheScriptWaitsFor() {
+        val client = GameClient()
+        val instance =
+            instance(
+                """
+                assert(waitForInput(0.1) == nil)
+                echo("Go there? ", link("yes"), " ", link("no", "nope"))
+                local answer = waitForInput(10)
+                echo("answer " .. tostring(answer))
+                echo("ok")
+                """.trimIndent(),
+            )
+        runBlocking {
+            instance.launch(client)
+            client.awaitPrinted("Go there? yes no")
+            val line = client.printed.last { it.toText() == "Go there? yes no" }
+            val commands =
+                line.substrings.mapNotNull { part ->
+                    (part.styles.firstNotNullOfOrNull { it.action } as? WarlockAction.SendCommand)?.command
+                }
+            assertEquals(listOf("/put 1 yes", "/put 1 nope"), commands)
+            // The script may not be in waitForInput yet, and until it is, input is refused.
+            withTimeout(10.seconds) {
+                while (!instance.input("nope")) delay(20.milliseconds)
+            }
+            client.awaitPrinted("answer nope")
+            instance.awaitStopped()
+            assertFalse(instance.input("too late"))
+        }
+        assertOk(client)
+    }
+
+    @Test
+    fun inputIsRefusedUnlessTheScriptListens() {
+        val client = GameClient()
+        val instance =
+            instance(
+                """
+                echo("ready")
+                pause(10)
+                """.trimIndent(),
+            )
+        runBlocking {
+            instance.launch(client)
+            client.awaitPrinted("ready")
+            assertFalse(instance.input("hello"))
+            instance.stop()
+            instance.awaitStopped()
+        }
+    }
+
+    @Test
+    fun inputHandlersHearInputWhileTheScriptWaits() {
+        val client = GameClient()
+        val instance =
+            instance(
+                """
+                onInput(function(text) echo("heard " .. text) end)
+                echoLink("Stop")
+                pause(10)
+                """.trimIndent(),
+            )
+        runBlocking {
+            instance.launch(client)
+            client.awaitPrinted("Stop")
+            assertTrue(instance.input("Stop"))
+            client.awaitPrinted("heard Stop")
             instance.stop()
             instance.awaitStopped()
         }

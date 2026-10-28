@@ -18,7 +18,7 @@ A script's arguments are its varargs: `.hunt fast 3` runs `hunt.lua` with `...` 
 |---|---|
 | `put(command)` | Waits out any roundtime, then sends the command. |
 | `move(command [, timeout])` | `put`, then waits until the room changes. Returns `true`, or `nil` when the time ran out. |
-| `echo(text)`, `print(...)` | Writes to the game window. |
+| `echo(...)`, `print(...)` | Writes a line to the game window. `echo` makes one line of its arguments, which may include [links](#asking-the-user). |
 | `log(level, text)` | Writes to the debug window, from level 30 up. |
 | `exit()` | Ends the script. |
 
@@ -70,12 +70,35 @@ local lines, complete = capture("spell active", "^You currently have", "^End of 
 Lines that are taken are not shown and are not passed to any script, including this one's own
 `waitFor`; they still go into the log.
 
+## Asking the user
+
+A script can ask the user something and wait for the answer. The user answers by clicking a
+link the script echoed, or by typing `/put <script> <text>`, where `<script>` is the script's
+name or its number in the scripts window.
+
+| Function | |
+|---|---|
+| `link(label [, input])` | A link for `echo`: clicked, it sends `input` (the label, without one) to this script. |
+| `echoLink(label [, input])` | Writes a line that is just the one link. |
+| `waitForInput([timeout])` | Waits for the user to send the script a line, and returns it. |
+| `onInput(function(text) ... end)` | A [handler](#handlers), called with each line the user sends the script. |
+
+```lua
+echo("That's a 90 second trip. Go? ", link("yes"), " ", link("no"))
+if waitForInput(60) == "yes" then ... end
+```
+
+A script only takes input while it is in `waitForInput` or has an `onInput` handler; at any other
+time `/put` says it isn't waiting, and the input is lost. So a link clicked after its question was
+answered, or gave up, doesn't answer the next one.
+
 ## Handlers
 
 | Function | |
 |---|---|
 | `onLine(function(line) ... end)` | Called with every line of game text. |
 | `onLine(pattern, function(...) ... end)` | Called with the captures whenever a line matches the **Lua** pattern. |
+| `onInput(function(text) ... end)` | Called with each line the user sends the script. See [Asking the user](#asking-the-user). |
 | `onGmcp(name, function(data, name) ... end)` | See [mud-scripts.md](mud-scripts.md#handlers). |
 
 Handlers are called **whenever the script is waiting** in one of the waits above, `pause` and

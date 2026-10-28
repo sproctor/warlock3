@@ -1942,6 +1942,26 @@ class GameViewModel(
                     }
                 }
 
+                "put" -> {
+                    // /put <script> <text>: a line for a script that asked for one, as the links
+                    // a script echoes with echoLink send.
+                    val (name, text) = args?.splitFirstWord() ?: Pair("", null)
+                    val script = name.takeIf { it.isNotEmpty() }?.let { scriptManager.findScriptInstance(it) }
+                    when {
+                        name.isEmpty() -> {
+                            client.print(StyledString("Usage: /put <script> <text>", WarlockStyle.Error))
+                        }
+
+                        script == null -> {
+                            client.print(StyledString("Script $name not found.", WarlockStyle.Error))
+                        }
+
+                        !script.input(text ?: "") -> {
+                            client.print(StyledString("Script ${script.name} isn't waiting for input.", WarlockStyle.Error))
+                        }
+                    }
+                }
+
                 "list" -> {
                     val scripts = scriptManager.runningScripts.value
                     if (scripts.isEmpty()) {
