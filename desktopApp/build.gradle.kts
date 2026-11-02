@@ -160,14 +160,20 @@ nucleus.application {
         // Nucleus takes one format list and builds the current OS's share of it. Zip and Tar are
         // current-OS archive formats, so each is added only on the OS that ships it: Zip alongside Dmg
         // so the macOS auto-updater has a non-installer artifact to pull, Tar for Linux.
+        //
+        // Dmg is macOS-only here because of notarization. Nucleus disables packageDmg off macOS but
+        // still registers notarizeDmg, which runs whenever NOTARY_PWD is set, as it is on every
+        // release runner, and fails validation on the dmg directory that was never created.
         val os = System.getProperty("os.name").lowercase()
         targetFormats(
             *buildList {
                 add(TargetFormat.Nsis)
-                add(TargetFormat.Dmg)
                 add(TargetFormat.Deb)
                 add(TargetFormat.AppImage)
-                if (os.contains("mac")) add(TargetFormat.Zip)
+                if (os.contains("mac")) {
+                    add(TargetFormat.Dmg)
+                    add(TargetFormat.Zip)
+                }
                 if (os.contains("linux")) add(TargetFormat.Tar)
             }.toTypedArray(),
         )
