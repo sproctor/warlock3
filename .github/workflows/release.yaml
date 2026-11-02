@@ -154,8 +154,6 @@ jobs:
             desktopApp/build/compose/binaries/**/*.tar
             desktopApp/build/compose/binaries/**/*.7z
             desktopApp/build/compose/binaries/**/*.blockmap
-            desktopApp/build/compose/binaries/**/signing-metadata.json
-            desktopApp/build/compose/binaries/**/packaging-metadata.json
             # electron-builder update manifests, uploaded to the release as-is.
             desktopApp/build/compose/binaries/**/latest*.yml
             desktopApp/build/compose/binaries/**/beta*.yml
@@ -239,9 +237,20 @@ jobs:
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      RELEASE_VERSION: ${{ github.ref_name }}
 
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Normalize version for manual runs
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="$(git describe --tags --abbrev=0)"
+          echo "RELEASE_VERSION=$tag" >> "$GITHUB_ENV"
 
       - uses: actions/download-artifact@v8
         with:
@@ -252,7 +261,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          TAG="${GITHUB_REF_NAME}"
+          TAG="${RELEASE_VERSION}"
           echo "TAG=$TAG" >> "$GITHUB_ENV"
           echo "VERSION=${TAG#v}" >> "$GITHUB_ENV"
           case "$TAG" in
