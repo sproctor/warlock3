@@ -177,35 +177,33 @@ internal fun DecoratedWindowScope.TitleBarView(
                 )
             // Compose's native MenuBar is AWT, which a Tao window does not have, so every OS gets
             // the menus as popups in the title bar.
-            run {
-                var openMenu by remember { mutableStateOf<String?>(null) }
-                menus.forEach { menu ->
-                    Box {
-                        MenuTriggerButton(
-                            text = menu.title,
-                            // Hover switches menus only while one is already open (matching a menu bar).
-                            onHover = { if (openMenu != null) openMenu = menu.title },
-                            onClick = { openMenu = if (openMenu == menu.title) null else menu.title },
-                        )
-                        if (openMenu == menu.title) {
-                            PopupMenu(
-                                onDismissRequest = {
-                                    openMenu = null
-                                    true
-                                },
-                                horizontalAlignment = Alignment.Start,
-                            ) {
-                                menu.items.forEach { item ->
-                                    if (item == null) {
-                                        separator()
-                                    } else {
-                                        selectableItem(
-                                            selected = false,
-                                            enabled = item.enabled,
-                                            onClick = item.onClick,
-                                        ) {
-                                            Text(item.label)
-                                        }
+            var openMenu by remember { mutableStateOf<String?>(null) }
+            menus.forEach { menu ->
+                Box {
+                    MenuTriggerButton(
+                        text = menu.title,
+                        // Hover switches menus only while one is already open (matching a menu bar).
+                        onHover = { if (openMenu != null) openMenu = menu.title },
+                        onClick = { openMenu = if (openMenu == menu.title) null else menu.title },
+                    )
+                    if (openMenu == menu.title) {
+                        PopupMenu(
+                            onDismissRequest = {
+                                openMenu = null
+                                true
+                            },
+                            horizontalAlignment = Alignment.Start,
+                        ) {
+                            menu.items.forEach { item ->
+                                if (item == null) {
+                                    separator()
+                                } else {
+                                    selectableItem(
+                                        selected = false,
+                                        enabled = item.enabled,
+                                        onClick = item.onClick,
+                                    ) {
+                                        Text(item.label)
                                     }
                                 }
                             }

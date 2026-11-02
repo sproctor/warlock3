@@ -4,14 +4,14 @@ package warlockfe.warlock3.compose.desktop.ui.game
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.draganddrop.dragAndDropTarget
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -21,6 +21,9 @@ import androidx.compose.ui.draganddrop.DragAndDropTarget
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.isPrimaryPressed
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onPlaced
@@ -52,6 +55,7 @@ import dev.nucleusframework.window.tao.workspace.TransferDragGesture
 import dev.nucleusframework.window.tao.workspace.TransferGhostSource
 import dev.nucleusframework.window.tao.workspace.positionInWindowPx
 import dev.nucleusframework.window.tao.workspace.transferDragHandle
+import dev.nucleusframework.window.windowDragArea
 import kotlin.math.roundToInt
 
 // The docking library's window API, answered by Nucleus's Tao windows. Adapted from the Tao demo in
@@ -132,7 +136,10 @@ internal fun GameDockArea(
  * one, on the part of it that drags the window into a dock.
  *
  * Where windows can be placed there is no [dockGrip]: the docking system moves the window with the
- * pointer, so the whole bar both moves the window and, let go over a dock area, docks it there.
+ * pointer, so the whole bar both moves the window and, let go over a dock area, docks it there. That
+ * move is the application's, so the window manager's edge snapping doesn't apply to it. A maximized
+ * window is the exception: its bar hands the move to the window manager, which restores the window
+ * under the pointer.
  *
  * On native Wayland no client can move its windows or see the pointer outside them, so the two are
  * two places, as on Nucleus's own floating satellites: the bar hands the move to the compositor,
@@ -153,19 +160,20 @@ internal fun rememberDetachedWindowDrag(
     title: String,
 ): DetachedWindowDrag {
     val window = LocalNucleusWindow.current
-    if (window.isPlaceable) return DetachedWindowDrag(Modifier.dockWindowDragArea(state, windowId), dockGrip = null)
-    val tao = window.unsafe.taoWindow ?: return DetachedWindowDrag(Modifier, dockGrip = null)
-    val move =
-        Modifier.pointerInput(tao) {
-            awaitEachGesture {
-                // Unconsumed only: the dock grip and the buttons take their own presses.
-                awaitFirstDown()
-                // As Nucleus's own title bar does: the compositor's move starts with the first
-                // movement of the press, so a click on the bar stays a click.
-                val change = awaitPointerEvent().changes.firstOrNull()
-                if (change?.pressed == true && !change.isConsumed) tao.dragWindow()
+    val tao = window.unsafe.taoWindow
+    if (window.isPlaceable) {
+        val maximized by window.maximizedFlow.collectAsState()
+        val bar =
+            if (maximized && tao != null) {
+                Modifier.windowDragArea(tao)
+            } else {
+                Modifier.dockWindowDragArea(state, windowId).doubleClickToMaximize(window)
             }
-        }
+        return DetachedWindowDrag(bar, dockGrip = null)
+    }
+    if (tao == null) return DetachedWindowDrag(Modifier, dockGrip = null)
+    // Presses the dock grip and the buttons take for themselves don't reach this.
+    val move = Modifier.windowDragArea(tao)
     val root = state.layout.window(windowId)?.root
     if (root !is DockNode.Leaf && root !is DockNode.Tabs) return DetachedWindowDrag(move, dockGrip = null)
     val gesture = remember { WindowGripGesture() }
@@ -186,6 +194,28 @@ internal fun rememberDetachedWindowDrag(
             )
     return DetachedWindowDrag(move, grip)
 }
+
+/**
+ * Nucleus's double-click on a title bar, for a bar that is not its window drag area. Watches without
+ * consuming, so the drag on the same bar still sees the press.
+ */
+private fun Modifier.doubleClickToMaximize(window: NucleusWindow): Modifier =
+    pointerInput(window) {
+        awaitPointerEventScope {
+            var lastPress = 0L
+            while (true) {
+                val event = awaitPointerEvent(PointerEventPass.Final)
+                if (event.type != PointerEventType.Press || !event.buttons.isPrimaryPressed) continue
+                // Consumed: a press on one of the bar's buttons.
+                val press = event.changes.firstOrNull { !it.isConsumed } ?: continue
+                val sinceLast = press.uptimeMillis - lastPress
+                if (sinceLast in viewConfiguration.doubleTapMinTimeMillis..viewConfiguration.doubleTapTimeoutMillis) {
+                    window.setMaximized(!window.isMaximized)
+                }
+                lastPress = press.uptimeMillis
+            }
+        }
+    }
 
 /** A title bar's gesture: hands over at once, remembering where it was for the window drag. */
 private class WindowGripGesture : TransferDragGesture {

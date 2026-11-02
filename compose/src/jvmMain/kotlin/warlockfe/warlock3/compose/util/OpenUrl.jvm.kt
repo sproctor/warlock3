@@ -3,8 +3,11 @@ package warlockfe.warlock3.compose.util
 import com.eygraber.uri.Uri
 
 // java.awt.Desktop would start the AWT toolkit, which a Tao app never loads, so hand the URL to
-// the platform's own opener instead.
+// the platform's own opener instead. Those openers launch anything they are given, and this URL
+// comes from the game server, so only web links get that far.
 actual fun openUrl(url: Uri) {
+    val scheme = url.scheme?.lowercase()
+    if (scheme != "http" && scheme != "https") return
     val os = System.getProperty("os.name").lowercase()
     val command =
         when {

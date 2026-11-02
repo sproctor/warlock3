@@ -33,6 +33,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -78,6 +79,9 @@ import warlockfe.warlock3.compose.util.LocalSkin
 class DesktopDockHost {
     var state: DockState? by mutableStateOf(null)
         internal set
+
+    /** Escape cancels a drag whatever has focus in the window whose key events these are. */
+    fun cancelDragOnEscape(event: KeyEvent): Boolean = state?.windowHost?.cancelOnEscape(event) == true
 }
 
 /**
@@ -126,8 +130,7 @@ fun NucleusApplicationScope.DetachedGameWindows(
                         icon = model.icon,
                         undecorated = true,
                         resizable = true,
-                        // Escape cancels a drag of this window whatever has focus in it.
-                        onPreviewKeyEvent = state.windowHost::cancelOnEscape,
+                        onPreviewKeyEvent = dockHost::cancelDragOnEscape,
                     ) {
                         val window = LocalNucleusWindow.current
                         // A window holding one game window is named after it, so the title bar

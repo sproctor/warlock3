@@ -403,6 +403,7 @@ private class WarlockCommand : CliktCommand() {
                             icon = appIcon,
                             onCloseRequest = { closeGame() },
                             minimumSize = DpSize(240.dp, 240.dp),
+                            onPreviewKeyEvent = dockHost::cancelDragOnEscape,
                         ) {
                             CompositionLocalProvider(
                                 LocalSkin provides skin,
@@ -536,10 +537,8 @@ private class WarlockCommand : CliktCommand() {
         System.err.println(problem.message)
         nucleusApplication(enableSingleInstance = false) {
             WarlockDesktopTheme(isDark = isSystemInDarkTheme()) {
-                // A top-level window rather than the WarlockAlertDialog used everywhere else. That
-                // one is a DialogWindow, and a dialog with no application window to own it draws
-                // nothing at all while `application` keeps waiting for a window to close -- which
-                // leaves the app hung and invisible, a worse version of the failure being reported.
+                // A top-level window rather than the WarlockAlertDialog used everywhere else: that
+                // one is a dialog, owned by an application window, and here there is no such window.
                 DecoratedWindow(
                     onCloseRequest = ::exitApplication,
                     title = "Warlock cannot start",

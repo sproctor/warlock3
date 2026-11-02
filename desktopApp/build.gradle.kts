@@ -125,11 +125,6 @@ nucleus.application {
     // SQLite calls a restricted method
     jvmArgs += "--enable-native-access=ALL-UNNAMED"
 
-    // JBR's Wayland toolkit uses this as the window app_id, which desktops match against the
-    // installed .desktop file's basename (the package name) to pick the launcher icon. Unset, it
-    // falls back to the main class plus arguments, and the window shows a generic icon.
-    jvmArgs += "-Dawt.app.id=warlock"
-
     // Jewel 0.40.0's IntUiTheme unconditionally initializes its macOS platform services, whose
     // static init pries open sun.awt via sun.misc.Unsafe on every OS, and JDK 24+ prints a one-time
     // "terminally deprecated method in sun.misc.Unsafe" warning for it. Upstream removed the Unsafe
@@ -190,9 +185,6 @@ nucleus.application {
             "jdk.accessibility",
             "java.instrument",
             "java.management",
-            // HotSpotDiagnosticMXBean, which the memory usage dialog's heap dump goes through. Not part
-            // of java.management, so without this the packaged app can see heap totals but cannot dump.
-            "jdk.management",
             "jdk.dynalink",
             "jdk.security.auth",
             "jdk.unsupported",

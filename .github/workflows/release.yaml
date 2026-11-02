@@ -59,8 +59,8 @@ jobs:
           packaging-tools: 'true'
           setup-gradle: 'true'
 
-      # setup-nucleus installs Temurin, but the app runs and ships under JBR 25 (Jewel's decorated
-      # window needs it), which the jbrRuntime toolchain in desktopApp/build.gradle.kts resolves.
+      # setup-nucleus installs Temurin, but the app runs and ships under JBR 25, which the
+      # jbrRuntime toolchain in desktopApp/build.gradle.kts resolves.
       # Install it here so that lookup finds a local JDK instead of downloading one per runner.
       - name: Set up JetBrains Runtime
         uses: actions/setup-java@v5
