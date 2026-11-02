@@ -16,21 +16,31 @@ jobs:
   build:
     name: Build (${{ matrix.os }} / ${{ matrix.arch }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 60
+    timeout-minutes: 120
     strategy:
       fail-fast: false
+      # The app ships as a GraalVM native image, and the binary links against the runner's glibc, so
+      # a newer runner can raise the oldest distro it starts on. Linux therefore builds on the
+      # oldest Ubuntu we are willing to support, not on ubuntu-latest.
+      #
+      # macOS notarizes as part of the build. notarize* depends on the matching package* task.
       matrix:
         include:
-          - os: ubuntu-latest
+          - os: ubuntu-22.04
             arch: amd64
-          - os: ubuntu-24.04-arm
+            tasks: :desktopApp:packageGraalvmDeb :desktopApp:packageGraalvmAppImage
+          - os: ubuntu-22.04-arm
             arch: arm64
+            tasks: :desktopApp:packageGraalvmDeb :desktopApp:packageGraalvmAppImage
           - os: windows-latest
             arch: amd64
+            tasks: :desktopApp:packageGraalvmNsis
           - os: macos-latest
             arch: arm64
-          - os: macos-26-intel
+            tasks: :desktopApp:notarizeGraalvmDmg :desktopApp:notarizeGraalvmZip
+          - os: macos-15-intel
             arch: amd64
+            tasks: :desktopApp:notarizeGraalvmDmg :desktopApp:notarizeGraalvmZip
 
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -51,23 +61,16 @@ jobs:
           tag="$(git describe --tags --exact-match)"
           echo "RELEASE_VERSION=$tag" >> "$GITHUB_ENV"
 
-      # JDK 25 to run Gradle, Linux packaging tools + Xvfb, and Gradle. The Nucleus plugin
-      # downloads the Node.js that electron-builder runs under.
+      # JDK 25 to run Gradle, Linux packaging tools + Xvfb, Gradle, and the native toolchains
+      # native-image links with (Xcode, MSVC). The Nucleus plugin downloads the GraalVM that builds
+      # the image and the Node.js that electron-builder runs under.
       - name: Set up build environment
         uses: NucleusFramework/Nucleus/.github/actions/setup-nucleus@v3.0.0-dev-202611011507
         with:
           java-version: '25'
           packaging-tools: 'true'
+          graalvm: 'true'
           setup-gradle: 'true'
-
-      # setup-nucleus installs Temurin, but the app runs and ships under JBR 25, which the
-      # jbrRuntime toolchain in desktopApp/build.gradle.kts resolves.
-      # Install it here so that lookup finds a local JDK instead of downloading one per runner.
-      - name: Set up JetBrains Runtime
-        uses: actions/setup-java@v5
-        with:
-          distribution: 'jetbrains'
-          java-version: '25'
 
       # Import the Developer ID Application cert into a temporary keychain so Nucleus can
       # codesign + notarize at package time. Its path reaches the macOS signing config via the
@@ -103,6 +106,7 @@ jobs:
         # Retrying that last one re-submits to Apple unless the notarization task resumes the
         # saved submission. That costs a round trip, which is still less than the manual job
         # re-run it replaces (which re-submits too, after recompiling from scratch).
+          TASKS: ${{ matrix.tasks }}
         run: |
           transient='Unexpected end of file from server|socket hang up|Connection reset|Connection timed out|Read timed out|ECONNRESET|ETIMEDOUT|EAI_AGAIN|ENOTFOUND|The Internet connection appears to be offline|Could not (GET|HEAD|resolve)|429 Too Many Requests|502 Bad Gateway|503 Service|Remote host terminated the handshake'
           # notarytool has also been killed outright mid-submission (exit 138 = SIGBUS).
@@ -117,7 +121,7 @@ jobs:
             fi
             log="$(mktemp)"
             status=0
-            ./gradlew :desktopApp:packageDistributionForCurrentOS --stacktrace --no-daemon 2>&1 | tee "$log" \
+            ./gradlew $TASKS --stacktrace --no-daemon 2>&1 | tee "$log" \
               || status="${PIPESTATUS[0]}"
             if [ "$status" -eq 0 ]; then
               exit 0
@@ -135,6 +139,20 @@ jobs:
           done
           echo "::error::Build still failing after 3 attempts."
           exit 1
+
+      # CI never starts the image otherwise, and it is built here for the first time on every OS but
+      # the one its metadata was collected on. --version exits before a window opens.
+      - name: Check that the packaged binary starts
+        shell: bash
+        run: |
+          set -euo pipefail
+          app=desktopApp/build/compose/binaries/main/graalvm-app
+          case "$RUNNER_OS" in
+            macOS) binary="$app/Warlock.app/Contents/MacOS/warlock" ;;
+            Windows) binary="$app/warlock/warlock.exe" ;;
+            *) binary="$app/warlock/warlock" ;;
+          esac
+          "$binary" --version
 
       - uses: actions/upload-artifact@v7
         with:
@@ -159,7 +177,7 @@ jobs:
             desktopApp/build/compose/binaries/**/latest*.yml
             desktopApp/build/compose/binaries/**/beta*.yml
             desktopApp/build/compose/binaries/**/alpha*.yml
-            !desktopApp/build/compose/binaries/**/app/**
+            !desktopApp/build/compose/binaries/**/graalvm-app/**
             !desktopApp/build/compose/binaries/**/runtime/**
           if-no-files-found: error
 

@@ -80,48 +80,37 @@ Open the project in Android Studio and run the `androidApp` configuration, or fr
 
 ## Building packages locally
 
-The desktop packaging tasks produce installers for the current OS via the [Potassium](https://github.com/sproctor/potassium-packager) Gradle plugin (which packages through electron-builder).
+The desktop packaging tasks build a GraalVM native image and package it for the current OS through [Nucleus](https://github.com/NucleusFramework/Nucleus). The first build downloads GraalVM.
 
-### Native installer for your current OS
+### Just the app folder (no installer)
 
-```
-./gradlew :desktopApp:packageDistributionForCurrentOS
-```
-
-Outputs land in `desktopApp/build/compose/binaries/main/`. Format depends on the host:
-
-- **Linux:** `.deb`, AppImage, `.tar` under `binaries/main/`
-- **macOS:** `.dmg` under `binaries/main/dmg/`
-- **Windows:** `.msi` and NSIS `.exe` installer under `binaries/main/`
-
-For a release build with ProGuard applied, use `packageReleaseDistributionForCurrentOS`.
-
-### Just the app image (no installer)
-
-Useful for quick smoke tests of the packaged app without building an installer:
+Useful for quick smoke tests of what a release ships, without building an installer:
 
 ```
-./gradlew :desktopApp:createDistributable
-./gradlew :desktopApp:runDistributable     # build + launch
+./gradlew :desktopApp:createGraalvmNativeDistributable
+./gradlew :desktopApp:runGraalvmNativeDistributable     # build + launch
 ```
 
-### Individual installer formats
+The app lands in `desktopApp/build/compose/binaries/main/graalvm-app/`.
+
+### Installers
 
 ```
-./gradlew :desktopApp:packageDeb       # Linux .deb
-./gradlew :desktopApp:packageDmg       # macOS .dmg (macOS host only)
-./gradlew :desktopApp:packageMsi       # Windows .msi (Windows host only)
-./gradlew :desktopApp:packageNsis      # Windows NSIS installer
+./gradlew :desktopApp:packageGraalvmDeb        # Linux .deb
+./gradlew :desktopApp:packageGraalvmAppImage   # Linux AppImage
+./gradlew :desktopApp:packageGraalvmDmg        # macOS .dmg
+./gradlew :desktopApp:packageGraalvmZip        # macOS .zip
+./gradlew :desktopApp:packageGraalvmNsis       # Windows NSIS installer
 ```
 
-Note: each installer format can only be built on its native host OS. The CI release workflow runs the matrix across all three platforms.
+Each format lands in `desktopApp/build/compose/binaries/main/graalvm-<format>/` and can only be built on its native host OS. The CI release workflow runs the matrix across all three platforms.
 
 ### Configuring the version
 
 By default the build uses the version declared in `gradle.properties`. To override (e.g. to mirror what CI does for tagged releases), set `RELEASE_VERSION`:
 
 ```
-RELEASE_VERSION=v3.0.167-beta.1 ./gradlew :desktopApp:packageDistributionForCurrentOS
+RELEASE_VERSION=v3.0.167-beta.1 ./gradlew :desktopApp:packageGraalvmDeb
 ```
 
 The leading `v` is stripped automatically. The base version (without any `-beta.N` suffix) is used for Windows `.exe` `VERSIONINFO` and macOS `CFBundleVersion`, which both require dotted-integer format; the full version is preserved in the artifact filename and on Linux packages.

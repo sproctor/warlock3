@@ -28,14 +28,15 @@ Warlock is a multi-platform front-end client for the Simutronics Game Engine (SG
 # Run a single test class (JVM)
 ./gradlew jvmTest --tests "com.example.MyTest"
 
-# Build the packaged desktop app locally (output under
-# desktopApp/build/compose/binaries/main/app/)
-./gradlew :desktopApp:createDistributable
+# Build the packaged desktop app locally, as a release ships it: a GraalVM native image (output
+# under desktopApp/build/compose/binaries/main/graalvm-app/)
+./gradlew :desktopApp:createGraalvmNativeDistributable
 ```
 
-Compilation uses a Java 21 toolchain. The desktop app *runs* and is *packaged*
-under JBR 25, configured via `javaHome` in `desktopApp/build.gradle.kts`, so
-`:desktopApp:run` and the packaging tasks use a different JVM than the build.
+Compilation uses a Java 21 toolchain. `:desktopApp:run` runs under any JDK 25, set
+in `desktopApp/build.gradle.kts`, so it uses a different JVM than the build, as does
+`:desktopApp:hotRun`. Releases have no JVM: they ship a GraalVM native image, built by
+GraalVM Community Edition, which the Nucleus plugin downloads.
 
 ## Module Architecture
 
@@ -115,11 +116,12 @@ anywhere. `release.yaml` passes the tag through as `RELEASE_VERSION`, and
 matching update channel and marks the GitHub release a prerelease.
 
 Packaging is handled by [Nucleus](https://github.com/NucleusFramework/Nucleus)
-(`nucleus.application { }` in `desktopApp/build.gradle.kts`), which produces NSIS for
-Windows, DMG + Zip for macOS, and Deb/AppImage/Tar for Linux, with Azure Trusted
-Signing on Windows and Developer ID signing + notarization on macOS. The
-workflow builds a matrix of Linux amd64/arm64, Windows amd64, and macOS
-arm64/intel, then publishes them as a GitHub release. An Android job builds an
+(`nucleus.application { }` in `desktopApp/build.gradle.kts`), which packages the
+native image as NSIS for Windows, DMG + Zip for macOS, and Deb/AppImage for Linux,
+with Azure Trusted Signing on Windows and Developer ID signing + notarization on
+macOS. The workflow builds a matrix of Linux amd64/arm64, Windows amd64, and macOS
+arm64/intel, then publishes them as a GitHub release. Linux builds on Ubuntu 22.04
+because the binary needs at least the glibc it was built against. An Android job builds an
 AAB and uploads to the Play internal track, gated on the `PUBLISH_ANDROID` repo
 variable.
 
@@ -133,11 +135,11 @@ derived from the tag, see the `nucleus.application { }` block). Anything that co
 releases (the updater, the website download page) reads these manifests or the
 release assets directly from GitHub.
 
-**Verify the packaged app, not just CI.** `check` compiles and tests against
-Gradle's resolved classpath, which is not the classpath the shipped app runs on:
-the packaged `lib/` directory can contain jars Gradle deduplicated away. A
-release has shipped that passed CI and crashed on launch for every user
-(`v3.1.0-beta.21`, a duplicate `kotlinx-coroutines` from a transitive IntelliJ
-dependency). Before tagging, run `:desktopApp:createDistributable` and run
-`desktopApp/build/compose/binaries/main/app/warlock/bin/warlock --version`
-(or another flag that exits before a window opens) and check for exit code 0.
+**Verify the packaged app, not just CI.** `check` compiles and tests on a JVM, and
+the shipped app is not one: a native image fails at run time on any class, resource
+or JNI entry missing from its reachability metadata, in code that passes every test.
+A release has also shipped that passed CI and crashed on launch for every user
+(`v3.1.0-beta.21`, a duplicate `kotlinx-coroutines`). Before tagging, run
+`:desktopApp:runGraalvmNativeDistributable` and exercise the feature you changed. New
+reflection, resources or JNI need metadata, collected with `:desktopApp:runWithNativeAgent`. The
+release workflow runs `--version` on each packaged binary, which only proves it starts.
