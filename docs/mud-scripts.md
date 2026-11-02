@@ -73,7 +73,7 @@ onGmcp("Char.Status", function(data, name)
     if data.roundtime then setRoundTime(data.roundtime) end
 end)
 
--- Every line of game text.
+-- Every line of game text in the main window.
 onLine(function(line)
     if line == "You feel the spell take hold." then setCastTime(0) end
 end)
@@ -83,10 +83,33 @@ end)
 onLine("^Roundtime: (%d+) sec", function(seconds)
     setRoundTime(tonumber(seconds))
 end)
+
+-- Every line of one stream (one window's text), with or without a pattern as
+-- for onLine. A telnet game's text is all "main", besides Warlock's own
+-- "debug" and "scriptoutput"; on a Simutronics game this hears "thoughts",
+-- "death" and the rest, even the ones onLine does not because they never
+-- reach the main window.
+onStreamLine("thoughts", function(line)
+    playSound("ping.wav")
+end)
 ```
 
 An error in a handler is shown to the player as a script error; the other
 handlers still run, and the script goes on.
+
+A handler hears what scripts write, its own script included: `echo()` and
+`print()` are main-window lines, so `onLine` and `onStreamLine("main")`
+hear them, and `log()` writes to the `"debug"` stream. A handler that writes
+to what it listens to must leave its own lines alone, with a pattern that
+does not match them, or it calls itself forever:
+
+```lua
+-- Loops: every echo is a new line for the same handler.
+onLine(function(line) echo("saw " .. line) end)
+
+-- Fine: the echoed line does not start with "You".
+onLine("^You ", function() echo("saw one") end)
+```
 
 ### The status bar
 
@@ -181,6 +204,7 @@ The rest of the Lua API is available too:
 | `echo(text)`, `print(...)` | Show text in the game window. |
 | `put(command)` | Send a command as the player, once the roundtime has passed. |
 | `move(command)` | `put`, then wait for the next room. |
+| `playSound(file)` | Play a sound: a file beside the script, or a path. A sound that cannot be played is reported and the script goes on. |
 | `pause(seconds)` | Wait. Inside a handler this holds up the other handlers too. |
 | `waitForPrompt()`, `waitForNav()`, `waitForRoundTime()` | Wait for the next prompt, room, or the end of the roundtime. |
 | `MatchList()` | Wait for the first of several lines; see the player scripting docs. |

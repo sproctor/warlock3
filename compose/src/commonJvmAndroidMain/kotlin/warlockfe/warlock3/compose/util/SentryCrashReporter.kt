@@ -1,5 +1,6 @@
 package warlockfe.warlock3.compose.util
 
+import io.sentry.KeyValueCollectionBehavior
 import io.sentry.kotlin.multiplatform.Sentry
 import io.sentry.kotlin.multiplatform.SentryPlatformOptions
 import warlockfe.warlock3.compose.crash.CrashReporter
@@ -34,10 +35,22 @@ class SentryCrashReporter(
         Sentry.initWithPlatformOptions { options: SentryPlatformOptions ->
             options.dsn = SENTRY_DSN
             options.release = "$platform@$version"
-            // The Sentry project also strips the sending IP and scrubs PII server-side. Setting this
-            // explicitly (it is the default) keeps the client end of that promise stated in the
-            // code, so a future SDK default or an edit here can't quietly start attaching user data.
-            options.isSendDefaultPii = false
+            // The Sentry project also strips the sending IP and scrubs PII server-side. Turning off
+            // every category of automatic collection here keeps the client end of that promise
+            // stated in the code. All of them, not just the user: once any Data Collection option
+            // is set, the SDK treats each one left unset as its documented default, which is on.
+            options.dataCollection.apply {
+                userInfo = false
+                filePaths = false
+                databaseQueryData = false
+                cookies = KeyValueCollectionBehavior.off()
+                urlQueryParams = KeyValueCollectionBehavior.off()
+                httpBodies = emptySet()
+                httpHeaders.request = KeyValueCollectionBehavior.off()
+                httpHeaders.response = KeyValueCollectionBehavior.off()
+                graphql.document = false
+                graphql.variables = false
+            }
             // Anonymous means anonymous: on desktop the SDK would otherwise name the machine
             // (its hostname) in every report.
             options.isAttachServerName = false

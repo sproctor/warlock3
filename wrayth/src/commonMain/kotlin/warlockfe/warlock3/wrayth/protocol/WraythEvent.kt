@@ -21,8 +21,13 @@ data class WraythDataReceivedEvent(
     val text: String,
 ) : WraythEvent
 
+/**
+ * Switches the stream that text goes to; a null [id] returns to main. [needsWindow] marks a switch
+ * that only happens if a window for [id] has been declared, as Wrayth does for `<pushStream>`.
+ */
 data class WraythStreamEvent(
     val id: String?,
+    val needsWindow: Boolean = false,
 ) : WraythEvent
 
 data class WraythClearStreamEvent(

@@ -6,6 +6,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -32,6 +33,7 @@ import warlockfe.warlock3.core.client.PanelObject
 import warlockfe.warlock3.core.client.Percentage
 import warlockfe.warlock3.core.client.ScriptableClient
 import warlockfe.warlock3.core.client.SendCommandType
+import warlockfe.warlock3.core.client.StreamLineFeed
 import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.client.WarlockMenuData
 import warlockfe.warlock3.core.compass.Direction
@@ -92,6 +94,9 @@ class TelnetClient(
     private val fileLogging: LoggingRepository,
     private val ioDispatcher: CoroutineDispatcher,
     private val socket: TelnetSocket,
+    // The game's one stream is main, whose lines are all on [eventFlow] too; the client's own
+    // debug and scriptoutput streams are not. Given by a test, to count what is sent.
+    private val streamLineFeed: StreamLineFeed = StreamLineFeed(),
 ) : WarlockClient,
     ScriptableClient {
     private val logger = Logger.withTag("TelnetClient")
@@ -103,6 +108,8 @@ class TelnetClient(
 
     private val _eventFlow = MutableSharedFlow<ClientEvent>(extraBufferCapacity = 256)
     override val eventFlow: SharedFlow<ClientEvent> = _eventFlow.asSharedFlow()
+
+    override fun streamLines(stream: String): Flow<ClientTextEvent> = streamLineFeed.linesOf(stream)
 
     private val _characterId = MutableStateFlow<String?>("$gameCode:$character".lowercase())
     override val characterId: StateFlow<String?> = _characterId.asStateFlow()
@@ -482,7 +489,7 @@ class TelnetClient(
         logSimple { plain }
         logComplete { plain }
         if (plain.isNotBlank()) {
-            notifyListeners(ClientTextEvent(plain))
+            notifyText(plain)
         }
     }
 
@@ -540,7 +547,7 @@ class TelnetClient(
                 }
             }
             if (!serverEcho) {
-                notifyListeners(ClientTextEvent(command))
+                notifyText(command)
             }
         }
     }
@@ -551,7 +558,7 @@ class TelnetClient(
                 finishLineIfShown()
                 getMainStream().appendLine(message)
             }
-            notifyListeners(ClientTextEvent(message.toText()))
+            notifyText(message.toText())
         }
     }
 
@@ -568,6 +575,14 @@ class TelnetClient(
         stream: TextStream,
     ) {
         stream.appendLine(styledText)
+        // On [streamLines] like every stream's line, when someone is collecting; not on
+        // [eventFlow], which has never had these.
+        if (streamLineFeed.isWatched(stream.id)) {
+            val plain = styledText.toText()
+            if (plain.isNotBlank()) {
+                streamLineFeed.send(ClientTextEvent(plain, stream.id))
+            }
+        }
         // A closed window's text shows in the window it names instead, in that window's style.
         windows[stream.id]?.ifClosed?.let { ifClosed ->
             val style = windows[stream.id]?.styleIfClosed
@@ -624,6 +639,12 @@ class TelnetClient(
 
     private suspend fun notifyListeners(event: ClientEvent) {
         _eventFlow.emit(event)
+    }
+
+    private suspend fun notifyText(text: String) {
+        val event = ClientTextEvent(text, null)
+        if (streamLineFeed.isWatched(null)) streamLineFeed.send(event)
+        notifyListeners(event)
     }
 
     private suspend fun logSimple(message: () -> String) {
