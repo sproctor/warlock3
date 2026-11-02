@@ -72,15 +72,6 @@ jobs:
           graalvm: 'true'
           setup-gradle: 'true'
 
-      # Nothing in a release runs on JBR, but desktopApp/build.gradle.kts resolves its jbrRuntime
-      # toolchain while configuring the project, for :desktopApp:run.
-      # Install it here so that lookup finds a local JDK instead of downloading one per runner.
-      - name: Set up JetBrains Runtime
-        uses: actions/setup-java@v5
-        with:
-          distribution: 'jetbrains'
-          java-version: '25'
-
       # Import the Developer ID Application cert into a temporary keychain so Nucleus can
       # codesign + notarize at package time. Its path reaches the macOS signing config via the
       # MAC_KEYCHAIN_PATH env on the build step below.

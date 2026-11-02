@@ -16,11 +16,6 @@ permissions:
 
 env:
   GRADLE_OPTS: "-Dorg.gradle.daemon=false"
-  # Nothing here runs or packages the desktop app, so it does not need JetBrains Runtime - and
-  # asking for one made every job depend on setup-java's JBR lookup, an unauthenticated GitHub API
-  # call rate-limited per runner IP that was failing roughly a quarter of the time. Set as an
-  # ORG_GRADLE_PROJECT_ env var rather than a -P flag so every Gradle invocation picks it up.
-  ORG_GRADLE_PROJECT_jbrSkip: "true"
 
 jobs:
   build:

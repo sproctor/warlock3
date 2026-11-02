@@ -1,7 +1,6 @@
 import dev.nucleusframework.desktop.application.dsl.ReleaseChannel
 import dev.nucleusframework.desktop.application.dsl.ReleaseType
 import dev.nucleusframework.desktop.application.dsl.TargetFormat
-import dev.nucleusframework.desktop.tasks.AbstractNucleusTask
 import org.jetbrains.compose.reload.gradle.AbstractComposeHotRun
 
 plugins {
@@ -66,61 +65,34 @@ val resolvedReleaseVersion: String? =
 
 val releaseVersion: String = resolvedReleaseVersion ?: "0.0.0-dev"
 
-// JBR 25 is what `:desktopApp:run` launches under for local dev. Compilation happens under the
-// project toolchain (Temurin) - JBR is only used at runtime. Releases ship the native image
-// configured in the graalvm block below, so no installer carries a JVM.
-val jbrRuntime =
-    javaToolchains.launcherFor {
-        languageVersion = JavaLanguageVersion.of(25)
-        @Suppress("UnstableApiUsage")
-        vendor = JvmVendorSpec.JETBRAINS
+// Releases ship a native image, so no JVM reaches users. `:desktopApp:run` is the one thing that
+// starts the app on a JVM, and it needs 25 because Jewel ships class file 69, while the rest of the
+// build compiles under the project toolchain. Set on the task rather than through nucleus's javaHome,
+// which is a plain String and would resolve this toolchain on every build that configures the project.
+// In afterEvaluate because nucleus registers run there and points it at the compile toolchain.
+val devRuntime = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+
+afterEvaluate {
+    tasks.named<JavaExec>("run") {
+        javaLauncher = devRuntime
     }
-
-// Nucleus's javaHome is a plain String, so reading it resolves the JBR toolchain during
-// configuration - on every build that configures this project, whether or not it will ever run or
-// package the app. That made a JBR install a prerequisite for merely compiling, so CI had to fetch
-// one for all three jobs, and setup-java resolves JBR through a GitHub API call that goes out
-// unauthenticated unless GITHUB_TOKEN is in the environment, rate-limited per runner IP.
-//
-// CI sets ORG_GRADLE_PROJECT_jbrSkip (not -PjbrSkip, which would not reach the Gradle that the
-// Xcode build phase starts) and builds under Temurin instead. Nothing it runs packages the app.
-val skipJbr = (findProperty("jbrSkip") as? String)?.toBoolean() == true
-
-// Compose Hot Reload launches the app itself, and defaults to whatever JetBrains Runtime it
-// finds rather than the one the app is built against - which lands on JBR 21 here and dies with
-// "JewelTheme has been compiled by a more recent version of the Java Runtime (class file 69.0)".
-// Point it at the same JBR 25 nucleus runs and packages under.
-tasks.withType<AbstractComposeHotRun>().configureEach {
-    javaLauncher = jbrRuntime
 }
 
-// Left unset, nucleus's javaHome silently falls back to the JVM Gradle is running on, so a
-// packaging task under this flag would build an installer around Temurin 21 for an app compiled to
-// class file 69 and die on launch for every user - the v3.1.0-beta.21 failure. Refuse instead of
-// shipping that, since the flag exists only so builds that never touch the app can skip the JBR.
-if (skipJbr) {
-    tasks.withType<AbstractNucleusTask>().configureEach {
-        doFirst {
-            error(
-                "$name runs or packages the desktop app, which must happen under JBR 25, but " +
-                    "jbrSkip left nucleus's javaHome unset. Drop -PjbrSkip / " +
-                    "ORG_GRADLE_PROJECT_jbrSkip for anything that runs or packages the app.",
-            )
+// Compose Hot Reload patches classes through JetBrains Runtime and no other JVM can do it. It
+// defaults to whatever JBR it finds, which lands on JBR 21 here and dies with "JewelTheme has been
+// compiled by a more recent version of the Java Runtime (class file 69.0)". This is lazy, so only
+// hotRun ever looks for a JBR.
+tasks.withType<AbstractComposeHotRun>().configureEach {
+    javaLauncher =
+        javaToolchains.launcherFor {
+            languageVersion = JavaLanguageVersion.of(25)
+            @Suppress("UnstableApiUsage")
+            vendor = JvmVendorSpec.JETBRAINS
         }
-    }
 }
 
 nucleus.application {
     mainClass = "warlockfe.warlock3.app.MainKt"
-
-    // Run under JBR 25 even though the rest of the build uses
-    // Temurin 21 (see toolchain config above).
-    if (!skipJbr) {
-        javaHome =
-            jbrRuntime
-                .get()
-                .metadata.installationPath.asFile.absolutePath
-    }
 
     // SQLite calls a restricted method
     jvmArgs += "--enable-native-access=ALL-UNNAMED"

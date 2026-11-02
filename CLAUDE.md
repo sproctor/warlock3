@@ -33,10 +33,10 @@ Warlock is a multi-platform front-end client for the Simutronics Game Engine (SG
 ./gradlew :desktopApp:createGraalvmNativeDistributable
 ```
 
-Compilation uses a Java 21 toolchain. `:desktopApp:run` runs under JBR 25,
-configured via `javaHome` in `desktopApp/build.gradle.kts`, so it uses a different
-JVM than the build. Releases have no JVM: they ship a GraalVM native image, built by
-GraalVM Community Edition, which the Nucleus plugin downloads.
+Compilation uses a Java 21 toolchain. `:desktopApp:run` runs under any JDK 25, set
+in `desktopApp/build.gradle.kts`, so it uses a different JVM than the build, and only
+`:desktopApp:hotRun` needs JetBrains Runtime. Releases have no JVM: they ship a GraalVM
+native image, built by GraalVM Community Edition, which the Nucleus plugin downloads.
 
 ## Module Architecture
 
