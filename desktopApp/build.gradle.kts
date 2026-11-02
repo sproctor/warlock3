@@ -66,9 +66,9 @@ val resolvedReleaseVersion: String? =
 
 val releaseVersion: String = resolvedReleaseVersion ?: "0.0.0-dev"
 
-// JBR 25 is what gets bundled into installers (via Nucleus) and
-// what `:desktopApp:run` launches under for local dev. Compilation happens
-// under the project toolchain (Temurin) - JBR is only used at runtime.
+// JBR 25 is what `:desktopApp:run` launches under for local dev. Compilation happens under the
+// project toolchain (Temurin) - JBR is only used at runtime. Releases ship the native image
+// configured in the graalvm block below, so no installer carries a JVM.
 val jbrRuntime =
     javaToolchains.launcherFor {
         languageVersion = JavaLanguageVersion.of(25)
@@ -113,7 +113,7 @@ if (skipJbr) {
 nucleus.application {
     mainClass = "warlockfe.warlock3.app.MainKt"
 
-    // Run + package under JBR 25 even though the rest of the build uses
+    // Run under JBR 25 even though the rest of the build uses
     // Temurin 21 (see toolchain config above).
     if (!skipJbr) {
         javaHome =
@@ -145,8 +145,9 @@ nucleus.application {
         jvmArgs += "-Xlog:gc*,safepoint:file=$gcLogPath:time,uptime,level,tags:filecount=5,filesize=20M"
     }
 
-    // Experimental native image of the desktop app (Tao windows, no AWT). The tracing agent's
-    // metadata (`runWithNativeAgent`) is merged into src/main/resources/META-INF/native-image.
+    // The release build: a native image of the desktop app (Tao windows, no AWT), packaged by the
+    // packageGraalvm* tasks. The tracing agent's metadata (`runWithNativeAgent`) is merged into
+    // src/main/resources/META-INF/native-image.
     graalvm {
         isEnabled = true
         javaLanguageVersion = 25
@@ -265,10 +266,8 @@ nucleus.application {
         }
     }
 
-    // The shipped app is built via packageDistributionForCurrentOS (the default
-    // build type, which never runs ProGuard). Nucleus enables ProGuard on the
-    // release build type by default; disable it explicitly so no *Release*
-    // packaging task can minify. (ProGuard here only shrank ~13%, with
+    // Nucleus enables ProGuard on the release build type by default; disable it
+    // explicitly so no *Release* packaging task can minify. (ProGuard here only shrank ~13%, with
     // obfuscation and optimization already off, so it wasn't worth the keep-rule
     // maintenance and the JDK-version lag it introduced.)
     buildTypes.release.proguard {
