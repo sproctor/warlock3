@@ -34,7 +34,6 @@ import warlockfe.warlock3.core.util.WarlockDirs
 import warlockfe.warlock3.core.window.BackgroundFlash
 import warlockfe.warlock3.core.window.PanelState
 import warlockfe.warlock3.core.window.TextStream
-import warlockfe.warlock3.core.window.WindowMemoryUsage
 import warlockfe.warlock3.core.window.WindowRegistry
 import warlockfe.warlock3.wrayth.network.WraythClient
 import java.nio.file.Files
@@ -246,8 +245,6 @@ private class RecordingWindowRegistry : WindowRegistry {
 
             override suspend fun updateState() = Unit
         }
-
-    override suspend fun memoryUsage(): WindowMemoryUsage = WindowMemoryUsage.EMPTY
 
     override fun flashBackground(
         window: String,
