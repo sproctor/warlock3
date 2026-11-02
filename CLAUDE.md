@@ -140,7 +140,6 @@ the shipped app is not one: a native image fails at run time on any class, resou
 or JNI entry missing from its reachability metadata, in code that passes every test.
 A release has also shipped that passed CI and crashed on launch for every user
 (`v3.1.0-beta.21`, a duplicate `kotlinx-coroutines`). Before tagging, run
-`:desktopApp:createGraalvmNativeDistributable` and exercise the feature you changed in
-`desktopApp/build/compose/binaries/main/graalvm-app/warlock/warlock`. New reflection,
-resources or JNI need metadata, collected with `:desktopApp:runWithNativeAgent`. The
+`:desktopApp:runGraalvmNativeDistributable` and exercise the feature you changed. New
+reflection, resources or JNI need metadata, collected with `:desktopApp:runWithNativeAgent`. The
 release workflow runs `--version` on each packaged binary, which only proves it starts.
