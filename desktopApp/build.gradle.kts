@@ -78,17 +78,10 @@ afterEvaluate {
     }
 }
 
-// Compose Hot Reload patches classes through JetBrains Runtime and no other JVM can do it. It
-// defaults to whatever JBR it finds, which lands on JBR 21 here and dies with "JewelTheme has been
-// compiled by a more recent version of the Java Runtime (class file 69.0)". This is lazy, so only
-// hotRun ever looks for a JBR.
+// Compose Hot Reload defaults to whatever JetBrains Runtime it finds, which lands on JBR 21 here and
+// dies with "JewelTheme has been compiled by a more recent version of the Java Runtime (class file 69.0)".
 tasks.withType<AbstractComposeHotRun>().configureEach {
-    javaLauncher =
-        javaToolchains.launcherFor {
-            languageVersion = JavaLanguageVersion.of(25)
-            @Suppress("UnstableApiUsage")
-            vendor = JvmVendorSpec.JETBRAINS
-        }
+    javaLauncher = devRuntime
 }
 
 nucleus.application {
