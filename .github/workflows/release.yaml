@@ -47,7 +47,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          tag="$(git describe --tags --abbrev=0)"
+          # Exact match: a commit past its nearest tag would overwrite that tag's release.
+          tag="$(git describe --tags --exact-match)"
           echo "RELEASE_VERSION=$tag" >> "$GITHUB_ENV"
 
       # JDK 25 to run Gradle, Linux packaging tools + Xvfb, and Gradle. The Nucleus plugin
@@ -183,7 +184,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          tag="$(git describe --tags --abbrev=0)"
+          # Exact match: a commit past its nearest tag would overwrite that tag's release.
+          tag="$(git describe --tags --exact-match)"
           echo "RELEASE_VERSION=$tag" >> "$GITHUB_ENV"
 
       - uses: actions/setup-java@v5
@@ -249,7 +251,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          tag="$(git describe --tags --abbrev=0)"
+          # Exact match: a commit past its nearest tag would overwrite that tag's release.
+          tag="$(git describe --tags --exact-match)"
           echo "RELEASE_VERSION=$tag" >> "$GITHUB_ENV"
 
       - uses: actions/download-artifact@v8
