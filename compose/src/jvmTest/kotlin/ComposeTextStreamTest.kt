@@ -678,54 +678,20 @@ class ComposeTextStreamTest {
             }
         }
 
-    // The memory usage view reports what the stream is holding; the line counts have to be exact for
-    // it to be worth anything.
+    // Past capacity the buffer stops growing.
     @Test
-    fun memoryUsageCountsBufferedLines() =
-        runBlocking {
-            withFixture { f ->
-                repeat(5) { i ->
-                    f.stream.appendLine(text("line$i"), ignoreWhenBlank = false, showWhenClosed = null)
-                }
-                f.drain()
-
-                val usage = f.stream.memoryUsage()
-                assertEquals("main", usage.streamId)
-                assertEquals(5, usage.shownLines)
-                assertEquals(5, usage.bufferedLines)
-                assertEquals(5, usage.heldLines)
-                assertEquals(1000, usage.maxLines)
-                assertEquals(25L, usage.textCharacters)
-                assertEquals(0L, usage.componentReferences)
-                assertTrue(usage.estimatedBytes > 0, "a buffer holding lines should estimate above zero")
-            }
-        }
-
-    // Past capacity the buffer stops growing, so the reported size has to stop growing with it.
-    @Test
-    fun memoryUsageStopsGrowingAtCapacity() =
+    fun bufferStopsGrowingAtCapacity() =
         runBlocking {
             withFixture(maxLines = 4) { f ->
-                repeat(4) { i ->
+                repeat(44) { i ->
                     f.stream.appendLine(text("line$i"), ignoreWhenBlank = false, showWhenClosed = null)
                 }
                 f.drain()
-                val atCapacity = f.stream.memoryUsage()
 
-                repeat(40) { i ->
-                    f.stream.appendLine(text("later$i"), ignoreWhenBlank = false, showWhenClosed = null)
-                }
-                f.drain()
-                val wellPast = f.stream.memoryUsage()
-
-                assertEquals(4, atCapacity.bufferedLines)
-                assertEquals(4, wellPast.bufferedLines)
-                assertEquals(4, wellPast.shownLines)
-                // The displayed list compacts lazily, so it can still pin an evicted prefix - bounded
-                // by the live window, never unbounded.
-                assertTrue(
-                    wellPast.heldLines in 4..8,
-                    "held lines should stay within one compaction window of the buffer, was ${wellPast.heldLines}",
+                assertEquals(
+                    listOf("line40", "line41", "line42", "line43"),
+                    f.stream.lines.value
+                        .texts(),
                 )
             }
         }
@@ -755,16 +721,14 @@ class ComposeTextStreamTest {
                 }
                 f.drain()
 
-                val usage = f.stream.memoryUsage()
-                assertEquals(20, usage.bufferedLines, "below the cap nothing is dropped")
-                assertEquals(1_000_000, usage.maxLines, "the buffer reports the cap, not the setting")
+                assertEquals(20, f.stream.lines.value.size, "below the cap nothing is dropped")
             }
         }
 
     // The component index used to outlive the lines that registered it, growing for the life of the
     // connection on any stream carrying components. It is now pruned with the buffer.
     @Test
-    fun memoryUsagePrunesComponentIndexWithTheBuffer() =
+    fun componentIndexIsPrunedWithTheBuffer() =
         runBlocking {
             withFixture(maxLines = 4) { f ->
                 repeat(40) { i ->
@@ -772,11 +736,10 @@ class ComposeTextStreamTest {
                 }
                 f.drain()
 
-                val usage = f.stream.memoryUsage()
-                assertEquals(4, usage.bufferedLines)
+                assertEquals(4, f.stream.lines.value.size)
                 assertEquals(
-                    4L,
-                    usage.componentReferences,
+                    4,
+                    f.stream.componentReferenceCount,
                     "component locations should be pruned along with the lines that registered them",
                 )
             }
@@ -808,9 +771,7 @@ class ComposeTextStreamTest {
                     }
                     f.drain()
 
-                    val usage = f.stream.memoryUsage()
-                    assertEquals(5, usage.bufferedLines, "setting $setting should still buffer normally")
-                    assertEquals(1_000_000, usage.maxLines, "setting $setting should report the cap")
+                    assertEquals(5, f.stream.lines.value.size, "setting $setting should still buffer normally")
                 }
             }
         }
@@ -837,9 +798,8 @@ class ComposeTextStreamTest {
                 }
                 f.drain()
 
-                val usage = f.stream.memoryUsage()
-                assertEquals(4, usage.bufferedLines)
-                assertEquals(8L, usage.componentReferences, "two components on each of four buffered lines")
+                assertEquals(4, f.stream.lines.value.size)
+                assertEquals(8, f.stream.componentReferenceCount, "two components on each of four buffered lines")
             }
         }
 

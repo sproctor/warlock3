@@ -29,7 +29,7 @@ Warlock is a multi-platform front-end client for the Simutronics Game Engine (SG
 ./gradlew jvmTest --tests "com.example.MyTest"
 
 # Build the packaged desktop app locally (output under
-# desktopApp/build/potassium/binaries/main/app/)
+# desktopApp/build/compose/binaries/main/app/)
 ./gradlew :desktopApp:createDistributable
 ```
 
@@ -114,8 +114,8 @@ anywhere. `release.yaml` passes the tag through as `RELEASE_VERSION`, and
 `desktopApp/build.gradle.kts` routes a tag containing `beta`/`alpha` to the
 matching update channel and marks the GitHub release a prerelease.
 
-Packaging is handled by [Potassium](https://github.com/sproctor/potassium)
-(`potassium { }` in `desktopApp/build.gradle.kts`), which produces NSIS for
+Packaging is handled by [Nucleus](https://github.com/NucleusFramework/Nucleus)
+(`nucleus.application { }` in `desktopApp/build.gradle.kts`), which produces NSIS for
 Windows, DMG + Zip for macOS, and Deb/AppImage/Tar for Linux, with Azure Trusted
 Signing on Windows and Developer ID signing + notarization on macOS. The
 workflow builds a matrix of Linux amd64/arm64, Windows amd64, and macOS
@@ -123,11 +123,13 @@ arm64/intel, then publishes them as a GitHub release. An Android job builds an
 AAB and uploads to the Play internal track, gated on the `PUBLISH_ANDROID` repo
 variable.
 
-The in-app updater (`potassium-updater`) is fed by YAML manifests that are
+The in-app updater (`nucleus.updater-runtime`) is fed by YAML manifests that are
 distributed as assets on each GitHub release, alongside the binaries: `latest.yml`,
-`latest-mac.yml`, `latest-linux.yml`, `latest-linux-arm64.yml` on stable
-releases, and `beta*.yml` equivalents on beta prereleases (the channel is
-derived from the tag, see the `potassium { }` block). Anything that consumes
+`latest-mac.yml`, `latest-linux.yml` on stable releases, and `beta*.yml`
+equivalents on beta prereleases. Each manifest covers every arch of its OS;
+`latest-linux-arm64.yml` is a copy of the Linux one, kept for installs from the
+Potassium era, whose updater reads that name on arm64 (the channel is
+derived from the tag, see the `nucleus.application { }` block). Anything that consumes
 releases (the updater, the website download page) reads these manifests or the
 release assets directly from GitHub.
 
@@ -137,5 +139,5 @@ the packaged `lib/` directory can contain jars Gradle deduplicated away. A
 release has shipped that passed CI and crashed on launch for every user
 (`v3.1.0-beta.21`, a duplicate `kotlinx-coroutines` from a transitive IntelliJ
 dependency). Before tagging, run `:desktopApp:createDistributable` and run
-`desktopApp/build/potassium/binaries/main/app/warlock/bin/warlock --version`
+`desktopApp/build/compose/binaries/main/app/warlock/bin/warlock --version`
 (or another flag that exits before a window opens) and check for exit code 0.

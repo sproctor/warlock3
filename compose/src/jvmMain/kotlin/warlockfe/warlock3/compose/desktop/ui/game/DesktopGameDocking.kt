@@ -32,6 +32,10 @@ import warlockfe.warlock3.core.window.WindowType
  * The dock-header buttons for a game window: the "..." menu (settings, clear, maximize) and a close
  * button. The docking library draws no affordances of its own, so these are the only ones a window
  * gets.
+ *
+ * [inTitleBar] when drawn in a detached window's title bar instead of the header
+ * ([DetachedGameWindows]): the bar has its own dock, maximize and close buttons, so the menu's
+ * "Reattach window" and "Maximize" and the close button would only repeat them there.
  */
 @Suppress("ktlint:compose:vm-forwarding-check")
 @Composable
@@ -39,6 +43,7 @@ internal fun DesktopDockWindowActions(
     state: DockState,
     viewModel: GameViewModel,
     window: OpenGameWindow,
+    inTitleBar: Boolean = false,
 ) {
     val scope = rememberCoroutineScope()
     val id = DockableId(window.name)
@@ -71,18 +76,22 @@ internal fun DesktopDockWindowActions(
                     Text("Clear window")
                 }
             }
-            selectableItem(
-                selected = false,
-                onClick = {
-                    dismiss()
-                    state.toggleMaximize(id)
-                },
-            ) {
-                Text(if (state.isMaximized(id)) "Restore" else "Maximize")
+            // Maximizing fills the dock area with this pane, which in a detached window it already
+            // fills: there the title bar's own maximize button grows the window instead.
+            if (!inTitleBar) {
+                selectableItem(
+                    selected = false,
+                    onClick = {
+                        dismiss()
+                        state.toggleMaximize(id)
+                    },
+                ) {
+                    Text(if (state.isMaximized(id)) "Restore" else "Maximize")
+                }
             }
             // The menu route to what dragging a window clear of the dock already does. Offered for
             // any window the dock will float, which is every one but main.
-            if (state.canFloat(id)) {
+            if (state.canFloat(id) && !inTitleBar) {
                 val detached = isDetached(state, window.name)
                 selectableItem(
                     selected = false,
@@ -107,7 +116,7 @@ internal fun DesktopDockWindowActions(
                 }
             }
         }
-        if (state.registry[id]?.options?.closable == true) {
+        if (state.registry[id]?.options?.closable == true && !inTitleBar) {
             Image(
                 modifier =
                     Modifier

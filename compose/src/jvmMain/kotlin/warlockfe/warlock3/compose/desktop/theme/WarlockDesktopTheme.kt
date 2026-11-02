@@ -7,11 +7,7 @@ import org.jetbrains.jewel.intui.standalone.theme.IntUiTheme
 import org.jetbrains.jewel.intui.standalone.theme.darkThemeDefinition
 import org.jetbrains.jewel.intui.standalone.theme.default
 import org.jetbrains.jewel.intui.standalone.theme.lightThemeDefinition
-import org.jetbrains.jewel.intui.window.decoratedWindow
-import org.jetbrains.jewel.intui.window.styling.dark
-import org.jetbrains.jewel.intui.window.styling.light
 import org.jetbrains.jewel.ui.ComponentStyling
-import org.jetbrains.jewel.window.styling.TitleBarStyle
 import warlockfe.warlock3.compose.util.LocalDarkTheme
 
 @Composable
@@ -26,15 +22,11 @@ fun WarlockDesktopTheme(
             } else {
                 JewelTheme.lightThemeDefinition()
             },
-        styling =
-            ComponentStyling
-                .default()
-                // Provide the title-bar + window styling Jewel's DecoratedWindow reads from the theme.
-                .decoratedWindow(titleBarStyle = if (isDark) TitleBarStyle.dark() else TitleBarStyle.light()),
+        // Window and title-bar styling come from Nucleus's Jewel windows, which derive it from the theme.
+        styling = ComponentStyling.default(),
     ) {
-        CompositionLocalProvider(
-            LocalDarkTheme provides isDark,
-            content = content,
-        )
+        CompositionLocalProvider(LocalDarkTheme provides isDark) {
+            WarlockWindowChrome(isDark = isDark, content = content)
+        }
     }
 }

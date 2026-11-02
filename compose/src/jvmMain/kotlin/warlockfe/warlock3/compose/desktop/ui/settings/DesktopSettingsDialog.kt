@@ -24,8 +24,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.DialogWindow
 import androidx.compose.ui.window.rememberDialogState
+import dev.nucleusframework.application.DecoratedDialog
+import dev.nucleusframework.application.LocalNucleusApplicationScope
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -33,6 +34,7 @@ import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.Divider
 import org.jetbrains.jewel.ui.component.Text
 import warlockfe.warlock3.compose.crash.CrashReporting
+import warlockfe.warlock3.compose.desktop.theme.WarlockDialogTitleBar
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.app_icon
 import warlockfe.warlock3.compose.ui.settings.SettingsGroup
@@ -81,10 +83,10 @@ fun DesktopSettingsDialog(
     initialWindowTarget: String? = null,
     windowLiveContext: WindowSettingsLiveContext? = null,
 ) {
-    DialogWindow(
+    LocalNucleusApplicationScope.current.DecoratedDialog(
         title = "Settings",
         onCloseRequest = closeDialog,
-        // Without an explicit icon the title bar falls back to the JBR default (Windows shows it).
+        resizable = true,
         icon = painterResource(Res.drawable.app_icon),
         state = rememberDialogState(width = 900.dp, height = 650.dp),
     ) {
@@ -93,12 +95,13 @@ fun DesktopSettingsDialog(
         // A dialog is its own Compose scene, so it provides its own clipboard and does not inherit
         // the safe one the app window is running under; see [SafeClipboard].
         ProvideSafeClipboard {
-            Box(
+            Column(
                 modifier =
                     Modifier
                         .fillMaxSize()
                         .background(JewelTheme.globalColors.panelBackground),
             ) {
+                WarlockDialogTitleBar { Text("Settings") }
                 Row(modifier = Modifier.fillMaxSize()) {
                     Column(
                         modifier =
