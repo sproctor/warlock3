@@ -121,7 +121,9 @@ jobs:
             fi
             log="$(mktemp)"
             status=0
-            ./gradlew $TASKS --stacktrace --no-daemon 2>&1 | tee "$log" \
+            # iosSkip: Nucleus's native-image resource task pulls in the iOS tasks of the app's modules,
+            # and the Kotlin plugin refuses to create those on a Linux arm64 host.
+            ./gradlew $TASKS -PiosSkip=true --stacktrace --no-daemon 2>&1 | tee "$log" \
               || status="${PIPESTATUS[0]}"
             if [ "$status" -eq 0 ]; then
               exit 0
