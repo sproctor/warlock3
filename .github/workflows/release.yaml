@@ -108,7 +108,7 @@ jobs:
         # re-run it replaces (which re-submits too, after recompiling from scratch).
           TASKS: ${{ matrix.tasks }}
         run: |
-          transient='Unexpected end of file from server|socket hang up|Connection reset|Connection timed out|Read timed out|ECONNRESET|ETIMEDOUT|EAI_AGAIN|ENOTFOUND|The Internet connection appears to be offline|Could not (GET|HEAD|resolve)|429 Too Many Requests|502 Bad Gateway|503 Service|Remote host terminated the handshake'
+          transient='Unexpected end of file from server|socket hang up|Connection reset|Connection timed out|Read timed out|ECONNRESET|ETIMEDOUT|EAI_AGAIN|ENOTFOUND|UnknownHostException|The Internet connection appears to be offline|Could not (GET|HEAD|resolve)|429 Too Many Requests|502 Bad Gateway|503 Service|Remote host terminated the handshake'
           # notarytool has also been killed outright mid-submission (exit 138 = SIGBUS).
           # Anything past 128 is a signal death, not a verdict on what we built. Apple's
           # "403 ... agreement is missing or has expired" deliberately matches neither:
