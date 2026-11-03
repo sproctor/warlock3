@@ -159,7 +159,9 @@ class WraythStreamRoutingTests {
             val main = mutableListOf<ClientTextEvent>()
             val streams = mutableListOf<ClientTextEvent>()
             val mainSubscribed = CompletableDeferred<Unit>()
-            scope.launch {
+            // Unconfined, so each collector takes a line inside the client's own send: nothing can
+            // still be buffered when the client disconnects, and scope.cancel below loses nothing.
+            scope.launch(Dispatchers.Unconfined) {
                 client.eventFlow.onSubscription { mainSubscribed.complete(Unit) }.collect { event ->
                     if (event is ClientTextEvent) {
                         synchronized(main) { main += event }
@@ -168,7 +170,7 @@ class WraythStreamRoutingTests {
             }
             // Undispatched, so each is subscribed before the client connects.
             for (stream in watched) {
-                scope.launch(start = CoroutineStart.UNDISPATCHED) {
+                scope.launch(Dispatchers.Unconfined, start = CoroutineStart.UNDISPATCHED) {
                     client.streamLines(stream).collect { event ->
                         synchronized(streams) { streams += event }
                     }
