@@ -5,6 +5,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -177,7 +178,19 @@ class WraythStreamRoutingTests {
             mainSubscribed.await()
             beforeConnect(client)
             client.connect("key")
-            withTimeout(10.seconds) { client.disconnected.first { it } }
+            withTimeout(10.seconds) {
+                client.disconnected.first { it }
+                // Disconnecting says the client has sent everything, not that the collectors have
+                // taken it: they run on their own threads, and cancelling them here drops what they
+                // haven't reached. Each line sent has one collector, so the stream side can be
+                // counted. eventFlow keeps no count, so wait for main to go quiet.
+                while (synchronized(streams) { streams.size } < feed.linesSent) delay(1)
+                var seen = -1
+                while (seen != synchronized(main) { main.size }) {
+                    seen = synchronized(main) { main.size }
+                    delay(50)
+                }
+            }
             scope.cancel()
             registry to TextEvents(synchronized(main) { main.toList() }, synchronized(streams) { streams.toList() })
         }
