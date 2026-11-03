@@ -83,7 +83,3 @@ allprojects {
             }.configureEach { enabled = false }
     }
 }
-
-tasks.wrapper {
-    gradleVersion = "9.6.1"
-}
