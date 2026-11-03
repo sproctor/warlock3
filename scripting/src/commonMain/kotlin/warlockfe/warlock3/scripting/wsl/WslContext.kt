@@ -66,6 +66,7 @@ class WslContext(
             "character" to WslVariable { client.characterName.value },
             "roundtime" to WslVariable { client.roundTimeEnd.value },
             "casttime" to WslVariable { client.castTimeEnd.value },
+            "roomid" to WslVariable { client.roomId.value },
             "variables" to WslVariables(this),
         )
 
