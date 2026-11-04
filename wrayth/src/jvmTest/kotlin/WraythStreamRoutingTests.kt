@@ -246,7 +246,7 @@ class WraythStreamRoutingTests {
 }
 
 /** Serves [lines] in order and then reports the connection closed. */
-private class ScriptedSocket(
+internal class ScriptedSocket(
     lines: List<String>,
 ) : WarlockSocket {
     private val incoming = Channel<String>(Channel.UNLIMITED)
@@ -278,7 +278,7 @@ private class ScriptedSocket(
 }
 
 /** Keeps the whole lines appended to each stream, as plain text. */
-private class RecordingWindowRegistry : WindowRegistry {
+internal class RecordingWindowRegistry : WindowRegistry {
     val streams = ConcurrentHashMap<String, RecordingStream>()
 
     // The objects each panel holds now, by panel and object id.
@@ -333,7 +333,7 @@ private class RecordingWindowRegistry : WindowRegistry {
     override fun close() = Unit
 }
 
-private class RecordingStream(
+internal class RecordingStream(
     override val id: String,
 ) : TextStream {
     val lines: MutableList<String> = java.util.Collections.synchronizedList(mutableListOf())
@@ -372,7 +372,7 @@ private class RecordingStream(
 }
 
 /** In-memory [ClientSettingDao], so the settings repository needs no SQLite. */
-private class InMemoryClientSettingDao : ClientSettingDao {
+internal class InMemoryClientSettingDao : ClientSettingDao {
     private val values = ConcurrentHashMap<String, String>()
 
     override suspend fun getAll(): List<ClientSettingEntity> = values.map { ClientSettingEntity(it.key, it.value) }

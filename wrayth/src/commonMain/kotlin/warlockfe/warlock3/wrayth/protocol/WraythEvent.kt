@@ -1,6 +1,8 @@
 package warlockfe.warlock3.wrayth.protocol
 
+import warlockfe.warlock3.core.client.CreatureStatus
 import warlockfe.warlock3.core.client.PanelObject
+import warlockfe.warlock3.core.client.RoomMeta
 import warlockfe.warlock3.core.compass.Direction
 import warlockfe.warlock3.core.text.WarlockStyle
 import warlockfe.warlock3.core.window.BackgroundImageHorizontalAlignment
@@ -148,7 +150,45 @@ data class WraythCloseDialogEvent(
     val id: String,
 ) : WraythEvent
 
-data object WraythNavEvent : WraythEvent
+/** `<nav rm='…'/>`: the player arrived in a room. [roomId] is null for a room with no id (`<nav/>`). */
+data class WraythNavEvent(
+    val roomId: String?,
+) : WraythEvent
+
+/** `<pulse mana='0|1'/>`: a mana or spirit/stamina pulse just happened. */
+data class WraythPulseEvent(
+    val manaNext: Boolean,
+    val minSeconds: Int,
+    val maxSeconds: Int,
+) : WraythEvent
+
+data class WraythCreatureStatusEvent(
+    val status: CreatureStatus,
+) : WraythEvent
+
+data class WraythRoomMetaEvent(
+    val roomMeta: RoomMeta,
+) : WraythEvent
+
+/**
+ * `<objectives action='…'>` opens a batch of `<objective>` tags, each with `<task>`, `<reward>` and
+ * `<action>` children, closed by [WraythObjectivesEndEvent]. The client gathers them in between,
+ * as it does `<dir>` within `<compass>`.
+ */
+data class WraythObjectivesStartEvent(
+    val action: String?,
+) : WraythEvent
+
+data object WraythObjectivesEndEvent : WraythEvent
+
+data class WraythObjectiveEvent(
+    val attributes: Map<String, String>,
+) : WraythEvent
+
+data class WraythObjectiveChildEvent(
+    val name: String,
+    val attributes: Map<String, String>,
+) : WraythEvent
 
 data class WraythBackgroundEvent(
     val windowName: String,
