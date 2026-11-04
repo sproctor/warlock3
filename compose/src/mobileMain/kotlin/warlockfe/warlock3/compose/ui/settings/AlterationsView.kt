@@ -151,7 +151,7 @@ fun EditAlterationDialog(
                             characterId = alteration.characterId,
                             pattern = pattern.text.toString(),
                             sourceStream = sourceStream.text.toString().ifBlank { null },
-                            destinationStream = null,
+                            destinationStream = alteration.destinationStream,
                             result = replacement.text.toString().ifBlank { null },
                             ignoreCase = ignoreCase,
                             keepOriginal = alteration.keepOriginal,
