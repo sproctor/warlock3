@@ -122,6 +122,66 @@ class WraythStreamRoutingTests {
         assertEquals(1L, feed.linesSent)
     }
 
+    // GS4's BUG dialog fills its streamBox from a <dynaStream> sent after the dialog.
+    private val bugDialog =
+        "<openDialog type='dynamic' id='bug' title='Bug' location='detach' height='190' width='500'>" +
+            "<dialogData id='bug'><streamBox id='instructions' height='60' width='450'/></dialogData></openDialog>"
+
+    @Test
+    fun aDynaStreamFillsItsStreamBoxAndLeavesTheLineAroundItWhole() {
+        val (registry, _) =
+            run(
+                "<mode id=\"GAME\"/>",
+                bugDialog,
+                "before <dynaStream id='instructions'>Detail it.</dynaStream>after",
+                "<dynaStream id='instructions'>Then send it.</dynaStream>",
+            )
+        assertEquals("Detail it.\nThen send it.", registry.streamBoxText("bug", "instructions"))
+        assertTrue("before after" in registry.lines("main"))
+        assertFalse(registry.lines("main").any { it.contains("Detail it.") })
+    }
+
+    @Test
+    fun anEmptyDynaStreamAddsNoLine() {
+        val (registry, _) =
+            run(
+                "<mode id=\"GAME\"/>",
+                bugDialog,
+                "<dynaStream id='instructions'>Detail it.</dynaStream>",
+                "<dynaStream id='instructions'></dynaStream>",
+            )
+        assertEquals("Detail it.", registry.streamBoxText("bug", "instructions"))
+    }
+
+    @Test
+    fun clearDynaStreamEmptiesTheBox() {
+        val (registry, _) =
+            run(
+                "<mode id=\"GAME\"/>",
+                bugDialog,
+                "<dynaStream id='instructions'>Detail it.</dynaStream>",
+                "<clearDynaStream id='instructions'/>",
+            )
+        assertEquals(null, registry.streamBoxText("bug", "instructions"))
+    }
+
+    @Test
+    fun aDynaStreamWithNoIdLeavesItsTextInTheLine() {
+        val (registry, _) = run("<mode id=\"GAME\"/>", "a goblin <dynaStream>arrives</dynaStream>")
+        assertTrue("a goblin arrives" in registry.lines("main"))
+    }
+
+    @Test
+    fun aDynaStreamForNoStreamBoxGoesToTheStreamWindowOfThatName() {
+        val (registry, _) =
+            run(
+                "<mode id=\"GAME\"/>",
+                "<streamWindow id='thoughts' title='Thoughts'/>",
+                "<dynaStream id='thoughts'>a goblin thinks</dynaStream>",
+            )
+        assertEquals(listOf("a goblin thinks"), registry.lines("thoughts"))
+    }
+
     /** The text events a client sent: on eventFlow, and on streamLines for the [WATCHED] streams. */
     private class TextEvents(
         val main: List<ClientTextEvent>,
@@ -221,6 +281,14 @@ private class ScriptedSocket(
 private class RecordingWindowRegistry : WindowRegistry {
     val streams = ConcurrentHashMap<String, RecordingStream>()
 
+    // The objects each panel holds now, by panel and object id.
+    val panels = ConcurrentHashMap<String, ConcurrentHashMap<String, PanelObject>>()
+
+    fun streamBoxText(
+        panel: String,
+        box: String,
+    ): String? = (panels[panel]?.get(box) as? PanelObject.StreamBox)?.text?.toText()
+
     fun lines(stream: String): List<String> = streams[stream]?.lines?.toList() ?: emptyList()
 
     override val presets: StateFlow<Map<String, StyleLayer>> = MutableStateFlow(emptyMap())
@@ -241,9 +309,13 @@ private class RecordingWindowRegistry : WindowRegistry {
         object : PanelState {
             override val id = name
 
-            override suspend fun setObject(value: PanelObject) = Unit
+            override suspend fun setObject(value: PanelObject) {
+                panels.computeIfAbsent(name) { ConcurrentHashMap() }[value.id] = value
+            }
 
-            override suspend fun clear() = Unit
+            override suspend fun clear() {
+                panels.remove(name)
+            }
 
             override suspend fun updateState() = Unit
         }

@@ -13,8 +13,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.InputTransformation
 import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.maxLength
-import androidx.compose.foundation.text.input.rememberTextFieldState
-import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
@@ -32,7 +30,6 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.snapshots.SnapshotStateMap
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -100,29 +97,9 @@ fun PanelContent(
     // carrying the same string for both states, and reading the tick back off [values] would then
     // leave it permanently ticked and impossible to clear.
     val checkedStates = remember { mutableStateMapOf<String, Boolean>() }
-    // The echo is substituted too: the BUG dialog echoes "bug %category%;%title%;%details%", and
-    // Saga shows the filled-in line, not the template.
-    val executeWidget: (String, String?) -> Unit = { cmd, echo ->
-        onAction(WarlockAction.SendWidgetCommand(substitute(cmd, values), echo?.let { substitute(it, values) }))
-    }
+    val executeWidget: (String, String?) -> Unit = { cmd, echo -> onAction(widgetCommand(cmd, echo, values)) }
     val execute: (String) -> Unit = { executeWidget(it, null) }
-    val pressButton: (PanelObject.Button) -> Unit = { data ->
-        // A close button sends its command first and dismisses the panel after, which is the order
-        // the real client uses. It goes as one action so the two halves cannot be reordered on their
-        // way to the socket.
-        val closes = panelId?.takeIf { data.closesPanel }
-        if (closes != null) {
-            onAction(
-                WarlockAction.ClosePanel(
-                    id = closes,
-                    command = data.cmd?.let { substitute(it, values) },
-                    echo = data.echo?.let { substitute(it, values) },
-                ),
-            )
-        } else {
-            data.cmd?.let { executeWidget(it, data.echo) }
-        }
-    }
+    val pressButton: (PanelObject.Button) -> Unit = { data -> buttonAction(data, panelId, values)?.let(onAction) }
     // Wrayth gives each widget type its own font out of the skin; we deliberately draw them all with
     // one style, so there is a single knob here rather than a size hardcoded at every call site.
     // Chrome (panelId == null) is not a window the user can configure, so it keeps the defaults: the
@@ -270,11 +247,7 @@ fun PanelContent(
                     EditBox(
                         data = data,
                         values = values,
-                        onEnter = {
-                            data.enterButton
-                                ?.let { id -> dataObjects.firstOrNull { it.id == id } as? PanelObject.Button }
-                                ?.let(pressButton)
-                        },
+                        onEnter = { enterButtonOf(data, dataObjects)?.let(pressButton) },
                     )
                 }
 
@@ -292,10 +265,7 @@ private fun EditBox(
     values: SnapshotStateMap<String, String>,
     onEnter: () -> Unit,
 ) {
-    val state = rememberTextFieldState(data.value ?: "")
-    // Seed/refresh from the server; typing overrides until the next update, as for the other widgets.
-    LaunchedEffect(data.id, data.value) { data.value?.let { state.setTextAndPlaceCursorAtEnd(it) } }
-    LaunchedEffect(state) { snapshotFlow { state.text.toString() }.collect { values[data.id] = it } }
+    val state = rememberEditBoxState(data, values)
     val focusRequester = remember { FocusRequester() }
     if (data.focus) {
         LaunchedEffect(Unit) { focusRequester.requestFocus() }
@@ -343,15 +313,6 @@ private fun StreamBox(
         }
     }
 }
-
-private val commandVariableRegex = Regex("%([^%]+)%")
-
-// Replaces `%<id>%` placeholders in a command with the current values of the panel's value-bearing
-// widgets (e.g. "prep %dDBSpell0%" -> "prep 401"). Unknown placeholders are left as-is.
-private fun substitute(
-    cmd: String,
-    values: Map<String, String>,
-): String = commandVariableRegex.replace(cmd) { match -> values[match.groupValues[1]] ?: match.value }
 
 @Composable
 private fun DropDownBox(

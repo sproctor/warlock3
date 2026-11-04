@@ -127,15 +127,19 @@ fun PanelObjectLayout(
                 val targetHeight =
                     heightSource?.toPx(heightBasis, this, scale)
                         ?: progressBarHeightPx.takeIf { data is PanelObject.ProgressBar }
-                        ?: fieldHeightPx.takeIf {
-                            data is PanelObject.Label || data is PanelObject.EditBox || data is PanelObject.DropDownBox
-                        }
+                        ?: fieldHeightPx.takeIf { data is PanelObject.EditBox || data is PanelObject.DropDownBox }
+                // A label gets the same row as a minimum rather than a fixed height, so a label in a
+                // larger font than Wrayth's still shows whole instead of being cut off at the row.
+                val minHeight =
+                    targetHeight
+                        ?: fieldHeightPx.coerceAtMost(constraints.maxHeight).takeIf { data is PanelObject.Label }
+                        ?: 0
 
                 val childConstraints =
                     Constraints(
                         minWidth = targetWidth ?: 0,
                         maxWidth = targetWidth ?: constraints.maxWidth,
-                        minHeight = targetHeight ?: 0,
+                        minHeight = minHeight,
                         maxHeight = targetHeight ?: constraints.maxHeight,
                     )
 

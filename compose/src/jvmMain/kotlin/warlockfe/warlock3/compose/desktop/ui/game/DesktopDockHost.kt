@@ -127,16 +127,16 @@ fun NucleusApplicationScope.DetachedGameWindows(
         GameWindowStyles(viewModel) {
             JewelDocking {
                 val titleBarHeight = LocalTitleBarStyle.current.metrics.height
+                val windows by viewModel.windows.collectAsState()
                 FloatingDockWindows(state) { model ->
-                    // Before the window is emitted, so it opens at this size rather than being
-                    // resized after.
-                    remember(model.windowId) {
-                        model.applyRequestedSize { name ->
-                            viewModel.windows.value
-                                .firstOrNull { it.name == name }
-                                ?.requestedWindowSize(titleBarHeight)
+                    // Keyed on the size as well, so a window whose info arrives after it was first
+                    // composed still gets it. Applied before the window is emitted, so that in the
+                    // usual order it opens at this size rather than being resized after.
+                    val requestedSize =
+                        model.dockableId?.value?.let { name ->
+                            windows.firstOrNull { it.name == name }?.requestedWindowSize(titleBarHeight)
                         }
-                    }
+                    remember(model.windowId, requestedSize) { model.applyRequestedSize(requestedSize) }
                     DecoratedWindow(
                         onCloseRequest = model.onCloseRequest,
                         state = model.state,
@@ -396,12 +396,9 @@ private fun TitleBarButton(
  * still the platform's to choose. A window with bounds already (dragged out of the dock, restored
  * from a saved layout, or resized by the user) keeps them.
  */
-private fun FloatingWindowModel.applyRequestedSize(requestedSize: (String) -> DpSize?) {
-    if (state.position != WindowPosition.PlatformDefault) return
-    dockableId
-        ?.value
-        ?.let(requestedSize)
-        ?.let { state.size = it }
+private fun FloatingWindowModel.applyRequestedSize(size: DpSize?) {
+    if (size == null || state.position != WindowPosition.PlatformDefault) return
+    state.size = size
 }
 
 /**

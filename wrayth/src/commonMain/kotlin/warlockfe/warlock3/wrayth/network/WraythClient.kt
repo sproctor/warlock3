@@ -242,9 +242,9 @@ class WraythClient(
     private var currentStream: TextStream? = null
 
     // Every streamBox a panel holds, by id, with the panel it sits in, so the dynaStream that fills
-    // it later can find it. The id of the dynaStream being read, while one is open.
+    // it later can find it. Where the dynaStream being read is going, while one is open.
     private val streamBoxes = mutableMapOf<String, StreamBoxSlot>()
-    private var dynaStreamId: String? = null
+    private var openDynaStream: DynaStreamTarget? = null
 
     private var currentStyle: WarlockStyle? = null
     private val styleStack = ArrayDeque<WarlockStyle>()
@@ -546,18 +546,35 @@ class WraythClient(
             is WraythDynaStreamEvent -> {
                 val id = event.id
                 if (id != null) {
-                    // Whatever the line held before the dynaStream belongs where it was already going.
-                    flushBuffer(true)
-                    dynaStreamId = id
-                } else {
-                    val slot = dynaStreamId?.let { streamBoxes[it] }
-                    dynaStreamId = null
-                    val text = lineBuffer.takeLine()
-                    // A dynaStream for a box no panel holds has nowhere to go, and Saga drops it too.
-                    if (slot != null && text != null) {
-                        val previous = slot.box.text
-                        updateStreamBox(slot, if (previous == null) text else previous + StyledString("\n") + text)
+                    if (id in streamBoxes) {
+                        // The text around it is still one line, so it is set aside rather than flushed.
+                        lineBuffer.openDiversion()
+                        openDynaStream = DynaStreamTarget.Box(id)
+                    } else {
+                        // No panel holds a box by that name: a stream window does, as dynaStream was
+                        // read before streamBoxes were.
+                        handleEvent(WraythStreamEvent(id))
+                        openDynaStream = DynaStreamTarget.Stream
                     }
+                } else {
+                    when (val open = openDynaStream) {
+                        is DynaStreamTarget.Box -> {
+                            val text = lineBuffer.closeDiversion()
+                            val slot = streamBoxes[open.id]
+                            if (slot != null && text != null && text.toText().isNotEmpty()) {
+                                val previous = slot.box.text
+                                updateStreamBox(slot, if (previous == null) text else previous + StyledString("\n") + text)
+                            }
+                        }
+
+                        DynaStreamTarget.Stream -> {
+                            handleEvent(WraythStreamEvent(null))
+                        }
+
+                        // A closing tag with nothing open, such as the end of a dynaStream with no id.
+                        null -> {}
+                    }
+                    openDynaStream = null
                 }
             }
 
@@ -672,6 +689,7 @@ class WraythClient(
             }
 
             is WraythCloseDialogEvent -> {
+                streamBoxes.values.removeAll { it.panelId == event.id }
                 notifyListeners(ClientCloseWindowEvent(name = event.id))
             }
 
@@ -1212,6 +1230,16 @@ class WraythClient(
 
 val TextStream?.isMainStream
     get() = this == null || this.id == "main"
+
+private sealed interface DynaStreamTarget {
+    // A panel's streamBox, gathering the dynaStream's text until it closes.
+    data class Box(
+        val id: String,
+    ) : DynaStreamTarget
+
+    // A stream window, written to as a pushStream would be.
+    data object Stream : DynaStreamTarget
+}
 
 // A streamBox as last sent to [panelId], with whatever dynaStream text it holds by now.
 private data class StreamBoxSlot(
