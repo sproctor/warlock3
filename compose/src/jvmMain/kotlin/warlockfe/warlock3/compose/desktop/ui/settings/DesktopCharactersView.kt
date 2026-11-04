@@ -9,27 +9,24 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.launch
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Text
 import warlockfe.warlock3.compose.desktop.shim.WarlockListItem
 import warlockfe.warlock3.compose.desktop.shim.WarlockOutlinedButton
 import warlockfe.warlock3.compose.desktop.shim.WarlockScrollableColumn
+import warlockfe.warlock3.compose.ui.settings.CharactersViewModel
 import warlockfe.warlock3.core.client.GameCharacter
-import warlockfe.warlock3.core.prefs.repositories.CharacterRepository
 
 @Composable
 fun DesktopCharactersView(
+    viewModel: CharactersViewModel,
     allCharacters: List<GameCharacter>,
-    characterRepository: CharacterRepository,
     modifier: Modifier = Modifier,
 ) {
     var deleting by remember { mutableStateOf<GameCharacter?>(null) }
-    val scope = rememberCoroutineScope()
 
     Column(modifier.fillMaxSize()) {
         Text("Characters")
@@ -71,8 +68,7 @@ fun DesktopCharactersView(
                     "This does not affect your play.net account.",
             onDismiss = { deleting = null },
             onConfirm = {
-                scope.launch {
-                    characterRepository.deleteCharacter(character.id)
+                viewModel.delete(character) {
                     deleting = null
                 }
             },

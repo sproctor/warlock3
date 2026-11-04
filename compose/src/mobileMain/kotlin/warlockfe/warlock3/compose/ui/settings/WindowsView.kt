@@ -9,7 +9,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -19,30 +18,22 @@ import warlockfe.warlock3.compose.util.LocalDarkTheme
 import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.compose.util.toPresets
 import warlockfe.warlock3.core.client.GameCharacter
-import warlockfe.warlock3.core.prefs.config.GLOBAL_CHARACTER_ID
-import warlockfe.warlock3.core.prefs.repositories.CharacterSettingsRepository
-import warlockfe.warlock3.core.prefs.repositories.WindowSettingsRepository
 import warlockfe.warlock3.core.text.StyleLayer
 import warlockfe.warlock3.core.text.resolve
 import warlockfe.warlock3.core.text.toLayer
 import warlockfe.warlock3.core.text.toStyleDefinition
 
 /** Per-window color/font settings for the selected character. */
+@Suppress("ktlint:compose:vm-forwarding-check")
 @Composable
 fun WindowsView(
-    initialCharacter: GameCharacter?,
+    viewModel: WindowsViewModel,
     characters: List<GameCharacter>,
-    characterSettingsRepository: CharacterSettingsRepository,
-    windowSettingRepository: WindowSettingsRepository,
     windowLiveContext: WindowSettingsLiveContext?,
     initialWindowTarget: String?,
     modifier: Modifier = Modifier,
 ) {
-    val currentCharacterState =
-        remember(initialCharacter, characters) {
-            mutableStateOf(initialCharacter ?: characters.firstOrNull())
-        }
-    val currentCharacter = currentCharacterState.value
+    val currentCharacter = viewModel.currentCharacter.collectAsState().value
     if (currentCharacter == null) {
         Text("No characters created")
         return
@@ -55,16 +46,12 @@ fun WindowsView(
     val skin = LocalSkin.current
     val isDark = LocalDarkTheme.current
     val skinDefault = remember(skin, isDark) { skin.toPresets(isDark)["default"]?.toLayer() ?: StyleLayer() }
-    val charBase by remember(currentCharacter.id) {
-        characterSettingsRepository.observeBaseStyle(currentCharacter.id)
-    }.collectAsState(StyleLayer())
-    val globalBase by remember { characterSettingsRepository.observeBaseStyle(GLOBAL_CHARACTER_ID) }.collectAsState(StyleLayer())
+    val charBase by viewModel.characterBaseStyle.collectAsState()
+    val globalBase by viewModel.globalBaseStyle.collectAsState()
     // The panel scale a window's override falls back to. It has to come from the character being
     // edited (which the selector above can change), not from LocalPanelDefaults - that belongs to the
     // connected game's composition, which is a different character, or absent entirely.
-    val characterPanelScale by remember(currentCharacter.id) {
-        characterSettingsRepository.observePanelScale(currentCharacter.id)
-    }.collectAsState(null)
+    val characterPanelScale by viewModel.characterPanelScale.collectAsState()
     val defaultStyle =
         remember(charBase, globalBase, skinDefault) {
             resolve(listOf(charBase, globalBase, skinDefault)).toStyleDefinition()
@@ -74,14 +61,14 @@ fun WindowsView(
         SettingsCharacterSelector(
             selectedCharacter = currentCharacter,
             characters = characters,
-            onSelect = { currentCharacterState.value = it },
+            onSelect = viewModel::selectCharacter,
         )
         Spacer(Modifier.height(16.dp))
         ScrollableColumn(Modifier.weight(1f).fillMaxWidth()) {
             WindowsSettingsSection(
                 characterId = currentCharacter.id,
                 characterPanelScale = characterPanelScale ?: DEFAULT_PANEL_SCALE,
-                windowSettingRepository = windowSettingRepository,
+                viewModel = viewModel,
                 defaultStyle = defaultStyle,
                 liveContext = windowLiveContext,
                 initialWindowTarget = initialWindowTarget,
