@@ -179,6 +179,10 @@ internal class LuaBindings(
         bind("getHands") {
             listOf(client.leftHand.value, client.rightHand.value, client.spellHand.value).map { it?.let(LuaValue::Str) ?: LuaValue.Nil }
         }
+        // The game's id for the current room, or nil where it has none (and on games that send none)
+        bind("getRoomId") {
+            listOf(client.roomId.value?.let(LuaValue::Str) ?: LuaValue.Nil)
+        }
         bind("showHands") { args ->
             scriptable("showHands").showHands((args.firstOrNull() as? LuaValue.Bool)?.value ?: true)
             emptyList()
