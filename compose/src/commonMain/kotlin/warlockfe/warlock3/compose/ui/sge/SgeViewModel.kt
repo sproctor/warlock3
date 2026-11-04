@@ -159,10 +159,10 @@ class SgeViewModel(
                         windowRegistry = streamRegistry,
                         socket = socket,
                     )
-                sfClient.connect(credentials.key)
                 val gameViewModel =
-                    gameViewModelFactory.create(
+                    gameViewModelFactory.connect(
                         client = sfClient,
+                        key = credentials.key,
                         windowRegistry = streamRegistry,
                         // Reuse the same credentials (and key) on reconnect.
                         reconnect = { connectToGame(credentials) },

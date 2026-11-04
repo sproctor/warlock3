@@ -13,7 +13,6 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -36,7 +35,6 @@ import warlockfe.warlock3.core.client.SendCommandType
 import warlockfe.warlock3.core.client.StreamLineFeed
 import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.client.WarlockMenuData
-import warlockfe.warlock3.core.compass.Direction
 import warlockfe.warlock3.core.prefs.repositories.CharacterRepository
 import warlockfe.warlock3.core.prefs.repositories.LoggingRepository
 import warlockfe.warlock3.core.text.StyledString
@@ -175,25 +173,8 @@ class TelnetClient(
     // Whether the vitals panel has been announced; it is, on the first vitals the server sends.
     private var vitalsAnnounced = false
 
-    // The exits last reported, kept because the compass is told by event and a MUD sends the first
-    // room the moment we connect, before anything is listening.
-    private var lastExits: Set<Direction>? = null
-
     init {
         windowRegistry.setCharacterId(checkNotNull(characterId.value))
-        scope.launch {
-            listOf(
-                TelnetWindow(name = "warlockscripts", title = "Running scripts", ifClosed = null, styleIfClosed = null),
-                TelnetWindow(name = "scriptoutput", title = "Script output", ifClosed = "main", styleIfClosed = "echo"),
-                TelnetWindow(name = "debug", title = "Debug", ifClosed = null, styleIfClosed = null),
-            ).forEach { addWindow(it) }
-        }
-        scope.launch {
-            // The game screen subscribes once it is up; a room reported before then would be lost
-            // to it, so its exits are sent again.
-            _eventFlow.subscriptionCount.first { it > 0 }
-            lastExits?.let { notifyListeners(ClientCompassEvent(it.toPersistentHashSet())) }
-        }
     }
 
     override fun getCurrentTime(): Instant = Clock.System.now()
@@ -204,6 +185,13 @@ class TelnetClient(
         if (characterRepository.getCharacter(id) == null) {
             characterRepository.saveCharacter(GameCharacter(id = id, gameCode = gameCode, name = character))
         }
+        // Announced here rather than on construction, so the game screen, which subscribes to
+        // eventFlow before it connects us, hears about them.
+        listOf(
+            TelnetWindow(name = "warlockscripts", title = "Running scripts", ifClosed = null, styleIfClosed = null),
+            TelnetWindow(name = "scriptoutput", title = "Script output", ifClosed = "main", styleIfClosed = "echo"),
+            TelnetWindow(name = "debug", title = "Debug", ifClosed = null, styleIfClosed = null),
+        ).forEach { addWindow(it) }
         scope.launch { readLoop() }
     }
 
@@ -251,7 +239,6 @@ class TelnetClient(
         logger.d { "GMCP ${event.name} ${event.data}" }
         when (val update = gmcp.handle(event.name, event.data)) {
             is GmcpUpdate.Exits -> {
-                lastExits = update.directions
                 notifyListeners(ClientCompassEvent(update.directions.toPersistentHashSet()))
             }
 

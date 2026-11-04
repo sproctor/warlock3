@@ -741,9 +741,8 @@ private class WarlockCommand : CliktCommand() {
                             windowRegistry = windowRegistry,
                             socket = socket,
                         )
-                    client.connect(key)
                     val viewModel =
-                        appContainer.gameViewModelFactory.create(client, windowRegistry)
+                        appContainer.gameViewModelFactory.connect(client, key, windowRegistry)
                     setScreen(
                         GameScreen.ConnectedGameState(viewModel),
                     )

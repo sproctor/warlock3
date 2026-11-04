@@ -27,8 +27,10 @@ import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.delay
@@ -750,9 +752,14 @@ class GameViewModel(
             }.launchIn(viewModelScope)
     }
 
+    // Subscribes before the constructor returns, on whatever thread builds this view model. The
+    // client's eventFlow has no replay, so an event emitted before this collector is registered is
+    // lost to it - the first compass, or a window the game opens on login. launchIn would only queue
+    // the subscription on the main thread, behind a read loop that is already running; started
+    // undispatched, it is in place before the factory starts the client (GameViewModelFactory.connect).
     private fun handleClientEvents() {
-        client.eventFlow
-            .onEach { event ->
+        viewModelScope.launch(start = CoroutineStart.UNDISPATCHED) {
+            client.eventFlow.collect { event ->
                 when (event) {
                     is ClientCompassEvent -> {
                         _compassState.value = event.directions.toSet()
@@ -812,7 +819,8 @@ class GameViewModel(
                         // don't care
                     }
                 }
-            }.launchIn(viewModelScope)
+            }
+        }
     }
 
     private fun trackMaxTypeAhead() {
@@ -1836,6 +1844,9 @@ class GameViewModel(
             job.cancelAndJoin()
         }
         closeClient()
+        // No ViewModelStore owns this view model (it lives in GameState), so nothing will clear it
+        // for us: without this, every collector it started would outlive the game.
+        viewModelScope.cancel()
     }
 
     /** Tear down this game's client and window registry without touching any reconnect in flight. */
@@ -1872,11 +1883,13 @@ class GameViewModel(
             viewModelScope.launch {
                 try {
                     action()
-                    // The reconnect installed a fresh game screen; release this (old) client.
+                    // The reconnect installed a fresh game screen (or an error); release this (old)
+                    // client, and stop this view model's work, since nothing shows it any more.
                     closeClient()
                 } finally {
                     _reconnecting.value = false
                 }
+                viewModelScope.cancel()
             }
     }
 

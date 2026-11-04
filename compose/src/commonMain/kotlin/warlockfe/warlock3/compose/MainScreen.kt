@@ -3,13 +3,14 @@ package warlockfe.warlock3.compose
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
+import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import kotlinx.coroutines.launch
 import warlockfe.warlock3.compose.model.GameScreen
@@ -62,6 +63,14 @@ fun MainScreen(
         NavDisplay(
             backStack = backStack,
             modifier = modifier,
+            // The view-model decorator gives each destination its own store, cleared when the
+            // destination leaves the back stack: backing out of the wizard closes its SGE
+            // connection, and the dashboard's work stops while a game is on screen.
+            entryDecorators =
+                listOf(
+                    rememberSaveableStateHolderNavEntryDecorator(),
+                    rememberViewModelStoreNavEntryDecorator(),
+                ),
             onBack = {
                 scope.launch {
                     when (val screen = gameState.screen) {
@@ -90,7 +99,7 @@ fun MainScreen(
                     }
                     entry<WizardKey> {
                         val viewModel =
-                            remember {
+                            viewModel {
                                 sgeViewModelFactory.create(gameState, sgeSettings)
                             }
                         wizardContent(viewModel) {

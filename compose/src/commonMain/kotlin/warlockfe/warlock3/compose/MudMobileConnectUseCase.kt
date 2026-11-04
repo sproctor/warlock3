@@ -3,6 +3,7 @@ package warlockfe.warlock3.compose
 import co.touchlab.kermit.Logger
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
@@ -190,11 +191,11 @@ class MudMobileConnectUseCase(
                         socket = socket,
                     )
                 createdClient = client
-                // Same handshake bytes Warlock sends to play.net; the router matches sha256(key).
-                client.connect(credentials.key)
                 val gameViewModel =
-                    gameViewModelFactory.create(
+                    gameViewModelFactory.connect(
                         client = client,
+                        // Same handshake bytes Warlock sends to play.net; the router matches sha256(key).
+                        key = credentials.key,
                         windowRegistry = streamRegistry,
                         // Reconnect re-dials the same router with the same key; no SGE, no new session.
                         reconnect = {
@@ -206,9 +207,13 @@ class MudMobileConnectUseCase(
                             }
                         },
                     )
-                gameState.setScreen(GameScreen.ConnectedGameState(gameViewModel))
-                // Ownership has passed to the GameViewModel; don't tear it down in finally.
+                // Ownership passes to the GameViewModel here, before the screen changes: showing the
+                // game clears the dashboard's view model, cancelling this call, and a cancellation
+                // that landed after setScreen must not let the finally close the client in use.
                 createdClient = null
+                withContext(NonCancellable) {
+                    gameState.setScreen(GameScreen.ConnectedGameState(gameViewModel))
+                }
                 MudMobileConnectResult.Success
             } catch (e: Exception) {
                 ensureActive()

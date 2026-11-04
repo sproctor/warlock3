@@ -33,7 +33,24 @@ class GameViewModelFactory(
     private val mudScriptStore: MudScriptStore,
     private val ioDispatcher: CoroutineDispatcher,
 ) {
-    fun create(
+    /**
+     * Builds the game screen for [client], then starts the client reading with [key]. The order is
+     * the point: the client's eventFlow has no replay, and the server sends the first windows and
+     * the compass the moment it is connected, so the view model has to be listening before the read
+     * loop starts or those events go nowhere. Every connection path comes through here for that.
+     */
+    suspend fun connect(
+        client: WarlockClient,
+        key: String,
+        windowRegistry: WindowRegistry,
+        reconnect: (suspend () -> Unit)? = null,
+    ): GameViewModel {
+        val viewModel = create(client, windowRegistry, reconnect)
+        client.connect(key)
+        return viewModel
+    }
+
+    private fun create(
         client: WarlockClient,
         windowRegistry: WindowRegistry,
         reconnect: (suspend () -> Unit)? = null,

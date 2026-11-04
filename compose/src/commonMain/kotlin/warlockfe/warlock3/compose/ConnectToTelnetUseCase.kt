@@ -2,6 +2,7 @@ package warlockfe.warlock3.compose
 
 import co.touchlab.kermit.Logger
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import warlockfe.warlock3.compose.model.GameScreen
@@ -62,10 +63,10 @@ class ConnectToTelnetUseCase(
                         acceptScripts = connection.acceptScripts,
                     )
                 createdClient = client
-                client.connect("")
                 val gameViewModel =
-                    gameViewModelFactory.create(
+                    gameViewModelFactory.connect(
                         client = client,
+                        key = "",
                         windowRegistry = windowRegistry,
                         reconnect = {
                             val result = invoke(connection, gameState)
@@ -76,9 +77,13 @@ class ConnectToTelnetUseCase(
                             }
                         },
                     )
-                gameState.setScreen(GameScreen.ConnectedGameState(gameViewModel))
-                // Ownership has passed to the GameViewModel; don't tear it down in finally.
+                // Ownership passes to the GameViewModel here, before the screen changes: showing the
+                // game clears the dashboard's view model, cancelling this call, and a cancellation
+                // that landed after setScreen must not let the finally close the client in use.
                 handedOff = true
+                withContext(NonCancellable) {
+                    gameState.setScreen(GameScreen.ConnectedGameState(gameViewModel))
+                }
                 TelnetConnectResult.Success
             } catch (e: Exception) {
                 ensureActive()
