@@ -28,6 +28,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -197,77 +198,82 @@ fun GeneralSettingsView(
             Spacer(Modifier.height(16.dp))
 
             if (currentCharacterId != GLOBAL_CHARACTER_ID) {
-                val maxTypeAheadState = rememberTextFieldState(DEFAULT_MAX_TYPE_AHEAD.toString())
-                var maxTypeAheadError by remember { mutableStateOf<String?>(null) }
-                LaunchedEffect(maxTypeAheadState) {
-                    val initialMaxTypeAhead = viewModel.getMaxTypeAhead(currentCharacterId)
-                    if (initialMaxTypeAhead != null) {
-                        maxTypeAheadState.setTextAndPlaceCursorAtEnd(initialMaxTypeAhead)
-                    }
-                    snapshotFlow { maxTypeAheadState.text.toString() }
-                        .collectLatest {
-                            val value = it.toIntOrNull()
-                            if (value == null) {
-                                maxTypeAheadError = "Invalid number"
-                            } else if (value < 0) {
-                                maxTypeAheadError = "Must be non-negative"
-                            } else {
-                                maxTypeAheadError = null
-                                viewModel.saveMaxTypeAhead(currentCharacterId, it)
+                // Keyed on the character: the fields' text and the effects that load and save it
+                // must start over for each one, or switching straight from one character to
+                // another shows, and saves to, the first.
+                key(currentCharacterId) {
+                    val maxTypeAheadState = rememberTextFieldState(DEFAULT_MAX_TYPE_AHEAD.toString())
+                    var maxTypeAheadError by remember { mutableStateOf<String?>(null) }
+                    LaunchedEffect(maxTypeAheadState) {
+                        val initialMaxTypeAhead = viewModel.getMaxTypeAhead(currentCharacterId)
+                        if (initialMaxTypeAhead != null) {
+                            maxTypeAheadState.setTextAndPlaceCursorAtEnd(initialMaxTypeAhead)
+                        }
+                        snapshotFlow { maxTypeAheadState.text.toString() }
+                            .collectLatest {
+                                val value = it.toIntOrNull()
+                                if (value == null) {
+                                    maxTypeAheadError = "Invalid number"
+                                } else if (value < 0) {
+                                    maxTypeAheadError = "Must be non-negative"
+                                } else {
+                                    maxTypeAheadError = null
+                                    viewModel.saveMaxTypeAhead(currentCharacterId, it)
+                                }
                             }
-                        }
-                }
-                TextField(
-                    state = maxTypeAheadState,
-                    label = {
-                        Text("Maximum commands to type ahead. 0 to disable buffer")
-                    },
-                    supportingText = {
-                        if (maxTypeAheadError != null) {
-                            Text(maxTypeAheadError!!, color = MaterialTheme.colorScheme.error)
-                        }
-                    },
-                    isError = maxTypeAheadError != null,
-                    trailingIcon = {
-                        if (maxTypeAheadError != null) {
-                            Icon(
-                                painterResource(Res.drawable.error_filled),
-                                contentDescription = null,
+                    }
+                    TextField(
+                        state = maxTypeAheadState,
+                        label = {
+                            Text("Maximum commands to type ahead. 0 to disable buffer")
+                        },
+                        supportingText = {
+                            if (maxTypeAheadError != null) {
+                                Text(maxTypeAheadError!!, color = MaterialTheme.colorScheme.error)
+                            }
+                        },
+                        isError = maxTypeAheadError != null,
+                        trailingIcon = {
+                            if (maxTypeAheadError != null) {
+                                Icon(
+                                    painterResource(Res.drawable.error_filled),
+                                    contentDescription = null,
+                                )
+                            }
+                        },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        lineLimits = TextFieldLineLimits.SingleLine,
+                    )
+
+                    Spacer(Modifier.height(16.dp))
+
+                    val scriptCommandPrefixState = rememberTextFieldState(".")
+                    LaunchedEffect(currentCharacterId) {
+                        viewModel
+                            .getScriptCommandPrefix(currentCharacterId)
+                            ?.let { prefix ->
+                                scriptCommandPrefixState.setTextAndPlaceCursorAtEnd(prefix)
+                            }
+                    }
+                    TextField(
+                        state = scriptCommandPrefixState,
+                        label = {
+                            Text("Script command prefix")
+                        },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii),
+                        lineLimits = TextFieldLineLimits.SingleLine,
+                    )
+                    LaunchedEffect(scriptCommandPrefixState.text) {
+                        val initialScriptCommandPrefix = viewModel.getScriptCommandPrefix(currentCharacterId)
+                        if (scriptCommandPrefixState.text.toString() != initialScriptCommandPrefix) {
+                            viewModel.saveScriptCommandPrefix(
+                                characterId = currentCharacterId,
+                                scriptCommandPrefixState.text.toString(),
                             )
                         }
-                    },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    lineLimits = TextFieldLineLimits.SingleLine,
-                )
-
-                Spacer(Modifier.height(16.dp))
-
-                val scriptCommandPrefixState = rememberTextFieldState(".")
-                LaunchedEffect(currentCharacterId) {
-                    viewModel
-                        .getScriptCommandPrefix(currentCharacterId)
-                        ?.let { prefix ->
-                            scriptCommandPrefixState.setTextAndPlaceCursorAtEnd(prefix)
-                        }
-                }
-                TextField(
-                    state = scriptCommandPrefixState,
-                    label = {
-                        Text("Script command prefix")
-                    },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii),
-                    lineLimits = TextFieldLineLimits.SingleLine,
-                )
-                LaunchedEffect(scriptCommandPrefixState.text) {
-                    val initialScriptCommandPrefix = viewModel.getScriptCommandPrefix(currentCharacterId)
-                    if (scriptCommandPrefixState.text.toString() != initialScriptCommandPrefix) {
-                        viewModel.saveScriptCommandPrefix(
-                            characterId = currentCharacterId,
-                            scriptCommandPrefixState.text.toString(),
-                        )
                     }
+                    Spacer(Modifier.height(16.dp))
                 }
-                Spacer(Modifier.height(16.dp))
             }
 
             Text("Script directories", style = MaterialTheme.typography.headlineSmall)
