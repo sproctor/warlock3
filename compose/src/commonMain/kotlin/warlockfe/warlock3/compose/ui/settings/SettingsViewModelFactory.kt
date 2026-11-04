@@ -54,4 +54,13 @@ class SettingsViewModelFactory(
 
     fun presets(initialCharacter: GameCharacter?): PresetsViewModel =
         PresetsViewModel(initialCharacter, presetRepository, characterSettingsRepository)
+
+    fun variables(initialCharacter: GameCharacter?): VariablesViewModel =
+        VariablesViewModel(initialCharacter, characterRepository, variableRepository)
+
+    fun aliases(initialCharacter: GameCharacter?): AliasesViewModel = AliasesViewModel(initialCharacter, aliasRepository)
+
+    fun alterations(initialCharacter: GameCharacter?): AlterationsViewModel = AlterationsViewModel(initialCharacter, alterationRepository)
+
+    fun actions(initialCharacter: GameCharacter?): ActionsViewModel = ActionsViewModel(initialCharacter, actionRepository)
 }

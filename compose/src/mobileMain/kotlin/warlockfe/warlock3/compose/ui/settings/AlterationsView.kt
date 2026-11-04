@@ -26,14 +26,12 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import warlockfe.warlock3.compose.components.ScrollableColumn
 import warlockfe.warlock3.compose.generated.resources.Res
@@ -42,29 +40,23 @@ import warlockfe.warlock3.compose.generated.resources.delete
 import warlockfe.warlock3.compose.generated.resources.edit
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.models.AlterationEntity
-import warlockfe.warlock3.core.prefs.repositories.AlterationRepository
 import kotlin.uuid.Uuid
 
 @Composable
 fun AlterationsView(
-    currentCharacter: GameCharacter?,
+    viewModel: AlterationsViewModel,
     allCharacters: List<GameCharacter>,
-    alterationRepository: AlterationRepository,
     modifier: Modifier = Modifier,
 ) {
-    var selectedCharacter by remember(currentCharacter) { mutableStateOf(currentCharacter) }
-    val currentCharacterId = selectedCharacter?.id ?: "global"
-    val alterations by alterationRepository
-        .observeByCharacter(currentCharacterId)
-        .collectAsState(emptyList())
+    val selectedCharacter by viewModel.currentCharacter.collectAsState()
+    val alterations by viewModel.alterations.collectAsState()
     var editingAlteration by remember { mutableStateOf<AlterationEntity?>(null) }
-    val coroutineScope = rememberCoroutineScope()
 
     SettingsListScaffold(
         title = "Alterations",
         selectedCharacter = selectedCharacter,
         characters = allCharacters,
-        onSelectCharacter = { selectedCharacter = it },
+        onSelectCharacter = viewModel::selectCharacter,
         modifier = modifier.fillMaxSize(),
     ) {
         ScrollableColumn(
@@ -87,13 +79,7 @@ fun AlterationsView(
                             }
                             Spacer(Modifier.width(8.dp))
                             IconButton(
-                                onClick = {
-                                    coroutineScope.launch {
-                                        alterationRepository.deleteById(
-                                            alteration.id,
-                                        )
-                                    }
-                                },
+                                onClick = { viewModel.delete(alteration) },
                             ) {
                                 Icon(
                                     painter = painterResource(Res.drawable.delete),
@@ -114,7 +100,7 @@ fun AlterationsView(
                     editingAlteration =
                         AlterationEntity(
                             id = Uuid.random(),
-                            characterId = currentCharacterId,
+                            characterId = viewModel.characterId(),
                             pattern = "",
                             sourceStream = null,
                             destinationStream = null,
@@ -134,10 +120,7 @@ fun AlterationsView(
         EditAlterationDialog(
             alteration = alteration,
             saveAlteration = { newAlteration ->
-                coroutineScope.launch {
-                    alterationRepository.save(newAlteration)
-                    editingAlteration = null
-                }
+                viewModel.save(newAlteration) { editingAlteration = null }
             },
             onClose = { editingAlteration = null },
         )

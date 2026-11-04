@@ -13,12 +13,10 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.launch
 import org.jetbrains.jewel.ui.component.Text
 import warlockfe.warlock3.compose.desktop.shim.WarlockButton
 import warlockfe.warlock3.compose.desktop.shim.WarlockDialog
@@ -26,37 +24,30 @@ import warlockfe.warlock3.compose.desktop.shim.WarlockListItem
 import warlockfe.warlock3.compose.desktop.shim.WarlockOutlinedButton
 import warlockfe.warlock3.compose.desktop.shim.WarlockScrollableColumn
 import warlockfe.warlock3.compose.desktop.shim.WarlockTextField
+import warlockfe.warlock3.compose.ui.settings.VariablesViewModel
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.models.VariableEntity
-import warlockfe.warlock3.core.prefs.repositories.VariableRepository
 
 @Composable
 fun DesktopVariablesView(
-    initialCharacter: GameCharacter?,
+    viewModel: VariablesViewModel,
     characters: List<GameCharacter>,
-    variableRepository: VariableRepository,
     modifier: Modifier = Modifier,
 ) {
-    val currentCharacterState =
-        remember(initialCharacter, characters) {
-            mutableStateOf(initialCharacter ?: characters.firstOrNull())
-        }
-    val currentCharacter = currentCharacterState.value
-    if (currentCharacter == null) {
+    val currentCharacter by viewModel.currentCharacter.collectAsState()
+    val variables by viewModel.variables.collectAsState()
+    var editingVariable by remember { mutableStateOf<VariableEntity?>(null) }
+    val character = currentCharacter
+    if (character == null) {
         Text("No characters created")
         return
     }
-    val characterId = currentCharacter.id
-    var editingVariable by remember { mutableStateOf<VariableEntity?>(null) }
-    val scope = rememberCoroutineScope()
-    val variables by variableRepository
-        .observeCharacterVariables(characterId)
-        .collectAsState(emptyList())
+    val characterId = character.id
 
     SettingsListScaffold(
-        selectedCharacter = currentCharacter,
+        selectedCharacter = character,
         characters = characters,
-        onSelectCharacter = { currentCharacterState.value = it },
+        onSelectCharacter = viewModel::selectCharacter,
         modifier = modifier.fillMaxSize(),
         allowGlobal = false,
     ) {
@@ -76,11 +67,7 @@ fun DesktopVariablesView(
                                 text = "Edit",
                             )
                             WarlockOutlinedButton(
-                                onClick = {
-                                    scope.launch {
-                                        variableRepository.delete(characterId, variable.name)
-                                    }
-                                },
+                                onClick = { viewModel.delete(variable) },
                                 text = "Delete",
                             )
                         }
@@ -103,13 +90,7 @@ fun DesktopVariablesView(
             name = variable.name,
             value = variable.value,
             saveVariable = { name, value ->
-                scope.launch {
-                    if (name != variable.name) {
-                        variableRepository.delete(characterId, variable.name)
-                    }
-                    variableRepository.put(characterId, name, value)
-                    editingVariable = null
-                }
+                viewModel.save(variable, name, value) { editingVariable = null }
             },
             onClose = { editingVariable = null },
         )

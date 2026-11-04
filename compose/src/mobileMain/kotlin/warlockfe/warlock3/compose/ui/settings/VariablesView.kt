@@ -22,11 +22,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import warlockfe.warlock3.compose.components.ScrollableColumn
 import warlockfe.warlock3.compose.generated.resources.Res
@@ -35,38 +33,28 @@ import warlockfe.warlock3.compose.generated.resources.delete
 import warlockfe.warlock3.compose.generated.resources.edit
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.models.VariableEntity
-import warlockfe.warlock3.core.prefs.repositories.VariableRepository
 
 @Composable
 fun VariablesView(
-    initialCharacter: GameCharacter?,
+    viewModel: VariablesViewModel,
     characters: List<GameCharacter>,
-    variableRepository: VariableRepository,
     modifier: Modifier = Modifier,
 ) {
-    val currentCharacterState =
-        remember(initialCharacter, characters) {
-            mutableStateOf(
-                initialCharacter ?: characters.firstOrNull(),
-            )
-        }
-    val currentCharacter = currentCharacterState.value
-    if (currentCharacter == null) {
+    val currentCharacter by viewModel.currentCharacter.collectAsState()
+    val variables by viewModel.variables.collectAsState()
+    var editingVariable by remember { mutableStateOf<VariableEntity?>(null) }
+    val character = currentCharacter
+    if (character == null) {
         Text("No characters created")
         return
     }
-    val characterId = currentCharacter.id
-    var editingVariable by remember { mutableStateOf<VariableEntity?>(null) }
-    val scope = rememberCoroutineScope()
-    val variables by variableRepository
-        .observeCharacterVariables(characterId)
-        .collectAsState(emptyList())
+    val characterId = character.id
 
     SettingsListScaffold(
         title = "Variables",
-        selectedCharacter = currentCharacter,
+        selectedCharacter = character,
         characters = characters,
-        onSelectCharacter = { currentCharacterState.value = it },
+        onSelectCharacter = viewModel::selectCharacter,
         modifier = modifier.fillMaxSize(),
         allowGlobal = false,
     ) {
@@ -83,11 +71,7 @@ fun VariablesView(
                                 Icon(painter = painterResource(Res.drawable.edit), contentDescription = "Edit")
                             }
                             IconButton(
-                                onClick = {
-                                    scope.launch {
-                                        variableRepository.delete(characterId, variable.name)
-                                    }
-                                },
+                                onClick = { viewModel.delete(variable) },
                             ) {
                                 Icon(painter = painterResource(Res.drawable.delete), contentDescription = "Delete")
                             }
@@ -112,13 +96,7 @@ fun VariablesView(
             name = variable.name,
             value = variable.value,
             saveVariable = { name, value ->
-                scope.launch {
-                    if (name != variable.name) {
-                        variableRepository.delete(characterId, variable.name)
-                    }
-                    variableRepository.put(characterId, name, value)
-                    editingVariable = null
-                }
+                viewModel.save(variable, name, value) { editingVariable = null }
             },
             onClose = { editingVariable = null },
         )

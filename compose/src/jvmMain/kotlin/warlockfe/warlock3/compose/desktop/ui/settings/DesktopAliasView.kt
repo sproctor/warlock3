@@ -14,14 +14,12 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.launch
 import org.jetbrains.jewel.ui.component.Text
 import warlockfe.warlock3.compose.desktop.shim.WarlockButton
 import warlockfe.warlock3.compose.desktop.shim.WarlockDialog
@@ -29,30 +27,25 @@ import warlockfe.warlock3.compose.desktop.shim.WarlockListItem
 import warlockfe.warlock3.compose.desktop.shim.WarlockOutlinedButton
 import warlockfe.warlock3.compose.desktop.shim.WarlockScrollableColumn
 import warlockfe.warlock3.compose.desktop.shim.WarlockTextField
+import warlockfe.warlock3.compose.ui.settings.AliasesViewModel
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.models.AliasEntity
-import warlockfe.warlock3.core.prefs.repositories.AliasRepository
 import kotlin.uuid.Uuid
 
 @Composable
 fun DesktopAliasView(
-    currentCharacter: GameCharacter?,
+    viewModel: AliasesViewModel,
     allCharacters: List<GameCharacter>,
-    aliasRepository: AliasRepository,
     modifier: Modifier = Modifier,
 ) {
-    var selectedCharacter by remember(currentCharacter) { mutableStateOf(currentCharacter) }
-    val currentCharacterId = selectedCharacter?.id ?: "global"
-    val aliases by aliasRepository
-        .observeByCharacter(currentCharacterId)
-        .collectAsState(emptyList())
+    val selectedCharacter by viewModel.currentCharacter.collectAsState()
+    val aliases by viewModel.aliases.collectAsState()
     var editingAlias by remember { mutableStateOf<AliasEntity?>(null) }
-    val scope = rememberCoroutineScope()
 
     SettingsListScaffold(
         selectedCharacter = selectedCharacter,
         characters = allCharacters,
-        onSelectCharacter = { selectedCharacter = it },
+        onSelectCharacter = viewModel::selectCharacter,
         modifier = modifier.fillMaxSize(),
     ) {
         WarlockScrollableColumn(modifier = Modifier.fillMaxWidth().weight(1f)) {
@@ -66,9 +59,7 @@ fun DesktopAliasView(
                                 text = "Edit",
                             )
                             WarlockOutlinedButton(
-                                onClick = {
-                                    scope.launch { aliasRepository.deleteById(alias.id) }
-                                },
+                                onClick = { viewModel.delete(alias) },
                                 text = "Delete",
                             )
                         }
@@ -85,7 +76,7 @@ fun DesktopAliasView(
                     editingAlias =
                         AliasEntity(
                             id = Uuid.random(),
-                            characterId = currentCharacterId,
+                            characterId = viewModel.characterId(),
                             pattern = "",
                             replacement = "",
                         )
@@ -98,10 +89,7 @@ fun DesktopAliasView(
         DesktopEditAliasDialog(
             alias = alias,
             saveAlias = { newAlias ->
-                scope.launch {
-                    aliasRepository.save(newAlias)
-                    editingAlias = null
-                }
+                viewModel.save(newAlias) { editingAlias = null }
             },
             onClose = { editingAlias = null },
         )
