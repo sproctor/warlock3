@@ -121,9 +121,8 @@ private fun SettingsPageContent(
 
             SettingsPage.Variables -> {
                 DesktopVariablesView(
-                    initialCharacter = currentCharacter,
+                    viewModel = viewModel { settingsViewModelFactory.variables(currentCharacter) },
                     characters = characters,
-                    variableRepository = variableRepository,
                 )
             }
 
@@ -182,25 +181,22 @@ private fun SettingsPageContent(
 
             SettingsPage.Aliases -> {
                 DesktopAliasView(
-                    currentCharacter = currentCharacter,
+                    viewModel = viewModel { settingsViewModelFactory.aliases(currentCharacter) },
                     allCharacters = characters,
-                    aliasRepository = aliasRepository,
                 )
             }
 
             SettingsPage.Alterations -> {
                 DesktopAlterationsView(
-                    currentCharacter = currentCharacter,
+                    viewModel = viewModel { settingsViewModelFactory.alterations(currentCharacter) },
                     allCharacters = characters,
-                    alterationRepository = alterationRepository,
                 )
             }
 
             SettingsPage.Actions -> {
                 DesktopActionsView(
-                    currentCharacter = currentCharacter,
+                    viewModel = viewModel { settingsViewModelFactory.actions(currentCharacter) },
                     allCharacters = characters,
-                    actionRepository = actionRepository,
                 )
             }
 
