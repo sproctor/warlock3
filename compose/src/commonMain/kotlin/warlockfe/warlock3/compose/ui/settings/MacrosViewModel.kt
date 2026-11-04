@@ -45,10 +45,14 @@ class MacrosViewModel(
         }
     }
 
-    /** Saves [newMacro], replacing [oldMacro] (null when adding), which may have had another key. */
+    /**
+     * Saves [newMacro], replacing [oldMacro] (null when adding), which may have had another key, then
+     * calls [onSaved].
+     */
     fun save(
         oldMacro: Macro?,
         newMacro: Macro,
+        onSaved: () -> Unit,
     ) {
         val characterId = characterId()
         viewModelScope.launch {
@@ -57,6 +61,7 @@ class MacrosViewModel(
                 macroRepository.delete(characterId, oldKeyCombo)
             }
             macroRepository.put(characterId, newMacro.keyCombo, newMacro.action)
+            onSaved()
         }
     }
 

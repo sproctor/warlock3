@@ -101,8 +101,7 @@ fun DesktopMacrosView(
                 modifiers = modifiers,
                 value = macro?.action ?: "",
                 saveMacro = { newMacro ->
-                    viewModel.save(macro, newMacro)
-                    editingMacro = DesktopEditMacroState.Closed
+                    viewModel.save(macro, newMacro) { editingMacro = DesktopEditMacroState.Closed }
                 },
                 onClose = { editingMacro = DesktopEditMacroState.Closed },
             )

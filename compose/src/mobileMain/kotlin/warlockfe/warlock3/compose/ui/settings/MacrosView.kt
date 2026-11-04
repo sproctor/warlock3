@@ -123,8 +123,7 @@ fun MacrosView(
                 modifiers = modifiers,
                 value = macro?.action ?: "",
                 saveMacro = { newMacro ->
-                    viewModel.save(macro, newMacro)
-                    editingMacro = EditMacroState.Closed
+                    viewModel.save(macro, newMacro) { editingMacro = EditMacroState.Closed }
                 },
                 onClose = { editingMacro = EditMacroState.Closed },
             )
