@@ -266,6 +266,7 @@ fun DecoratedWindowScope.WarlockApp(
         SettingsDialog(
             currentCharacter = currentCharacter,
             closeDialog = { showSettings = false },
+            settingsViewModelFactory = appContainer.settingsViewModelFactory,
             variableRepository = appContainer.variableRepository,
             macroRepository = appContainer.macroRepository,
             presetRepository = appContainer.presetRepository,

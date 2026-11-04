@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import warlockfe.warlock3.compose.crash.CrashReporting
 import warlockfe.warlock3.compose.desktop.ui.settings.DesktopSettingsDialog
 import warlockfe.warlock3.compose.ui.settings.SettingsPage
+import warlockfe.warlock3.compose.ui.settings.SettingsViewModelFactory
 import warlockfe.warlock3.compose.ui.settings.WindowSettingsLiveContext
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.repositories.AccountRepository
@@ -25,6 +26,7 @@ import warlockfe.warlock3.core.prefs.repositories.WindowSettingsRepository
 @Composable
 fun SettingsDialog(
     currentCharacter: GameCharacter?,
+    settingsViewModelFactory: SettingsViewModelFactory,
     characterRepository: CharacterRepository,
     variableRepository: VariableRepository,
     macroRepository: MacroRepository,
@@ -48,6 +50,7 @@ fun SettingsDialog(
 ) {
     DesktopSettingsDialog(
         currentCharacter = currentCharacter,
+        settingsViewModelFactory = settingsViewModelFactory,
         characterRepository = characterRepository,
         variableRepository = variableRepository,
         macroRepository = macroRepository,

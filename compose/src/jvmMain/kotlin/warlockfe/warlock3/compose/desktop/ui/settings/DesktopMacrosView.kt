@@ -12,44 +12,35 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.launch
 import org.jetbrains.jewel.ui.component.Text
 import warlockfe.warlock3.compose.desktop.shim.WarlockButton
 import warlockfe.warlock3.compose.desktop.shim.WarlockListItem
 import warlockfe.warlock3.compose.desktop.shim.WarlockOutlinedButton
 import warlockfe.warlock3.compose.desktop.shim.WarlockScrollableColumn
-import warlockfe.warlock3.compose.util.insertDefaultMacrosIfNeeded
+import warlockfe.warlock3.compose.ui.settings.MacrosViewModel
 import warlockfe.warlock3.compose.util.keyComboToKey
 import warlockfe.warlock3.compose.util.toDisplayString
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.macro.Macro
-import warlockfe.warlock3.core.prefs.repositories.MacroRepository
 
 @Composable
 fun DesktopMacrosView(
-    initialCharacter: GameCharacter?,
+    viewModel: MacrosViewModel,
     characters: List<GameCharacter>,
-    macroRepository: MacroRepository,
     modifier: Modifier = Modifier,
 ) {
-    var currentCharacter by remember(initialCharacter) { mutableStateOf(initialCharacter) }
-    val macros by if (currentCharacter == null) {
-        macroRepository.observeGlobalMacros()
-    } else {
-        macroRepository.observeOnlyCharacterMacros(currentCharacter!!.id)
-    }.collectAsState(emptyList())
+    val currentCharacter by viewModel.currentCharacter.collectAsState()
+    val macros by viewModel.macros.collectAsState()
     var editingMacro by remember { mutableStateOf<DesktopEditMacroState>(DesktopEditMacroState.Closed) }
     var confirmReset by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
 
     SettingsListScaffold(
         selectedCharacter = currentCharacter,
         characters = characters,
-        onSelectCharacter = { currentCharacter = it },
+        onSelectCharacter = viewModel::selectCharacter,
         modifier = modifier.fillMaxSize(),
     ) {
         WarlockScrollableColumn(modifier = Modifier.fillMaxWidth().weight(1f)) {
@@ -68,14 +59,7 @@ fun DesktopMacrosView(
                                 text = "Edit",
                             )
                             WarlockOutlinedButton(
-                                onClick = {
-                                    scope.launch {
-                                        macroRepository.delete(
-                                            currentCharacter?.id ?: "global",
-                                            macro.keyCombo,
-                                        )
-                                    }
-                                },
+                                onClick = { viewModel.delete(macro) },
                                 text = "Delete",
                             )
                         }
@@ -103,10 +87,7 @@ fun DesktopMacrosView(
             text = "Confirm that you want to delete all existing global macros and add the default macros",
             onConfirm = {
                 confirmReset = false
-                scope.launch {
-                    macroRepository.deleteAllGlobals()
-                    macroRepository.insertDefaultMacrosIfNeeded()
-                }
+                viewModel.resetGlobalMacros()
             },
             onDismiss = { confirmReset = false },
         )
@@ -120,15 +101,8 @@ fun DesktopMacrosView(
                 modifiers = modifiers,
                 value = macro?.action ?: "",
                 saveMacro = { newMacro ->
-                    scope.launch {
-                        val oldKeyCombo = macro?.keyCombo
-                        val targetCharacterId = currentCharacter?.id ?: "global"
-                        if (oldKeyCombo != null && newMacro.keyCombo != oldKeyCombo) {
-                            macroRepository.delete(targetCharacterId, oldKeyCombo)
-                        }
-                        macroRepository.put(targetCharacterId, newMacro.keyCombo, newMacro.action)
-                        editingMacro = DesktopEditMacroState.Closed
-                    }
+                    viewModel.save(macro, newMacro)
+                    editingMacro = DesktopEditMacroState.Closed
                 },
                 onClose = { editingMacro = DesktopEditMacroState.Closed },
             )

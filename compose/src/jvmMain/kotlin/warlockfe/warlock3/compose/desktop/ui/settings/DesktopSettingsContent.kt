@@ -3,8 +3,11 @@ package warlockfe.warlock3.compose.desktop.ui.settings
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.lifecycle.viewmodel.compose.viewModel
 import warlockfe.warlock3.compose.crash.CrashReporting
+import warlockfe.warlock3.compose.ui.settings.ProvideSettingsViewModelStore
 import warlockfe.warlock3.compose.ui.settings.SettingsPage
+import warlockfe.warlock3.compose.ui.settings.SettingsViewModelFactory
 import warlockfe.warlock3.compose.ui.settings.WindowSettingsLiveContext
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.repositories.AccountRepository
@@ -27,6 +30,7 @@ import warlockfe.warlock3.core.prefs.repositories.WindowSettingsRepository
 fun DesktopSettingsContent(
     page: SettingsPage,
     currentCharacter: GameCharacter?,
+    settingsViewModelFactory: SettingsViewModelFactory,
     characterSettingsRepository: CharacterSettingsRepository,
     characterRepository: CharacterRepository,
     scriptDirRepository: ScriptDirRepository,
@@ -46,120 +50,172 @@ fun DesktopSettingsContent(
     initialWindowTarget: String? = null,
     windowLiveContext: WindowSettingsLiveContext? = null,
 ) {
-    val characters by characterRepository.observeAllCharacters().collectAsState(emptyList())
+    ProvideSettingsViewModelStore {
+        SettingsPageContent(
+            page = page,
+            currentCharacter = currentCharacter,
+            settingsViewModelFactory = settingsViewModelFactory,
+            characterSettingsRepository = characterSettingsRepository,
+            characterRepository = characterRepository,
+            scriptDirRepository = scriptDirRepository,
+            variableRepository = variableRepository,
+            highlightRepository = highlightRepository,
+            nameRepository = nameRepository,
+            ignoreRepository = ignoreRepository,
+            presetRepository = presetRepository,
+            aliasRepository = aliasRepository,
+            actionRepository = actionRepository,
+            alterationRepository = alterationRepository,
+            clientSettingRepository = clientSettingRepository,
+            accountRepository = accountRepository,
+            windowSettingRepository = windowSettingRepository,
+            crashReporting = crashReporting,
+            initialWindowTarget = initialWindowTarget,
+            windowLiveContext = windowLiveContext,
+        )
+    }
+}
 
-    when (page) {
-        SettingsPage.General -> {
-            DesktopGeneralSettingsView(
-                characterSettingsRepository = characterSettingsRepository,
-                initialCharacter = currentCharacter,
-                characters = characters,
-                scriptDirRepository = scriptDirRepository,
-                clientSettingRepository = clientSettingRepository,
-            )
-        }
+@Composable
+private fun SettingsPageContent(
+    page: SettingsPage,
+    currentCharacter: GameCharacter?,
+    settingsViewModelFactory: SettingsViewModelFactory,
+    characterSettingsRepository: CharacterSettingsRepository,
+    characterRepository: CharacterRepository,
+    scriptDirRepository: ScriptDirRepository,
+    variableRepository: VariableRepository,
+    highlightRepository: HighlightRepositoryImpl,
+    nameRepository: NameRepositoryImpl,
+    ignoreRepository: IgnoreRepository,
+    presetRepository: PresetRepository,
+    aliasRepository: AliasRepository,
+    actionRepository: ActionRepository,
+    alterationRepository: AlterationRepository,
+    clientSettingRepository: ClientSettingRepository,
+    accountRepository: AccountRepository,
+    windowSettingRepository: WindowSettingsRepository,
+    crashReporting: CrashReporting,
+    initialWindowTarget: String?,
+    windowLiveContext: WindowSettingsLiveContext?,
+) {
+    val settingsViewModel = viewModel { settingsViewModelFactory.settings() }
+    val characters by settingsViewModel.characters.collectAsState()
 
-        SettingsPage.CrashReports -> {
-            DesktopCrashReportsView(crashReporting = crashReporting)
-        }
+    // Each page's view models live as long as the page is showing.
+    ProvideSettingsViewModelStore(page, currentCharacter) {
+        when (page) {
+            SettingsPage.General -> {
+                DesktopGeneralSettingsView(
+                    characterSettingsRepository = characterSettingsRepository,
+                    initialCharacter = currentCharacter,
+                    characters = characters,
+                    scriptDirRepository = scriptDirRepository,
+                    clientSettingRepository = clientSettingRepository,
+                )
+            }
 
-        SettingsPage.Variables -> {
-            DesktopVariablesView(
-                initialCharacter = currentCharacter,
-                characters = characters,
-                variableRepository = variableRepository,
-            )
-        }
+            SettingsPage.CrashReports -> {
+                DesktopCrashReportsView(crashReporting = crashReporting)
+            }
 
-        SettingsPage.Macros -> {
-            DesktopMacrosView(
-                initialCharacter = currentCharacter,
-                characters = characters,
-                macroRepository = macroRepository,
-            )
-        }
+            SettingsPage.Variables -> {
+                DesktopVariablesView(
+                    initialCharacter = currentCharacter,
+                    characters = characters,
+                    variableRepository = variableRepository,
+                )
+            }
 
-        SettingsPage.Highlights -> {
-            DesktopHighlightsView(
-                currentCharacter = currentCharacter,
-                allCharacters = characters,
-                highlightRepository = highlightRepository,
-                characterSettingsRepository = characterSettingsRepository,
-            )
-        }
+            SettingsPage.Macros -> {
+                DesktopMacrosView(
+                    viewModel = viewModel { settingsViewModelFactory.macros(currentCharacter) },
+                    characters = characters,
+                )
+            }
 
-        SettingsPage.Names -> {
-            DesktopNamesView(
-                currentCharacter = currentCharacter,
-                allCharacters = characters,
-                nameRepository = nameRepository,
-                characterSettingsRepository = characterSettingsRepository,
-            )
-        }
+            SettingsPage.Highlights -> {
+                DesktopHighlightsView(
+                    currentCharacter = currentCharacter,
+                    allCharacters = characters,
+                    highlightRepository = highlightRepository,
+                    characterSettingsRepository = characterSettingsRepository,
+                )
+            }
 
-        SettingsPage.Ignores -> {
-            DesktopIgnoresView(
-                currentCharacter = currentCharacter,
-                allCharacters = characters,
-                ignoreRepository = ignoreRepository,
-            )
-        }
+            SettingsPage.Names -> {
+                DesktopNamesView(
+                    currentCharacter = currentCharacter,
+                    allCharacters = characters,
+                    nameRepository = nameRepository,
+                    characterSettingsRepository = characterSettingsRepository,
+                )
+            }
 
-        SettingsPage.TextStyles -> {
-            DesktopPresetsView(
-                initialCharacter = currentCharacter,
-                characters = characters,
-                presetRepository = presetRepository,
-                characterSettingsRepository = characterSettingsRepository,
-            )
-        }
+            SettingsPage.Ignores -> {
+                DesktopIgnoresView(
+                    currentCharacter = currentCharacter,
+                    allCharacters = characters,
+                    ignoreRepository = ignoreRepository,
+                )
+            }
 
-        SettingsPage.Windows -> {
-            DesktopWindowsView(
-                initialCharacter = currentCharacter,
-                characters = characters,
-                characterSettingsRepository = characterSettingsRepository,
-                windowSettingRepository = windowSettingRepository,
-                windowLiveContext = windowLiveContext,
-                initialWindowTarget = initialWindowTarget,
-            )
-        }
+            SettingsPage.TextStyles -> {
+                DesktopPresetsView(
+                    initialCharacter = currentCharacter,
+                    characters = characters,
+                    presetRepository = presetRepository,
+                    characterSettingsRepository = characterSettingsRepository,
+                )
+            }
 
-        SettingsPage.Aliases -> {
-            DesktopAliasView(
-                currentCharacter = currentCharacter,
-                allCharacters = characters,
-                aliasRepository = aliasRepository,
-            )
-        }
+            SettingsPage.Windows -> {
+                DesktopWindowsView(
+                    initialCharacter = currentCharacter,
+                    characters = characters,
+                    characterSettingsRepository = characterSettingsRepository,
+                    windowSettingRepository = windowSettingRepository,
+                    windowLiveContext = windowLiveContext,
+                    initialWindowTarget = initialWindowTarget,
+                )
+            }
 
-        SettingsPage.Alterations -> {
-            DesktopAlterationsView(
-                currentCharacter = currentCharacter,
-                allCharacters = characters,
-                alterationRepository = alterationRepository,
-            )
-        }
+            SettingsPage.Aliases -> {
+                DesktopAliasView(
+                    currentCharacter = currentCharacter,
+                    allCharacters = characters,
+                    aliasRepository = aliasRepository,
+                )
+            }
 
-        SettingsPage.Actions -> {
-            DesktopActionsView(
-                currentCharacter = currentCharacter,
-                allCharacters = characters,
-                actionRepository = actionRepository,
-            )
-        }
+            SettingsPage.Alterations -> {
+                DesktopAlterationsView(
+                    currentCharacter = currentCharacter,
+                    allCharacters = characters,
+                    alterationRepository = alterationRepository,
+                )
+            }
 
-        SettingsPage.Accounts -> {
-            DesktopAccountsView(
-                accountRepository = accountRepository,
-            )
-        }
+            SettingsPage.Actions -> {
+                DesktopActionsView(
+                    currentCharacter = currentCharacter,
+                    allCharacters = characters,
+                    actionRepository = actionRepository,
+                )
+            }
 
-        SettingsPage.Characters -> {
-            DesktopCharactersView(
-                allCharacters = characters,
-                characterRepository = characterRepository,
-            )
+            SettingsPage.Accounts -> {
+                DesktopAccountsView(
+                    accountRepository = accountRepository,
+                )
+            }
+
+            SettingsPage.Characters -> {
+                DesktopCharactersView(
+                    allCharacters = characters,
+                    characterRepository = characterRepository,
+                )
+            }
         }
     }
 }

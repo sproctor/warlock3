@@ -39,6 +39,7 @@ import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.app_icon
 import warlockfe.warlock3.compose.ui.settings.SettingsGroup
 import warlockfe.warlock3.compose.ui.settings.SettingsPage
+import warlockfe.warlock3.compose.ui.settings.SettingsViewModelFactory
 import warlockfe.warlock3.compose.ui.settings.WindowSettingsLiveContext
 import warlockfe.warlock3.compose.util.ProvideSafeClipboard
 import warlockfe.warlock3.core.client.GameCharacter
@@ -62,6 +63,7 @@ import warlockfe.warlock3.core.prefs.repositories.WindowSettingsRepository
 @Composable
 fun DesktopSettingsDialog(
     currentCharacter: GameCharacter?,
+    settingsViewModelFactory: SettingsViewModelFactory,
     characterRepository: CharacterRepository,
     variableRepository: VariableRepository,
     macroRepository: MacroRepository,
@@ -139,6 +141,7 @@ fun DesktopSettingsDialog(
                         DesktopSettingsContent(
                             page = page,
                             currentCharacter = currentCharacter,
+                            settingsViewModelFactory = settingsViewModelFactory,
                             characterSettingsRepository = characterSettingsRepository,
                             characterRepository = characterRepository,
                             scriptDirRepository = scriptDirRepository,

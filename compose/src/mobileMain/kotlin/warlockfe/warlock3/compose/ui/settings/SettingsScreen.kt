@@ -101,6 +101,7 @@ fun SettingsScreen(
                 SettingsContent(
                     page = selected,
                     currentCharacter = currentCharacter,
+                    settingsViewModelFactory = appContainer.settingsViewModelFactory,
                     characterSettingsRepository = appContainer.characterSettingsRepository,
                     characterRepository = appContainer.characterRepository,
                     scriptDirRepository = appContainer.scriptDirRepository,
