@@ -41,6 +41,7 @@ import warlockfe.warlock3.core.client.ClientPromptEvent
 import warlockfe.warlock3.core.client.ClientTextEvent
 import warlockfe.warlock3.core.client.ClientWindowInfoEvent
 import warlockfe.warlock3.core.client.GameCharacter
+import warlockfe.warlock3.core.client.PanelObject
 import warlockfe.warlock3.core.client.SendCommandType
 import warlockfe.warlock3.core.client.StreamLineFeed
 import warlockfe.warlock3.core.client.WarlockAction
@@ -69,6 +70,7 @@ import warlockfe.warlock3.wrayth.protocol.WraythActionEvent
 import warlockfe.warlock3.wrayth.protocol.WraythAppEvent
 import warlockfe.warlock3.wrayth.protocol.WraythBackgroundEvent
 import warlockfe.warlock3.wrayth.protocol.WraythCastTimeEvent
+import warlockfe.warlock3.wrayth.protocol.WraythClearDynaStreamEvent
 import warlockfe.warlock3.wrayth.protocol.WraythClearStreamEvent
 import warlockfe.warlock3.wrayth.protocol.WraythCliEvent
 import warlockfe.warlock3.wrayth.protocol.WraythCloseDialogEvent
@@ -82,6 +84,7 @@ import warlockfe.warlock3.wrayth.protocol.WraythDialogDataEvent
 import warlockfe.warlock3.wrayth.protocol.WraythDialogObjectEvent
 import warlockfe.warlock3.wrayth.protocol.WraythDialogWindowEvent
 import warlockfe.warlock3.wrayth.protocol.WraythDirectionEvent
+import warlockfe.warlock3.wrayth.protocol.WraythDynaStreamEvent
 import warlockfe.warlock3.wrayth.protocol.WraythEndCmdList
 import warlockfe.warlock3.wrayth.protocol.WraythEolEvent
 import warlockfe.warlock3.wrayth.protocol.WraythEvent
@@ -237,6 +240,11 @@ class WraythClient(
     private var pendingText = ""
 
     private var currentStream: TextStream? = null
+
+    // Every streamBox a panel holds, by id, with the panel it sits in, so the dynaStream that fills
+    // it later can find it. The id of the dynaStream being read, while one is open.
+    private val streamBoxes = mutableMapOf<String, StreamBoxSlot>()
+    private var dynaStreamId: String? = null
 
     private var currentStyle: WarlockStyle? = null
     private val styleStack = ArrayDeque<WarlockStyle>()
@@ -523,13 +531,38 @@ class WraythClient(
                 dialogDataId = event.id
                 if (event.clear && event.id != null) {
                     this@WraythClient.windowRegistry.getOrCreatePanel(event.id).clear()
+                    streamBoxes.values.removeAll { it.panelId == event.id }
                 }
             }
 
             is WraythDialogObjectEvent -> {
                 dialogDataId?.let {
-                    windowRegistry.getOrCreatePanel(it).setObject(event.data)
+                    val data = event.data
+                    if (data is PanelObject.StreamBox) streamBoxes[data.id] = StreamBoxSlot(panelId = it, box = data)
+                    windowRegistry.getOrCreatePanel(it).setObject(data)
                 }
+            }
+
+            is WraythDynaStreamEvent -> {
+                val id = event.id
+                if (id != null) {
+                    // Whatever the line held before the dynaStream belongs where it was already going.
+                    flushBuffer(true)
+                    dynaStreamId = id
+                } else {
+                    val slot = dynaStreamId?.let { streamBoxes[it] }
+                    dynaStreamId = null
+                    val text = lineBuffer.takeLine()
+                    // A dynaStream for a box no panel holds has nowhere to go, and Saga drops it too.
+                    if (slot != null && text != null) {
+                        val previous = slot.box.text
+                        updateStreamBox(slot, if (previous == null) text else previous + StyledString("\n") + text)
+                    }
+                }
+            }
+
+            is WraythClearDynaStreamEvent -> {
+                streamBoxes[event.id]?.let { updateStreamBox(it, null) }
             }
 
             is WraythCompassEndEvent -> {
@@ -625,6 +658,8 @@ class WraythClient(
                             backgroundImage = existing?.backgroundImage,
                             resident = window.resident,
                             location = WindowLocation.fromProtocol(window.location),
+                            requestedWidth = window.width,
+                            requestedHeight = window.height,
                         )
                     windowInfo.replaceOrAdd(info) { it.name == info.name }
                 }
@@ -862,6 +897,17 @@ class WraythClient(
                 )
             }
         }
+    }
+
+    private suspend fun updateStreamBox(
+        slot: StreamBoxSlot,
+        text: StyledString?,
+    ) {
+        val box = slot.box.copy(text = text)
+        streamBoxes[box.id] = slot.copy(box = box)
+        val panel = windowRegistry.getOrCreatePanel(slot.panelId)
+        panel.setObject(box)
+        panel.updateState()
     }
 
     private fun bufferText(text: StyledString) {
@@ -1166,6 +1212,12 @@ class WraythClient(
 
 val TextStream?.isMainStream
     get() = this == null || this.id == "main"
+
+// A streamBox as last sent to [panelId], with whatever dynaStream text it holds by now.
+private data class StreamBoxSlot(
+    val panelId: String,
+    val box: PanelObject.StreamBox,
+)
 
 private val windowsAbsolutePathRegex = Regex("^[A-Za-z]:[\\\\/].*")
 

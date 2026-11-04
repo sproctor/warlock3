@@ -1,5 +1,7 @@
 package warlockfe.warlock3.core.client
 
+import warlockfe.warlock3.core.text.StyledString
+
 sealed class PanelObject {
     abstract val id: String
     abstract val left: DataDistance?
@@ -200,6 +202,46 @@ sealed class PanelObject {
         val min: Int?,
         val max: Int?,
         val cmd: String?,
+    ) : PanelObject()
+
+    /**
+     * editBox: a line of text the user types, which sends nothing of its own. Another widget's `cmd`
+     * reads it as `%<id>%`, the way a checkbox or a dropdown is read. Pressing Enter in it presses
+     * the button named by [enterButton], if any; [focus] asks for the keyboard when the panel opens,
+     * and [maxChars] caps what can be typed.
+     */
+    data class EditBox(
+        override val id: String,
+        override val left: DataDistance?,
+        override val top: DataDistance?,
+        override val width: DataDistance?,
+        override val height: DataDistance?,
+        override val align: String?,
+        override val topAnchor: String?,
+        override val leftAnchor: String?,
+        override val tooltip: String?,
+        val value: String?,
+        val maxChars: Int?,
+        val focus: Boolean,
+        val enterButton: String?,
+    ) : PanelObject()
+
+    /**
+     * streamBox: a box of read-only text inside a panel, filled by `<dynaStream id='<id>'>` sent
+     * after the panel itself. Each dynaStream adds a line to [text] and `<clearDynaStream>` empties
+     * it; sending the streamBox again starts it over, empty.
+     */
+    data class StreamBox(
+        override val id: String,
+        override val left: DataDistance?,
+        override val top: DataDistance?,
+        override val width: DataDistance?,
+        override val height: DataDistance?,
+        override val align: String?,
+        override val topAnchor: String?,
+        override val leftAnchor: String?,
+        override val tooltip: String?,
+        val text: StyledString?,
     ) : PanelObject()
 
     data class Image(

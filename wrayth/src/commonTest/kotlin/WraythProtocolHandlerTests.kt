@@ -1,9 +1,13 @@
 import warlockfe.warlock3.core.client.PanelJustify
 import warlockfe.warlock3.core.client.PanelObject
 import warlockfe.warlock3.wrayth.protocol.WraythActionEvent
+import warlockfe.warlock3.wrayth.protocol.WraythClearDynaStreamEvent
 import warlockfe.warlock3.wrayth.protocol.WraythCloseDialogEvent
+import warlockfe.warlock3.wrayth.protocol.WraythDataReceivedEvent
+import warlockfe.warlock3.wrayth.protocol.WraythDialogDataEvent
 import warlockfe.warlock3.wrayth.protocol.WraythDialogObjectEvent
 import warlockfe.warlock3.wrayth.protocol.WraythDialogWindowEvent
+import warlockfe.warlock3.wrayth.protocol.WraythDynaStreamEvent
 import warlockfe.warlock3.wrayth.protocol.WraythOpenUrlEvent
 import warlockfe.warlock3.wrayth.protocol.WraythProtocolHandler
 import warlockfe.warlock3.wrayth.protocol.WraythUnhandledTagEvent
@@ -487,5 +491,98 @@ class WraythProtocolHandlerTests {
         val events = WraythProtocolHandler().parseLine("<timestamp time=\"1700000000\"/>")
 
         assertEquals(emptyList(), events.filterIsInstance<WraythUnhandledTagEvent>())
+    }
+
+    // GS4's BUG dialog, as the game sends it (trimmed to the parts each test needs).
+
+    @Test
+    fun dialogDataNamedByNameRatherThanIdStillNamesThePanel() {
+        val events =
+            WraythProtocolHandler().parseLine(
+                "<openDialog id='bugDialogBox' title='Submit Bug Report' location='detach'>" +
+                    "<dialogData name='bugDialogBox'><label id='l' value='Title'/></dialogData></openDialog>",
+            )
+
+        assertEquals("bugDialogBox", events.filterIsInstance<WraythDialogDataEvent>().first().id)
+    }
+
+    @Test
+    fun editBoxCarriesItsLimitFocusAndEnterButton() {
+        val box =
+            parsePanelObject<PanelObject.EditBox>(
+                "<editBox id='details' value='' enterButton='send' maxChars='875' width='380' " +
+                    "anchor_left='detailsLabel' top='5' left='5' anchor_top='title'/>",
+            )
+
+        assertEquals("details", box.id)
+        assertEquals("", box.value)
+        assertEquals(875, box.maxChars)
+        assertEquals("send", box.enterButton)
+        assertFalse(box.focus)
+        assertEquals("title", box.topAnchor)
+        assertEquals("detailsLabel", box.leftAnchor)
+    }
+
+    @Test
+    fun editBoxAsksForFocusByThePresenceOfTheAttribute() {
+        val box = parsePanelObject<PanelObject.EditBox>("<editBox id='title' value='' focus='' maxChars='128'/>")
+
+        assertTrue(box.focus)
+        assertNull(box.enterButton)
+    }
+
+    @Test
+    fun streamBoxStartsEmpty() {
+        val box =
+            parsePanelObject<PanelObject.StreamBox>(
+                "<streamBox id='instructions' height='60' save='false' width='450' top='5' left='25'/>",
+            )
+
+        assertEquals("instructions", box.id)
+        assertNull(box.text)
+    }
+
+    @Test
+    fun dynaStreamOpensAndClosesAroundItsText() {
+        val events =
+            WraythProtocolHandler().parseLine(
+                "<dynaStream id='instructions'>Detail what you experienced. " +
+                    "<pushBold/>DO NOT ISSUE BUG REPORTS FOR CRASHES.<popBold/></dynaStream>",
+            )
+
+        val marks = events.filter { it is WraythDynaStreamEvent || it is WraythDataReceivedEvent }
+        assertEquals(WraythDynaStreamEvent("instructions"), marks.first())
+        assertEquals(WraythDynaStreamEvent(null), marks.last())
+        assertEquals(
+            "Detail what you experienced. DO NOT ISSUE BUG REPORTS FOR CRASHES.",
+            marks.filterIsInstance<WraythDataReceivedEvent>().joinToString("") { it.text },
+        )
+    }
+
+    @Test
+    fun clearDynaStreamNamesTheBoxToEmpty() {
+        val events = WraythProtocolHandler().parseLine("<clearDynaStream id='instructions'/>")
+
+        assertEquals(listOf(WraythClearDynaStreamEvent("instructions")), events.filterIsInstance<WraythClearDynaStreamEvent>())
+    }
+
+    @Test
+    fun theBugDialogParsesWithNothingUnhandled() {
+        val events =
+            WraythProtocolHandler().parseLine(
+                "<openDialog type='dynamic' id='bugDialogBox' title='Submit Bug Report' location='detach' height='190' " +
+                    "width='500' save='false' noResize='' noDock=''><dialogData name='bugDialogBox'>" +
+                    "<streamBox id='instructions' height='60' save='false' width='450' top='5' left='25'/>" +
+                    "<editBox id='title' value='' focus='' maxChars='128' width='380' top='5' left='5'/>" +
+                    "<closeButton id='send' value='Send' cmd=\"bug %category%;%title%;%details%\" " +
+                    "echo=\"bug %category%;%title%;%details%\" top='-5' left='25' align='sw'/>" +
+                    "</dialogData></openDialog><dynaStream id='instructions'>Detail it.</dynaStream>",
+            )
+
+        assertEquals(emptyList(), events.filterIsInstance<WraythUnhandledTagEvent>())
+        assertEquals(
+            listOf("instructions", "title", "send"),
+            events.filterIsInstance<WraythDialogObjectEvent>().map { it.data.id },
+        )
     }
 }

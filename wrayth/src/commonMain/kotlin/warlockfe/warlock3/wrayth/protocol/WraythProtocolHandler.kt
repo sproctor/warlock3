@@ -12,6 +12,7 @@ import warlockfe.warlock3.wrayth.protocol.elements.BackgroundHandler
 import warlockfe.warlock3.wrayth.protocol.elements.CastTimeHandler
 import warlockfe.warlock3.wrayth.protocol.elements.CheckBoxHandler
 import warlockfe.warlock3.wrayth.protocol.elements.ClearContainerHandler
+import warlockfe.warlock3.wrayth.protocol.elements.ClearDynaStreamHandler
 import warlockfe.warlock3.wrayth.protocol.elements.ClearStreamHandler
 import warlockfe.warlock3.wrayth.protocol.elements.CliHandler
 import warlockfe.warlock3.wrayth.protocol.elements.CloseButtonHandler
@@ -28,6 +29,7 @@ import warlockfe.warlock3.wrayth.protocol.elements.DialogDataHandler
 import warlockfe.warlock3.wrayth.protocol.elements.DirHandler
 import warlockfe.warlock3.wrayth.protocol.elements.DropDownBoxHandler
 import warlockfe.warlock3.wrayth.protocol.elements.DynaStreamHandler
+import warlockfe.warlock3.wrayth.protocol.elements.EditBoxHandler
 import warlockfe.warlock3.wrayth.protocol.elements.ImageHandler
 import warlockfe.warlock3.wrayth.protocol.elements.IndicatorHandler
 import warlockfe.warlock3.wrayth.protocol.elements.InvHandler
@@ -57,6 +59,7 @@ import warlockfe.warlock3.wrayth.protocol.elements.RoundTimeHandler
 import warlockfe.warlock3.wrayth.protocol.elements.SettingsInfoHandler
 import warlockfe.warlock3.wrayth.protocol.elements.SkinHandler
 import warlockfe.warlock3.wrayth.protocol.elements.SpellHandler
+import warlockfe.warlock3.wrayth.protocol.elements.StreamBoxHandler
 import warlockfe.warlock3.wrayth.protocol.elements.StreamHandler
 import warlockfe.warlock3.wrayth.protocol.elements.StreamWindowHandler
 import warlockfe.warlock3.wrayth.protocol.elements.StyleHandler
@@ -126,6 +129,7 @@ class WraythProtocolHandler {
             "castTime" to CastTimeHandler(),
             "checkBox" to CheckBoxHandler(),
             "clearContainer" to ClearContainerHandler(),
+            "clearDynaStream" to ClearDynaStreamHandler(),
             "clearStream" to ClearStreamHandler(),
             "cli" to CliHandler(),
             "closeButton" to CloseButtonHandler(),
@@ -142,6 +146,7 @@ class WraythProtocolHandler {
             "dir" to DirHandler(),
             "dropDownBox" to DropDownBoxHandler(),
             "dynaStream" to DynaStreamHandler(),
+            "editBox" to EditBoxHandler(),
             "image" to ImageHandler(),
             "indicator" to IndicatorHandler(),
             "inv" to InvHandler(),
@@ -172,6 +177,7 @@ class WraythProtocolHandler {
             "skin" to SkinHandler(),
             "spell" to SpellHandler(),
             "stream" to StreamHandler(),
+            "streamBox" to StreamBoxHandler(),
             "streamWindow" to StreamWindowHandler(),
             "style" to StyleHandler(),
             "updateverbs" to UpdateVerbsHandler(),

@@ -30,6 +30,19 @@ data class WraythStreamEvent(
     val needsWindow: Boolean = false,
 ) : WraythEvent
 
+/**
+ * `<dynaStream id='...'>` opening ([id] set) or closing ([id] null). Its text belongs to the panel
+ * widget (a streamBox) with that id, not to a window's stream.
+ */
+data class WraythDynaStreamEvent(
+    val id: String?,
+) : WraythEvent
+
+// `<clearDynaStream id='...'/>`: empties the streamBox with that id.
+data class WraythClearDynaStreamEvent(
+    val id: String,
+) : WraythEvent
+
 data class WraythClearStreamEvent(
     val id: String,
 ) : WraythEvent

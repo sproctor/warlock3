@@ -18,6 +18,8 @@ class OpenDialogHandler : BaseElementListener() {
                 type = element.attributes["type"],
                 location = element.attributes["location"],
                 resident = element.attributes["resident"]?.startsWith(prefix = "t", ignoreCase = true) == true,
+                width = element.attributes["width"]?.toIntOrNull()?.takeIf { it > 0 },
+                height = element.attributes["height"]?.toIntOrNull()?.takeIf { it > 0 },
             ),
         )
     }
