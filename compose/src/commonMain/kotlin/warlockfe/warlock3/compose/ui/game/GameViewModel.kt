@@ -1939,7 +1939,9 @@ class GameViewModel(
                 // The reconnect installed a fresh game screen (or an error); release this (old)
                 // client, and stop this view model's work, since nothing shows it any more. The
                 // client's scripts go with it, which the user should hear about on the new screen.
-                val stoppedScripts = scriptManager.runningScripts.value.values.map { it.instance.name }
+                val stoppedScripts =
+                    scriptManager.runningScripts.value.values
+                        .map { it.instance.name }
                 try {
                     closeClient()
                     if (stoppedScripts.isNotEmpty()) onReconnectStoppedScripts(stoppedScripts)
