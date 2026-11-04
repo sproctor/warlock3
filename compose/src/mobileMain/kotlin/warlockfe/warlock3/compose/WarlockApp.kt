@@ -126,7 +126,8 @@ fun WarlockApp(
 
         if (showSettings) {
             SettingsScreen(
-                appContainer = appContainer,
+                settingsViewModelFactory = appContainer.settingsViewModelFactory,
+                crashReporting = appContainer.crashReporting,
                 currentCharacter = currentCharacter,
                 onClose = { showSettings = false },
                 initialPage = settingsInitialPage,

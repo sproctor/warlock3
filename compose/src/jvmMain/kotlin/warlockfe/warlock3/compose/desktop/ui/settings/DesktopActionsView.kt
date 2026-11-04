@@ -13,12 +13,10 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.launch
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.TextArea
 import warlockfe.warlock3.compose.desktop.shim.WarlockButton
@@ -28,11 +26,11 @@ import warlockfe.warlock3.compose.desktop.shim.WarlockMenuButton
 import warlockfe.warlock3.compose.desktop.shim.WarlockOutlinedButton
 import warlockfe.warlock3.compose.desktop.shim.WarlockScrollableColumn
 import warlockfe.warlock3.compose.desktop.shim.WarlockTextField
+import warlockfe.warlock3.compose.ui.settings.ActionsViewModel
 import warlockfe.warlock3.compose.ui.settings.childCandidates
 import warlockfe.warlock3.compose.ui.settings.moveItem
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.models.Action
-import warlockfe.warlock3.core.prefs.repositories.ActionRepository
 import kotlin.uuid.Uuid
 
 /**
@@ -42,23 +40,20 @@ import kotlin.uuid.Uuid
  */
 @Composable
 fun DesktopActionsView(
-    currentCharacter: GameCharacter?,
+    viewModel: ActionsViewModel,
     allCharacters: List<GameCharacter>,
-    actionRepository: ActionRepository,
     modifier: Modifier = Modifier,
 ) {
-    var selectedCharacter by remember(currentCharacter) { mutableStateOf(currentCharacter) }
-    val currentCharacterId = selectedCharacter?.id ?: "global"
-    val pool by actionRepository.observePool(currentCharacterId).collectAsState(emptyList())
-    val toolbar by actionRepository.observeToolbar(currentCharacterId).collectAsState(emptyList())
+    val selectedCharacter by viewModel.currentCharacter.collectAsState()
+    val pool by viewModel.pool.collectAsState()
+    val toolbar by viewModel.toolbar.collectAsState()
     val poolById = remember(pool) { pool.associateBy { it.id } }
     var editingAction by remember { mutableStateOf<Action?>(null) }
-    val scope = rememberCoroutineScope()
 
     SettingsListScaffold(
         selectedCharacter = selectedCharacter,
         characters = allCharacters,
-        onSelectCharacter = { selectedCharacter = it },
+        onSelectCharacter = viewModel::selectCharacter,
         modifier = modifier.fillMaxSize(),
     ) {
         WarlockScrollableColumn(modifier = Modifier.fillMaxWidth().weight(1f)) {
@@ -68,7 +63,7 @@ fun DesktopActionsView(
                 pool = poolById,
                 candidates = pool.filterNot { it.id in toolbar },
                 emptyText = "No buttons yet. Add an action below to the bar.",
-                onChange = { scope.launch { actionRepository.setToolbar(currentCharacterId, it) } },
+                onChange = viewModel::setToolbar,
             )
 
             Spacer(Modifier.height(24.dp))
@@ -83,7 +78,7 @@ fun DesktopActionsView(
                         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                             WarlockOutlinedButton(onClick = { editingAction = action }, text = "Edit")
                             WarlockOutlinedButton(
-                                onClick = { scope.launch { actionRepository.deleteAction(currentCharacterId, action.id) } },
+                                onClick = { viewModel.delete(action) },
                                 text = "Delete",
                             )
                         }
@@ -111,10 +106,7 @@ fun DesktopActionsView(
             action = action,
             pool = pool,
             onSave = { updated ->
-                scope.launch {
-                    actionRepository.saveAction(currentCharacterId, updated)
-                    editingAction = null
-                }
+                viewModel.save(updated) { editingAction = null }
             },
             onClose = { editingAction = null },
         )

@@ -14,14 +14,12 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.launch
 import org.jetbrains.jewel.ui.component.CheckboxRow
 import org.jetbrains.jewel.ui.component.Text
 import warlockfe.warlock3.compose.desktop.shim.WarlockButton
@@ -30,30 +28,25 @@ import warlockfe.warlock3.compose.desktop.shim.WarlockListItem
 import warlockfe.warlock3.compose.desktop.shim.WarlockOutlinedButton
 import warlockfe.warlock3.compose.desktop.shim.WarlockScrollableColumn
 import warlockfe.warlock3.compose.desktop.shim.WarlockTextField
+import warlockfe.warlock3.compose.ui.settings.AlterationsViewModel
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.models.AlterationEntity
-import warlockfe.warlock3.core.prefs.repositories.AlterationRepository
 import kotlin.uuid.Uuid
 
 @Composable
 fun DesktopAlterationsView(
-    currentCharacter: GameCharacter?,
+    viewModel: AlterationsViewModel,
     allCharacters: List<GameCharacter>,
-    alterationRepository: AlterationRepository,
     modifier: Modifier = Modifier,
 ) {
-    var selectedCharacter by remember(currentCharacter) { mutableStateOf(currentCharacter) }
-    val currentCharacterId = selectedCharacter?.id ?: "global"
-    val alterations by alterationRepository
-        .observeByCharacter(currentCharacterId)
-        .collectAsState(emptyList())
+    val selectedCharacter by viewModel.currentCharacter.collectAsState()
+    val alterations by viewModel.alterations.collectAsState()
     var editingAlteration by remember { mutableStateOf<AlterationEntity?>(null) }
-    val scope = rememberCoroutineScope()
 
     SettingsListScaffold(
         selectedCharacter = selectedCharacter,
         characters = allCharacters,
-        onSelectCharacter = { selectedCharacter = it },
+        onSelectCharacter = viewModel::selectCharacter,
         modifier = modifier.fillMaxSize(),
     ) {
         WarlockScrollableColumn(modifier = Modifier.fillMaxWidth().weight(1f)) {
@@ -67,9 +60,7 @@ fun DesktopAlterationsView(
                                 text = "Edit",
                             )
                             WarlockOutlinedButton(
-                                onClick = {
-                                    scope.launch { alterationRepository.deleteById(alteration.id) }
-                                },
+                                onClick = { viewModel.delete(alteration) },
                                 text = "Delete",
                             )
                         }
@@ -86,7 +77,7 @@ fun DesktopAlterationsView(
                     editingAlteration =
                         AlterationEntity(
                             id = Uuid.random(),
-                            characterId = currentCharacterId,
+                            characterId = viewModel.characterId(),
                             pattern = "",
                             sourceStream = null,
                             destinationStream = null,
@@ -103,10 +94,7 @@ fun DesktopAlterationsView(
         DesktopEditAlterationDialog(
             alteration = alteration,
             saveAlteration = { newAlteration ->
-                scope.launch {
-                    alterationRepository.save(newAlteration)
-                    editingAlteration = null
-                }
+                viewModel.save(newAlteration) { editingAlteration = null }
             },
             onClose = { editingAlteration = null },
         )
@@ -174,10 +162,10 @@ private fun DesktopEditAlterationDialog(
                                 characterId = alteration.characterId,
                                 pattern = pattern.text.toString(),
                                 sourceStream = sourceStream.text.toString().ifBlank { null },
-                                destinationStream = null,
+                                destinationStream = alteration.destinationStream,
                                 result = replacement.text.toString().ifBlank { null },
                                 ignoreCase = ignoreCase,
-                                keepOriginal = false,
+                                keepOriginal = alteration.keepOriginal,
                             ),
                         )
                     },

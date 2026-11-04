@@ -25,13 +25,11 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import warlockfe.warlock3.compose.components.ScrollableColumn
 import warlockfe.warlock3.compose.generated.resources.Res
@@ -40,29 +38,23 @@ import warlockfe.warlock3.compose.generated.resources.delete
 import warlockfe.warlock3.compose.generated.resources.edit
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.models.AliasEntity
-import warlockfe.warlock3.core.prefs.repositories.AliasRepository
 import kotlin.uuid.Uuid
 
 @Composable
 fun AliasView(
-    currentCharacter: GameCharacter?,
+    viewModel: AliasesViewModel,
     allCharacters: List<GameCharacter>,
-    aliasRepository: AliasRepository,
     modifier: Modifier = Modifier,
 ) {
-    var selectedCharacter by remember(currentCharacter) { mutableStateOf(currentCharacter) }
-    val currentCharacterId = selectedCharacter?.id ?: "global"
-    val aliases by aliasRepository
-        .observeByCharacter(currentCharacterId)
-        .collectAsState(emptyList())
+    val selectedCharacter by viewModel.currentCharacter.collectAsState()
+    val aliases by viewModel.aliases.collectAsState()
     var editingAlias by remember { mutableStateOf<AliasEntity?>(null) }
-    val coroutineScope = rememberCoroutineScope()
 
     SettingsListScaffold(
         title = "Aliases",
         selectedCharacter = selectedCharacter,
         characters = allCharacters,
-        onSelectCharacter = { selectedCharacter = it },
+        onSelectCharacter = viewModel::selectCharacter,
         modifier = modifier.fillMaxSize(),
     ) {
         ScrollableColumn(Modifier.fillMaxWidth().weight(1f)) {
@@ -83,9 +75,7 @@ fun AliasView(
                             }
                             Spacer(Modifier.width(8.dp))
                             IconButton(
-                                onClick = {
-                                    coroutineScope.launch { aliasRepository.deleteById(alias.id) }
-                                },
+                                onClick = { viewModel.delete(alias) },
                             ) {
                                 Icon(
                                     painter = painterResource(Res.drawable.delete),
@@ -106,7 +96,7 @@ fun AliasView(
                     editingAlias =
                         AliasEntity(
                             id = Uuid.random(),
-                            characterId = currentCharacterId,
+                            characterId = viewModel.characterId(),
                             pattern = "",
                             replacement = "",
                         )
@@ -125,10 +115,7 @@ fun AliasView(
         EditAliasDialog(
             alias = alias,
             saveAlias = { newAlias ->
-                coroutineScope.launch {
-                    aliasRepository.save(newAlias)
-                    editingAlias = null
-                }
+                viewModel.save(newAlias) { editingAlias = null }
             },
             onClose = { editingAlias = null },
         )

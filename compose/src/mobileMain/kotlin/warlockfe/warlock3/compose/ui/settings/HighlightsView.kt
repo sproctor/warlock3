@@ -34,7 +34,6 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -44,7 +43,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import io.github.vinceglb.filekit.absolutePath
 import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
-import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import sh.calvin.reorderable.ReorderableColumn
 import warlockfe.warlock3.compose.components.CheckboxRow
@@ -63,10 +61,7 @@ import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.compose.util.toColorPalette
 import warlockfe.warlock3.compose.util.toPresets
 import warlockfe.warlock3.core.client.GameCharacter
-import warlockfe.warlock3.core.prefs.config.GLOBAL_CHARACTER_ID
 import warlockfe.warlock3.core.prefs.models.Highlight
-import warlockfe.warlock3.core.prefs.repositories.CharacterSettingsRepository
-import warlockfe.warlock3.core.prefs.repositories.HighlightRepositoryImpl
 import warlockfe.warlock3.core.text.StyleLayer
 import warlockfe.warlock3.core.text.StyleScope
 import warlockfe.warlock3.core.text.WarlockColor
@@ -79,22 +74,18 @@ import kotlin.uuid.Uuid
 
 @Composable
 fun HighlightsView(
-    currentCharacter: GameCharacter?,
+    viewModel: HighlightsViewModel,
     allCharacters: List<GameCharacter>,
-    highlightRepository: HighlightRepositoryImpl,
-    characterSettingsRepository: CharacterSettingsRepository,
     modifier: Modifier = Modifier,
 ) {
-    var selectedCharacter by remember(currentCharacter) { mutableStateOf(currentCharacter) }
+    val selectedCharacter by viewModel.currentCharacter.collectAsState()
     val currentCharacterId = selectedCharacter?.id
     val skin = LocalSkin.current
     val isDark = LocalDarkTheme.current
     val palette = skin.toColorPalette(isDark)
     val skinBase = remember(skin, isDark) { skin.toPresets(isDark)["default"]?.toLayer() ?: StyleLayer() }
-    val charBase by remember(currentCharacterId) {
-        characterSettingsRepository.observeBaseStyle(currentCharacterId ?: GLOBAL_CHARACTER_ID)
-    }.collectAsState(StyleLayer())
-    val globalBase by remember { characterSettingsRepository.observeBaseStyle(GLOBAL_CHARACTER_ID) }.collectAsState(StyleLayer())
+    val charBase by viewModel.characterBaseStyle.collectAsState()
+    val globalBase by viewModel.globalBaseStyle.collectAsState()
     val windowBackground =
         resolvedWindowBackground(
             listOfNotNull(
@@ -103,19 +94,14 @@ fun HighlightsView(
                 skinBase,
             ),
         )
-    val highlights by if (currentCharacterId == null) {
-        highlightRepository.observeGlobal()
-    } else {
-        highlightRepository.observeByCharacter(currentCharacterId)
-    }.collectAsState(emptyList())
+    val highlights by viewModel.highlights.collectAsState()
     var editingHighlight by remember { mutableStateOf<Highlight?>(null) }
-    val coroutineScope = rememberCoroutineScope()
 
     SettingsListScaffold(
         title = "Highlights",
         selectedCharacter = selectedCharacter,
         characters = allCharacters,
-        onSelectCharacter = { selectedCharacter = it },
+        onSelectCharacter = viewModel::selectCharacter,
         modifier = modifier.fillMaxSize(),
     ) {
         ScrollableColumn(
@@ -123,11 +109,7 @@ fun HighlightsView(
         ) {
             ReorderableColumn(
                 list = highlights,
-                onSettle = { from, to ->
-                    coroutineScope.launch {
-                        highlightRepository.move(currentCharacterId ?: GLOBAL_CHARACTER_ID, from, to)
-                    }
-                },
+                onSettle = { from, to -> viewModel.move(from, to) },
                 modifier = Modifier.fillMaxWidth(),
             ) { _, highlight, _ ->
                 key(highlight.id) {
@@ -162,9 +144,7 @@ fun HighlightsView(
                                     }
                                     Spacer(Modifier.width(8.dp))
                                     IconButton(
-                                        onClick = {
-                                            coroutineScope.launch { highlightRepository.deleteById(highlight.id) }
-                                        },
+                                        onClick = { viewModel.delete(highlight) },
                                     ) {
                                         Icon(
                                             painter = painterResource(Res.drawable.delete),
@@ -208,14 +188,7 @@ fun HighlightsView(
             palette = palette,
             windowBackground = windowBackground,
             saveHighlight = { newHighlight ->
-                coroutineScope.launch {
-                    if (currentCharacterId != null) {
-                        highlightRepository.save(currentCharacterId, newHighlight)
-                    } else {
-                        highlightRepository.saveGlobal(newHighlight)
-                    }
-                    editingHighlight = null
-                }
+                viewModel.save(newHighlight) { editingHighlight = null }
             },
             onClose = { editingHighlight = null },
         )

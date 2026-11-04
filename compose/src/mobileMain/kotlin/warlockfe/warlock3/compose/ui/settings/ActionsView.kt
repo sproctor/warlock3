@@ -29,12 +29,10 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import warlockfe.warlock3.compose.components.ScrollableColumn
 import warlockfe.warlock3.compose.generated.resources.Res
@@ -47,7 +45,6 @@ import warlockfe.warlock3.compose.generated.resources.keyboard_double_arrow_down
 import warlockfe.warlock3.compose.generated.resources.keyboard_double_arrow_up
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.models.Action
-import warlockfe.warlock3.core.prefs.repositories.ActionRepository
 import kotlin.uuid.Uuid
 
 /**
@@ -58,24 +55,21 @@ import kotlin.uuid.Uuid
  */
 @Composable
 fun ActionsView(
-    currentCharacter: GameCharacter?,
+    viewModel: ActionsViewModel,
     allCharacters: List<GameCharacter>,
-    actionRepository: ActionRepository,
     modifier: Modifier = Modifier,
 ) {
-    var selectedCharacter by remember(currentCharacter) { mutableStateOf(currentCharacter) }
-    val currentCharacterId = selectedCharacter?.id ?: "global"
-    val pool by actionRepository.observePool(currentCharacterId).collectAsState(emptyList())
-    val toolbar by actionRepository.observeToolbar(currentCharacterId).collectAsState(emptyList())
+    val selectedCharacter by viewModel.currentCharacter.collectAsState()
+    val pool by viewModel.pool.collectAsState()
+    val toolbar by viewModel.toolbar.collectAsState()
     val poolById = remember(pool) { pool.associateBy { it.id } }
     var editingAction by remember { mutableStateOf<Action?>(null) }
-    val scope = rememberCoroutineScope()
 
     SettingsListScaffold(
         title = "Actions",
         selectedCharacter = selectedCharacter,
         characters = allCharacters,
-        onSelectCharacter = { selectedCharacter = it },
+        onSelectCharacter = viewModel::selectCharacter,
         modifier = modifier.fillMaxSize(),
     ) {
         ScrollableColumn(Modifier.fillMaxWidth().weight(1f)) {
@@ -85,7 +79,7 @@ fun ActionsView(
                 pool = poolById,
                 candidates = pool.filterNot { it.id in toolbar },
                 emptyText = "No buttons yet. Add an action below to the bar.",
-                onChange = { scope.launch { actionRepository.setToolbar(currentCharacterId, it) } },
+                onChange = viewModel::setToolbar,
             )
 
             Spacer(Modifier.height(24.dp))
@@ -108,9 +102,7 @@ fun ActionsView(
                                 Icon(painterResource(Res.drawable.edit), contentDescription = "Edit")
                             }
                             Spacer(Modifier.width(8.dp))
-                            IconButton(
-                                onClick = { scope.launch { actionRepository.deleteAction(currentCharacterId, action.id) } },
-                            ) {
+                            IconButton(onClick = { viewModel.delete(action) }) {
                                 Icon(painterResource(Res.drawable.delete), contentDescription = "Delete")
                             }
                         }
@@ -144,10 +136,7 @@ fun ActionsView(
             action = action,
             pool = pool,
             onSave = { updated ->
-                scope.launch {
-                    actionRepository.saveAction(currentCharacterId, updated)
-                    editingAction = null
-                }
+                viewModel.save(updated) { editingAction = null }
             },
             onClose = { editingAction = null },
         )

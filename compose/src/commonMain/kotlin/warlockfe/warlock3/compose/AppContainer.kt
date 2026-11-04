@@ -30,6 +30,7 @@ import warlockfe.warlock3.compose.macros.KeyboardKeyMappings
 import warlockfe.warlock3.compose.model.SkinObject
 import warlockfe.warlock3.compose.ui.dashboard.DashboardViewModelFactory
 import warlockfe.warlock3.compose.ui.game.GameViewModelFactory
+import warlockfe.warlock3.compose.ui.settings.SettingsViewModelFactory
 import warlockfe.warlock3.compose.ui.sge.SgeViewModelFactory
 import warlockfe.warlock3.compose.ui.window.WindowRegistryFactory
 import warlockfe.warlock3.compose.util.seedAndMigrateDefaultMacros
@@ -448,6 +449,27 @@ class AppContainer(
         MudMobileDiscoverUseCase(
             api = mudMobileApi,
             sgeClientFactory = sgeClientFactory,
+        )
+    }
+
+    val settingsViewModelFactory by lazy {
+        SettingsViewModelFactory(
+            characterRepository = characterRepository,
+            characterSettingsRepository = characterSettingsRepository,
+            clientSettingRepository = clientSettings,
+            scriptDirRepository = scriptDirRepository,
+            variableRepository = variableRepository,
+            macroRepository = macroRepository,
+            highlightRepository = highlightRepository,
+            nameRepository = nameRepository,
+            ignoreRepository = ignoreRepository,
+            presetRepository = presetRepository,
+            aliasRepository = aliasRepository,
+            actionRepository = actionRepository,
+            alterationRepository = alterationRepository,
+            accountRepository = accountRepository,
+            windowSettingRepository = windowSettingRepository,
+            wraythImporter = wraythImporter,
         )
     }
 

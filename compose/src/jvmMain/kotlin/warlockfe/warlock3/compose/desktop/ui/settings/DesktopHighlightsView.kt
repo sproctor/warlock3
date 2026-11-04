@@ -19,7 +19,6 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -30,7 +29,6 @@ import androidx.compose.ui.unit.dp
 import io.github.vinceglb.filekit.absolutePath
 import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.CheckboxRow
@@ -47,16 +45,14 @@ import warlockfe.warlock3.compose.desktop.shim.WarlockScrollableColumn
 import warlockfe.warlock3.compose.desktop.shim.WarlockTextField
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.drag_indicator
+import warlockfe.warlock3.compose.ui.settings.HighlightsViewModel
 import warlockfe.warlock3.compose.ui.settings.resolvedWindowBackground
 import warlockfe.warlock3.compose.util.LocalDarkTheme
 import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.compose.util.toColorPalette
 import warlockfe.warlock3.compose.util.toPresets
 import warlockfe.warlock3.core.client.GameCharacter
-import warlockfe.warlock3.core.prefs.config.GLOBAL_CHARACTER_ID
 import warlockfe.warlock3.core.prefs.models.Highlight
-import warlockfe.warlock3.core.prefs.repositories.CharacterSettingsRepository
-import warlockfe.warlock3.core.prefs.repositories.HighlightRepositoryImpl
 import warlockfe.warlock3.core.text.StyleLayer
 import warlockfe.warlock3.core.text.StyleScope
 import warlockfe.warlock3.core.text.WarlockColor
@@ -69,22 +65,18 @@ import kotlin.uuid.Uuid
 
 @Composable
 fun DesktopHighlightsView(
-    currentCharacter: GameCharacter?,
+    viewModel: HighlightsViewModel,
     allCharacters: List<GameCharacter>,
-    highlightRepository: HighlightRepositoryImpl,
-    characterSettingsRepository: CharacterSettingsRepository,
     modifier: Modifier = Modifier,
 ) {
-    var selectedCharacter by remember(currentCharacter) { mutableStateOf(currentCharacter) }
+    val selectedCharacter by viewModel.currentCharacter.collectAsState()
     val currentCharacterId = selectedCharacter?.id
     val skin = LocalSkin.current
     val isDark = LocalDarkTheme.current
     val palette = skin.toColorPalette(isDark)
     val skinBase = remember(skin, isDark) { skin.toPresets(isDark)["default"]?.toLayer() ?: StyleLayer() }
-    val charBase by remember(currentCharacterId) {
-        characterSettingsRepository.observeBaseStyle(currentCharacterId ?: GLOBAL_CHARACTER_ID)
-    }.collectAsState(StyleLayer())
-    val globalBase by remember { characterSettingsRepository.observeBaseStyle(GLOBAL_CHARACTER_ID) }.collectAsState(StyleLayer())
+    val charBase by viewModel.characterBaseStyle.collectAsState()
+    val globalBase by viewModel.globalBaseStyle.collectAsState()
     val windowBackground =
         resolvedWindowBackground(
             listOfNotNull(
@@ -93,28 +85,19 @@ fun DesktopHighlightsView(
                 skinBase,
             ),
         )
-    val highlights by if (currentCharacterId == null) {
-        highlightRepository.observeGlobal()
-    } else {
-        highlightRepository.observeByCharacter(currentCharacterId)
-    }.collectAsState(emptyList())
+    val highlights by viewModel.highlights.collectAsState()
     var editingHighlight by remember { mutableStateOf<Highlight?>(null) }
-    val scope = rememberCoroutineScope()
 
     SettingsListScaffold(
         selectedCharacter = selectedCharacter,
         characters = allCharacters,
-        onSelectCharacter = { selectedCharacter = it },
+        onSelectCharacter = viewModel::selectCharacter,
         modifier = modifier.fillMaxSize(),
     ) {
         WarlockScrollableColumn(modifier = Modifier.fillMaxWidth().weight(1f)) {
             ReorderableColumn(
                 list = highlights,
-                onSettle = { from, to ->
-                    scope.launch {
-                        highlightRepository.move(currentCharacterId ?: GLOBAL_CHARACTER_ID, from, to)
-                    }
-                },
+                onSettle = { from, to -> viewModel.move(from, to) },
                 modifier = Modifier.fillMaxWidth(),
             ) { _, highlight, _ ->
                 key(highlight.id) {
@@ -148,9 +131,7 @@ fun DesktopHighlightsView(
                                         text = "Edit",
                                     )
                                     WarlockOutlinedButton(
-                                        onClick = {
-                                            scope.launch { highlightRepository.deleteById(highlight.id) }
-                                        },
+                                        onClick = { viewModel.delete(highlight) },
                                         text = "Delete",
                                     )
                                 }
@@ -187,14 +168,7 @@ fun DesktopHighlightsView(
             palette = palette,
             windowBackground = windowBackground,
             saveHighlight = { newHighlight ->
-                scope.launch {
-                    if (currentCharacterId != null) {
-                        highlightRepository.save(currentCharacterId, newHighlight)
-                    } else {
-                        highlightRepository.saveGlobal(newHighlight)
-                    }
-                    editingHighlight = null
-                }
+                viewModel.save(newHighlight) { editingHighlight = null }
             },
             onClose = { editingHighlight = null },
         )

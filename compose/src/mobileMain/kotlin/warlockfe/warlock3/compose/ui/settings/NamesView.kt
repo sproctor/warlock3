@@ -29,7 +29,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,7 +37,6 @@ import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.unit.dp
 import io.github.vinceglb.filekit.absolutePath
 import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
-import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import warlockfe.warlock3.compose.components.ScrollableColumn
 import warlockfe.warlock3.compose.components.StyleChip
@@ -54,10 +52,7 @@ import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.compose.util.toColorPalette
 import warlockfe.warlock3.compose.util.toPresets
 import warlockfe.warlock3.core.client.GameCharacter
-import warlockfe.warlock3.core.prefs.config.GLOBAL_CHARACTER_ID
 import warlockfe.warlock3.core.prefs.config.NameConfig
-import warlockfe.warlock3.core.prefs.repositories.CharacterSettingsRepository
-import warlockfe.warlock3.core.prefs.repositories.NameRepositoryImpl
 import warlockfe.warlock3.core.text.StyleLayer
 import warlockfe.warlock3.core.text.StyleScope
 import warlockfe.warlock3.core.text.WarlockColor
@@ -70,30 +65,20 @@ import kotlin.uuid.Uuid
 
 @Composable
 fun NamesView(
-    currentCharacter: GameCharacter?,
+    viewModel: NamesViewModel,
     allCharacters: List<GameCharacter>,
-    nameRepository: NameRepositoryImpl,
-    characterSettingsRepository: CharacterSettingsRepository,
     modifier: Modifier = Modifier,
 ) {
-    var selectedCharacter by remember(currentCharacter) { mutableStateOf(currentCharacter) }
+    val selectedCharacter by viewModel.currentCharacter.collectAsState()
     val currentCharacterId = selectedCharacter?.id
-    val names by if (currentCharacterId == null) {
-        nameRepository.observeGlobal()
-    } else {
-        nameRepository.observeByCharacter(currentCharacterId)
-    }.collectAsState(emptyList())
+    val names by viewModel.names.collectAsState()
     var editingName by remember { mutableStateOf<NameConfig?>(null) }
-    val coroutineScope = rememberCoroutineScope()
-    val editingCharacterId = currentCharacterId ?: "global"
     val skin = LocalSkin.current
     val isDark = LocalDarkTheme.current
     val palette = skin.toColorPalette(isDark)
     val skinBase = remember(skin, isDark) { skin.toPresets(isDark)["default"]?.toLayer() ?: StyleLayer() }
-    val charBase by remember(currentCharacterId) {
-        characterSettingsRepository.observeBaseStyle(currentCharacterId ?: GLOBAL_CHARACTER_ID)
-    }.collectAsState(StyleLayer())
-    val globalBase by remember { characterSettingsRepository.observeBaseStyle(GLOBAL_CHARACTER_ID) }.collectAsState(StyleLayer())
+    val charBase by viewModel.characterBaseStyle.collectAsState()
+    val globalBase by viewModel.globalBaseStyle.collectAsState()
     val windowBackground =
         resolvedWindowBackground(
             listOfNotNull(
@@ -107,7 +92,7 @@ fun NamesView(
         title = "Names",
         selectedCharacter = selectedCharacter,
         characters = allCharacters,
-        onSelectCharacter = { selectedCharacter = it },
+        onSelectCharacter = viewModel::selectCharacter,
         modifier = modifier.fillMaxSize(),
     ) {
         ScrollableColumn(
@@ -137,7 +122,7 @@ fun NamesView(
                             Spacer(Modifier.width(8.dp))
                             IconButton(
                                 onClick = {
-                                    coroutineScope.launch { nameRepository.deleteByText(editingCharacterId, name.text) }
+                                    viewModel.delete(name)
                                 },
                             ) {
                                 Icon(
@@ -179,10 +164,7 @@ fun NamesView(
             palette = palette,
             windowBackground = windowBackground,
             saveName = { newName ->
-                coroutineScope.launch {
-                    nameRepository.save(editingCharacterId, newName)
-                    editingName = null
-                }
+                viewModel.save(newName) { editingName = null }
             },
             onClose = { editingName = null },
         )

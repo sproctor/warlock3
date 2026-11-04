@@ -28,9 +28,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
@@ -43,9 +43,6 @@ import io.github.vinceglb.filekit.dialogs.FileKitDialogSettings
 import io.github.vinceglb.filekit.dialogs.compose.rememberDirectoryPickerLauncher
 import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
-import kotlinx.io.files.Path
 import org.jetbrains.compose.resources.painterResource
 import warlockfe.warlock3.compose.components.RadioRow
 import warlockfe.warlock3.compose.components.ScrollableColumn
@@ -56,39 +53,25 @@ import warlockfe.warlock3.compose.generated.resources.error_filled
 import warlockfe.warlock3.compose.util.createPlatformDialogSettings
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.ThemeSetting
-import warlockfe.warlock3.core.prefs.repositories.CharacterSettingsRepository
-import warlockfe.warlock3.core.prefs.repositories.ClientSettingRepository
+import warlockfe.warlock3.core.prefs.config.GLOBAL_CHARACTER_ID
 import warlockfe.warlock3.core.prefs.repositories.DEFAULT_MAX_TYPE_AHEAD
-import warlockfe.warlock3.core.prefs.repositories.MAX_TYPE_AHEAD_KEY
-import warlockfe.warlock3.core.prefs.repositories.SCRIPT_COMMAND_PREFIX_KEY
-import warlockfe.warlock3.core.prefs.repositories.ScriptDirRepository
 import warlockfe.warlock3.core.util.LogType
-import warlockfe.warlock3.wrayth.settings.WraythImporter
 
 @Composable
 fun GeneralSettingsView(
-    characterSettingsRepository: CharacterSettingsRepository,
-    initialCharacter: GameCharacter?,
+    viewModel: GeneralSettingsViewModel,
     characters: List<GameCharacter>,
-    scriptDirRepository: ScriptDirRepository,
-    clientSettingRepository: ClientSettingRepository,
-    wraythImporter: WraythImporter,
     modifier: Modifier = Modifier,
 ) {
-    val currentCharacterState =
-        remember(initialCharacter, characters) {
-            mutableStateOf(initialCharacter)
-        }
-    val currentCharacter = currentCharacterState.value
-    val currentCharacterId = currentCharacter?.id ?: "global"
-    val scope = rememberCoroutineScope()
+    val currentCharacter by viewModel.currentCharacter.collectAsState()
+    val currentCharacterId = currentCharacter?.id ?: GLOBAL_CHARACTER_ID
     var importResultMessages by remember { mutableStateOf(emptyList<String>()) }
 
     Column(modifier.fillMaxSize()) {
         SettingsCharacterSelector(
             selectedCharacter = currentCharacter,
             characters = characters,
-            onSelect = { currentCharacterState.value = it },
+            onSelect = viewModel::selectCharacter,
             allowGlobal = true,
         )
         Spacer(Modifier.height(16.dp))
@@ -97,12 +80,8 @@ fun GeneralSettingsView(
                 dialogSettings = FileKitDialogSettings.createPlatformDialogSettings("Choose Wrayth settings file to import"),
             ) { platformFile ->
                 if (platformFile != null) {
-                    scope.launch {
-                        importResultMessages =
-                            wraythImporter.importFile(
-                                currentCharacterId,
-                                Path(platformFile.absolutePath()),
-                            )
+                    viewModel.importWraythFile(platformFile.absolutePath()) { messages ->
+                        importResultMessages = messages
                     }
                 }
             }
@@ -137,12 +116,12 @@ fun GeneralSettingsView(
             val maxLinesValue = rememberTextFieldState()
             LaunchedEffect(Unit) {
                 val initialMaxLines =
-                    clientSettingRepository.observeMaxScrollLines().first().toString()
+                    viewModel.getMaxScrollLines().toString()
                 maxLinesValue.setTextAndPlaceCursorAtEnd(initialMaxLines)
                 snapshotFlow { maxLinesValue.text.toString() }
                     .collectLatest {
                         if (maxLinesValue.text.toString() != initialMaxLines && maxLinesValue.text.isNotBlank()) {
-                            clientSettingRepository.putMaxScrollLines(
+                            viewModel.putMaxScrollLines(
                                 maxLinesValue.text.toString().toIntOrNull(),
                             )
                         }
@@ -162,12 +141,12 @@ fun GeneralSettingsView(
             val minCommandLengthValue = rememberTextFieldState()
             LaunchedEffect(Unit) {
                 val initialMinCommandLength =
-                    clientSettingRepository.observeMinCommandLength().first().toString()
+                    viewModel.getMinCommandLength().toString()
                 minCommandLengthValue.setTextAndPlaceCursorAtEnd(initialMinCommandLength)
                 snapshotFlow { minCommandLengthValue.text.toString() }
                     .collectLatest {
                         if (it != initialMinCommandLength && it.isNotBlank()) {
-                            clientSettingRepository.putMinCommandLength(it.toIntOrNull())
+                            viewModel.putMinCommandLength(it.toIntOrNull())
                         }
                     }
             }
@@ -182,142 +161,124 @@ fun GeneralSettingsView(
 
             Spacer(Modifier.height(16.dp))
 
-            val markLinks by clientSettingRepository
-                .observeMarkLinks()
-                .collectAsState(initial = true)
+            val markLinks by viewModel.markLinks.collectAsState()
             SwitchRow(
                 checked = markLinks,
-                onCheckedChange = { scope.launch { clientSettingRepository.putMarkLinks(it) } },
+                onCheckedChange = viewModel::putMarkLinks,
                 text = "Mark links in text",
             )
 
             Spacer(Modifier.height(16.dp))
 
-            val showImages by clientSettingRepository
-                .observeShowImages()
-                .collectAsState(initial = true)
+            val showImages by viewModel.showImages.collectAsState()
             SwitchRow(
                 checked = showImages,
-                onCheckedChange = { scope.launch { clientSettingRepository.putShowImages(it) } },
+                onCheckedChange = viewModel::putShowImages,
                 text = "Show images in stream",
             )
 
             Spacer(Modifier.height(16.dp))
 
-            val suppressPrompts by clientSettingRepository
-                .observeSuppressPrompts()
-                .collectAsState(initial = false)
+            val suppressPrompts by viewModel.suppressPrompts.collectAsState()
             SwitchRow(
                 checked = suppressPrompts,
-                onCheckedChange = { scope.launch { clientSettingRepository.putSuppressPrompts(it) } },
+                onCheckedChange = viewModel::putSuppressPrompts,
                 text = "Hide prompts",
             )
 
             Spacer(Modifier.height(16.dp))
 
-            val autoConnectLastConnection by clientSettingRepository
-                .observeAutoConnectLastConnection()
-                .collectAsState(initial = false)
+            val autoConnectLastConnection by viewModel.autoConnectLastConnection.collectAsState()
             SwitchRow(
                 checked = autoConnectLastConnection,
-                onCheckedChange = { scope.launch { clientSettingRepository.putAutoConnectLastConnection(it) } },
+                onCheckedChange = viewModel::putAutoConnectLastConnection,
                 text = "Reconnect the last connection on startup",
             )
 
             Spacer(Modifier.height(16.dp))
 
-            if (currentCharacterId != "global") {
-                val maxTypeAheadState = rememberTextFieldState(DEFAULT_MAX_TYPE_AHEAD.toString())
-                var maxTypeAheadError by remember { mutableStateOf<String?>(null) }
-                LaunchedEffect(maxTypeAheadState) {
-                    val initialMaxTypeAhead =
-                        characterSettingsRepository
-                            .observe(
-                                characterId = currentCharacterId,
-                                key = MAX_TYPE_AHEAD_KEY,
-                            ).first()
-                    if (initialMaxTypeAhead != null) {
-                        maxTypeAheadState.setTextAndPlaceCursorAtEnd(initialMaxTypeAhead)
-                    }
-                    snapshotFlow { maxTypeAheadState.text.toString() }
-                        .collectLatest {
-                            val value = it.toIntOrNull()
-                            if (value == null) {
-                                maxTypeAheadError = "Invalid number"
-                            } else if (value < 0) {
-                                maxTypeAheadError = "Must be non-negative"
-                            } else {
-                                maxTypeAheadError = null
-                                scope.launch {
-                                    characterSettingsRepository.save(
-                                        characterId = currentCharacterId,
-                                        key = MAX_TYPE_AHEAD_KEY,
-                                        value = it,
-                                    )
+            if (currentCharacterId != GLOBAL_CHARACTER_ID) {
+                // Keyed on the character: the fields' text and the effects that load and save it
+                // must start over for each one, or switching straight from one character to
+                // another shows, and saves to, the first.
+                key(currentCharacterId) {
+                    val maxTypeAheadState = rememberTextFieldState(DEFAULT_MAX_TYPE_AHEAD.toString())
+                    var maxTypeAheadError by remember { mutableStateOf<String?>(null) }
+                    LaunchedEffect(maxTypeAheadState) {
+                        val initialMaxTypeAhead = viewModel.getMaxTypeAhead(currentCharacterId)
+                        if (initialMaxTypeAhead != null) {
+                            maxTypeAheadState.setTextAndPlaceCursorAtEnd(initialMaxTypeAhead)
+                        }
+                        snapshotFlow { maxTypeAheadState.text.toString() }
+                            .collectLatest {
+                                val value = it.toIntOrNull()
+                                if (value == null) {
+                                    maxTypeAheadError = "Invalid number"
+                                } else if (value < 0) {
+                                    maxTypeAheadError = "Must be non-negative"
+                                } else {
+                                    maxTypeAheadError = null
+                                    viewModel.saveMaxTypeAhead(currentCharacterId, it)
                                 }
                             }
-                        }
-                }
-                TextField(
-                    state = maxTypeAheadState,
-                    label = {
-                        Text("Maximum commands to type ahead. 0 to disable buffer")
-                    },
-                    supportingText = {
-                        if (maxTypeAheadError != null) {
-                            Text(maxTypeAheadError!!, color = MaterialTheme.colorScheme.error)
-                        }
-                    },
-                    isError = maxTypeAheadError != null,
-                    trailingIcon = {
-                        if (maxTypeAheadError != null) {
-                            Icon(
-                                painterResource(Res.drawable.error_filled),
-                                contentDescription = null,
+                    }
+                    TextField(
+                        state = maxTypeAheadState,
+                        label = {
+                            Text("Maximum commands to type ahead. 0 to disable buffer")
+                        },
+                        supportingText = {
+                            if (maxTypeAheadError != null) {
+                                Text(maxTypeAheadError!!, color = MaterialTheme.colorScheme.error)
+                            }
+                        },
+                        isError = maxTypeAheadError != null,
+                        trailingIcon = {
+                            if (maxTypeAheadError != null) {
+                                Icon(
+                                    painterResource(Res.drawable.error_filled),
+                                    contentDescription = null,
+                                )
+                            }
+                        },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        lineLimits = TextFieldLineLimits.SingleLine,
+                    )
+
+                    Spacer(Modifier.height(16.dp))
+
+                    val scriptCommandPrefixState = rememberTextFieldState(".")
+                    LaunchedEffect(currentCharacterId) {
+                        viewModel
+                            .getScriptCommandPrefix(currentCharacterId)
+                            ?.let { prefix ->
+                                scriptCommandPrefixState.setTextAndPlaceCursorAtEnd(prefix)
+                            }
+                    }
+                    TextField(
+                        state = scriptCommandPrefixState,
+                        label = {
+                            Text("Script command prefix")
+                        },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii),
+                        lineLimits = TextFieldLineLimits.SingleLine,
+                    )
+                    LaunchedEffect(scriptCommandPrefixState.text) {
+                        val initialScriptCommandPrefix = viewModel.getScriptCommandPrefix(currentCharacterId)
+                        if (scriptCommandPrefixState.text.toString() != initialScriptCommandPrefix) {
+                            viewModel.saveScriptCommandPrefix(
+                                characterId = currentCharacterId,
+                                scriptCommandPrefixState.text.toString(),
                             )
                         }
-                    },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    lineLimits = TextFieldLineLimits.SingleLine,
-                )
-
-                Spacer(Modifier.height(16.dp))
-
-                val scriptCommandPrefixState = rememberTextFieldState(".")
-                LaunchedEffect(currentCharacterId) {
-                    characterSettingsRepository
-                        .get(currentCharacterId, SCRIPT_COMMAND_PREFIX_KEY)
-                        ?.let { prefix ->
-                            scriptCommandPrefixState.setTextAndPlaceCursorAtEnd(prefix)
-                        }
-                }
-                TextField(
-                    state = scriptCommandPrefixState,
-                    label = {
-                        Text("Script command prefix")
-                    },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii),
-                    lineLimits = TextFieldLineLimits.SingleLine,
-                )
-                LaunchedEffect(scriptCommandPrefixState.text) {
-                    val initialScriptCommandPrefix =
-                        characterSettingsRepository.get(currentCharacterId, SCRIPT_COMMAND_PREFIX_KEY)
-                    if (scriptCommandPrefixState.text.toString() != initialScriptCommandPrefix) {
-                        characterSettingsRepository.save(
-                            characterId = currentCharacterId,
-                            SCRIPT_COMMAND_PREFIX_KEY,
-                            scriptCommandPrefixState.text.toString(),
-                        )
                     }
+                    Spacer(Modifier.height(16.dp))
                 }
-                Spacer(Modifier.height(16.dp))
             }
 
             Text("Script directories", style = MaterialTheme.typography.headlineSmall)
             Spacer(Modifier.height(8.dp))
-            val scriptDirs by scriptDirRepository
-                .observeScriptDirs(characterId = currentCharacterId)
-                .collectAsState(emptyList())
+            val scriptDirs by viewModel.scriptDirs.collectAsState()
             Column(
                 Modifier
                     .border(
@@ -328,7 +289,7 @@ fun GeneralSettingsView(
                     .fillMaxWidth(),
             ) {
                 ListItem(
-                    headlineContent = { Text(scriptDirRepository.getDefaultDir()) },
+                    headlineContent = { Text(viewModel.defaultScriptDir) },
                 )
                 scriptDirs.forEach { scriptDir ->
                     ListItem(
@@ -337,14 +298,7 @@ fun GeneralSettingsView(
                         },
                         trailingContent = {
                             IconButton(
-                                onClick = {
-                                    scope.launch {
-                                        scriptDirRepository.delete(
-                                            characterId = currentCharacterId,
-                                            path = scriptDir,
-                                        )
-                                    }
-                                },
+                                onClick = { viewModel.deleteScriptDir(scriptDir) },
                             ) {
                                 Icon(
                                     painter = painterResource(Res.drawable.delete),
@@ -361,9 +315,7 @@ fun GeneralSettingsView(
                     dialogSettings = FileKitDialogSettings.createPlatformDialogSettings("Choose a script directory"),
                 ) { directory ->
                     if (directory != null) {
-                        scope.launch {
-                            scriptDirRepository.save(currentCharacterId, directory.absolutePath())
-                        }
+                        viewModel.addScriptDir(directory.absolutePath())
                     }
                 }
             Button(
@@ -376,13 +328,13 @@ fun GeneralSettingsView(
 
             Spacer(Modifier.height(16.dp))
 
-            val currentTheme by clientSettingRepository.observeTheme().collectAsState(null)
+            val currentTheme by viewModel.theme.collectAsState()
             Text("Select theme")
             Column(Modifier.selectableGroup()) {
                 ThemeSetting.entries.forEach { entry ->
                     RadioRow(
                         selected = currentTheme == entry,
-                        onClick = { scope.launch { clientSettingRepository.putTheme(entry) } },
+                        onClick = { viewModel.putTheme(entry) },
                         text = entry.name,
                     )
                 }
@@ -390,7 +342,7 @@ fun GeneralSettingsView(
 
             Spacer(Modifier.height(8.dp))
 
-            val currentSkin by clientSettingRepository.observeSkinFile().collectAsState(null)
+            val currentSkin by viewModel.skinFile.collectAsState()
             Text("Select skin")
             OutlinedTextField(
                 value = currentSkin ?: "Default",
@@ -399,11 +351,7 @@ fun GeneralSettingsView(
                 singleLine = true,
             )
             Button(
-                onClick = {
-                    scope.launch {
-                        clientSettingRepository.putSkinFile(null)
-                    }
-                },
+                onClick = { viewModel.putSkinFile(null) },
                 enabled = currentSkin != null,
             ) {
                 Text("Use default skin")
@@ -417,9 +365,7 @@ fun GeneralSettingsView(
                             ?.let { PlatformFile(it) },
                 ) { file ->
                     if (file != null) {
-                        scope.launch {
-                            clientSettingRepository.putSkinFile(file.absolutePath())
-                        }
+                        viewModel.putSkinFile(file.absolutePath())
                     }
                 }
             Button(
@@ -432,7 +378,7 @@ fun GeneralSettingsView(
 
             Spacer(Modifier.height(8.dp))
 
-            val loggingSettings by clientSettingRepository.observeLogSettings().collectAsState(null)
+            val loggingSettings by viewModel.logSettings.collectAsState()
             Text("Logging settings")
             if (loggingSettings != null) {
                 OutlinedTextField(
@@ -447,9 +393,7 @@ fun GeneralSettingsView(
                         directory = PlatformFile(loggingSettings!!.basePath),
                     ) { directory ->
                         if (directory != null) {
-                            scope.launch {
-                                clientSettingRepository.putLoggingPath(directory.absolutePath())
-                            }
+                            viewModel.putLoggingPath(directory.absolutePath())
                         }
                     }
                 Button(
@@ -465,7 +409,7 @@ fun GeneralSettingsView(
                     LogType.entries.forEach { entry ->
                         RadioRow(
                             selected = loggingSettings!!.type == entry,
-                            onClick = { scope.launch { clientSettingRepository.putLoggingType(entry) } },
+                            onClick = { viewModel.putLoggingType(entry) },
                             text = entry.name,
                         )
                     }
@@ -473,7 +417,7 @@ fun GeneralSettingsView(
 
                 SwitchRow(
                     checked = loggingSettings!!.logTimestamps,
-                    onCheckedChange = { scope.launch { clientSettingRepository.putLoggingTimestamps(it) } },
+                    onCheckedChange = viewModel::putLoggingTimestamps,
                     text = "Add timestamps to logs",
                 )
             }

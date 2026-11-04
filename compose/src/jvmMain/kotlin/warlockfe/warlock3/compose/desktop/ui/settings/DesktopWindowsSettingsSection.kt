@@ -19,7 +19,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -27,7 +26,6 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.jewel.foundation.theme.LocalContentColor
 import org.jetbrains.jewel.ui.component.CheckboxRow
@@ -46,12 +44,12 @@ import warlockfe.warlock3.compose.desktop.shim.WarlockTextField
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.arrow_right
 import warlockfe.warlock3.compose.ui.settings.WindowSettingsLiveContext
+import warlockfe.warlock3.compose.ui.settings.WindowsViewModel
 import warlockfe.warlock3.compose.ui.window.toStyleLayer
 import warlockfe.warlock3.compose.util.LocalDarkTheme
 import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.compose.util.toColorPalette
 import warlockfe.warlock3.core.prefs.models.WindowSettings
-import warlockfe.warlock3.core.prefs.repositories.WindowSettingsRepository
 import warlockfe.warlock3.core.text.FontConfig
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.StyleLayer
@@ -68,14 +66,14 @@ import kotlin.math.roundToInt
 /**
  * Per-window color/font settings for the selected character, grouped into shown windows, windows with
  * saved settings that aren't shown, a collapsed list of other (server-known but unconfigured) windows,
- * and a field to add settings for a window by id. Styling is written straight to
- * [WindowSettingsRepository]; show/hide routes through [liveContext] when the character is connected so
- * the running layout updates, otherwise through the repository (applied on next connect).
+ * and a field to add settings for a window by id. Styling is written straight to the repository through
+ * [WindowsViewModel]; show/hide routes through [liveContext] when the character is connected so the
+ * running layout updates, otherwise through the repository (applied on next connect).
  */
 @Composable
 fun DesktopWindowsSettingsSection(
     characterId: String,
-    windowSettingRepository: WindowSettingsRepository,
+    viewModel: WindowsViewModel,
     // The edited character's panel scale, which a window's override falls back to. Passed in
     // rather than read from LocalPanelDefaults: that local carries the *connected* character's
     // scale, and these settings can be edited for a different character, or with no game up.
@@ -85,11 +83,8 @@ fun DesktopWindowsSettingsSection(
     initialWindowTarget: String?,
     modifier: Modifier = Modifier,
 ) {
-    val scope = rememberCoroutineScope()
     val palette = LocalSkin.current.toColorPalette(LocalDarkTheme.current)
-    val windowSettings by remember(characterId) {
-        windowSettingRepository.observeWindowSettings(characterId)
-    }.collectAsState(emptyList())
+    val windowSettings by viewModel.windowSettings.collectAsState()
 
     val connected = liveContext?.takeIf { it.connectedCharacterId == characterId }
     val emptyWindowInfo = remember { MutableStateFlow(emptyList<WindowInfo>()) }
@@ -157,28 +152,15 @@ fun DesktopWindowsSettingsSection(
                 if (connected != null) {
                     if (show) connected.openWindow(name) else connected.closeWindow(name)
                 } else {
-                    scope.launch {
-                        if (show) {
-                            windowSettingRepository.openWindow(characterId, name)
-                        } else {
-                            windowSettingRepository.closeWindow(characterId, name)
-                        }
-                    }
+                    viewModel.setWindowShown(name, show)
                 }
             },
-            onSaveStyle = { layer -> scope.launch { windowSettingRepository.setStyleLayer(characterId, name, layer) } },
-            onSaveFont = { font -> scope.launch { windowSettingRepository.setFont(characterId, name, font) } },
-            onSaveMonoFont = { font -> scope.launch { windowSettingRepository.setMonoFont(characterId, name, font) } },
-            onSaveNameFilter = { value -> scope.launch { windowSettingRepository.setNameFilter(characterId, name, value) } },
-            onSaveScale = { value -> scope.launch { windowSettingRepository.setScale(characterId, name, value) } },
-            onRevert = {
-                scope.launch {
-                    windowSettingRepository.setStyle(characterId, name, StyleDefinition())
-                    windowSettingRepository.setFont(characterId, name, null)
-                    windowSettingRepository.setMonoFont(characterId, name, null)
-                    windowSettingRepository.setScale(characterId, name, null)
-                }
-            },
+            onSaveStyle = { layer -> viewModel.saveStyle(name, layer) },
+            onSaveFont = { font -> viewModel.saveFont(name, font) },
+            onSaveMonoFont = { font -> viewModel.saveMonoFont(name, font) },
+            onSaveNameFilter = { value -> viewModel.saveNameFilter(name, value) },
+            onSaveScale = { value -> viewModel.saveScale(name, value) },
+            onRevert = { viewModel.revert(name) },
             onEditFont = { current, monoOnly, onSave -> editFont = Triple(current, monoOnly, onSave) },
         )
     }

@@ -21,8 +21,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.unit.dp
 import org.jetbrains.compose.resources.painterResource
-import warlockfe.warlock3.compose.AppContainer
 import warlockfe.warlock3.compose.components.ScrollableColumn
+import warlockfe.warlock3.compose.crash.CrashReporting
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.arrow_right
 import warlockfe.warlock3.compose.generated.resources.close
@@ -35,7 +35,8 @@ import warlockfe.warlock3.core.client.GameCharacter
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    appContainer: AppContainer,
+    settingsViewModelFactory: SettingsViewModelFactory,
+    crashReporting: CrashReporting,
     currentCharacter: GameCharacter?,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
@@ -101,23 +102,8 @@ fun SettingsScreen(
                 SettingsContent(
                     page = selected,
                     currentCharacter = currentCharacter,
-                    characterSettingsRepository = appContainer.characterSettingsRepository,
-                    characterRepository = appContainer.characterRepository,
-                    scriptDirRepository = appContainer.scriptDirRepository,
-                    variableRepository = appContainer.variableRepository,
-                    macroRepository = appContainer.macroRepository,
-                    highlightRepository = appContainer.highlightRepository,
-                    nameRepository = appContainer.nameRepository,
-                    ignoreRepository = appContainer.ignoreRepository,
-                    presetRepository = appContainer.presetRepository,
-                    aliasRepository = appContainer.aliasRepository,
-                    actionRepository = appContainer.actionRepository,
-                    alterationRepository = appContainer.alterationRepository,
-                    clientSettingRepository = appContainer.clientSettings,
-                    accountRepository = appContainer.accountRepository,
-                    wraythImporter = appContainer.wraythImporter,
-                    windowSettingRepository = appContainer.windowSettingRepository,
-                    crashReporting = appContainer.crashReporting,
+                    settingsViewModelFactory = settingsViewModelFactory,
+                    crashReporting = crashReporting,
                     initialWindowTarget = initialWindowTarget,
                     windowLiveContext = windowLiveContext,
                 )
