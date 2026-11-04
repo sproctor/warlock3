@@ -17,6 +17,8 @@ import kotlinx.io.files.SystemFileSystem
 import warlockfe.warlock3.compose.AppContainer
 import warlockfe.warlock3.compose.crash.CrashReporter
 import warlockfe.warlock3.compose.crash.CrashReporting
+import warlockfe.warlock3.compose.model.GameScreen
+import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.compose.openPrefsDatabase
 import warlockfe.warlock3.core.client.ClientCompassEvent
 import warlockfe.warlock3.core.client.ClientEvent
@@ -43,6 +45,10 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertIs
+import kotlin.test.assertSame
+import kotlin.test.assertTrue
 import kotlin.time.Clock
 import kotlin.time.Instant
 
@@ -70,14 +76,21 @@ class GameViewModelClientEventsTest {
         dir.deleteRecursively()
     }
 
-    /** A client whose read loop emits [firstEvent] as soon as it starts, before anything else runs. */
+    /**
+     * A client whose read loop emits [firstEvent] as soon as it starts, before anything else runs, or
+     * whose connect throws [failure] if there is one.
+     */
     private class EagerClient(
         private val firstEvent: ClientEvent,
         private val windowRegistry: WindowRegistry,
+        private val failure: Exception? = null,
     ) : WarlockClient {
         override val eventFlow = MutableSharedFlow<ClientEvent>(extraBufferCapacity = 256)
 
+        var closed = false
+
         override suspend fun connect(key: String) {
+            failure?.let { throw it }
             eventFlow.emit(firstEvent)
         }
 
@@ -135,7 +148,9 @@ class GameViewModelClientEventsTest {
 
         override fun setMaxTypeAhead(value: Int) = Unit
 
-        override fun close() = Unit
+        override fun close() {
+            closed = true
+        }
     }
 
     private suspend fun appContainer(ioDispatcher: CoroutineDispatcher): AppContainer {
@@ -189,14 +204,45 @@ class GameViewModelClientEventsTest {
             val windowRegistry = container.windowRegistryFactory.create()
             val client = EagerClient(ClientCompassEvent(exits), windowRegistry)
 
-            val viewModel =
-                container.gameViewModelFactory.connect(
-                    client = client,
-                    key = "key",
-                    windowRegistry = windowRegistry,
-                )
+            val gameState = GameState()
+
+            container.gameViewModelFactory.connect(
+                client = client,
+                key = "key",
+                windowRegistry = windowRegistry,
+                gameState = gameState,
+            )
             advanceUntilIdle()
 
+            val viewModel = assertIs<GameScreen.ConnectedGameState>(gameState.screen).viewModel
             assertEquals(exits, viewModel.compassState.value)
+            viewModel.close()
+            advanceUntilIdle()
+        }
+
+    @Test
+    fun aClientThatFailsToStartIsClosedAndNeverShown() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            val container = appContainer(StandardTestDispatcher(testScheduler))
+            val windowRegistry = container.windowRegistryFactory.create()
+            val failure = IllegalStateException("no character")
+            val client = EagerClient(ClientCompassEvent(persistentHashSetOf()), windowRegistry, failure)
+            val gameState = GameState()
+
+            val thrown =
+                assertFailsWith<IllegalStateException> {
+                    container.gameViewModelFactory.connect(
+                        client = client,
+                        key = "key",
+                        windowRegistry = windowRegistry,
+                        gameState = gameState,
+                    )
+                }
+            advanceUntilIdle()
+
+            assertSame(failure, thrown)
+            assertTrue(client.closed)
+            assertEquals(GameScreen.Dashboard, gameState.screen)
         }
 }

@@ -2,7 +2,6 @@ package warlockfe.warlock3.compose
 
 import co.touchlab.kermit.Logger
 import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import warlockfe.warlock3.compose.model.GameScreen
@@ -63,27 +62,23 @@ class ConnectToTelnetUseCase(
                         acceptScripts = connection.acceptScripts,
                     )
                 createdClient = client
-                val gameViewModel =
-                    gameViewModelFactory.connect(
-                        client = client,
-                        key = "",
-                        windowRegistry = windowRegistry,
-                        reconnect = {
-                            val result = invoke(connection, gameState)
-                            if (result is TelnetConnectResult.Failure) {
-                                gameState.setScreen(
-                                    GameScreen.ErrorState(result.message, returnTo = GameScreen.Dashboard),
-                                )
-                            }
-                        },
-                    )
-                // Ownership passes to the GameViewModel here, before the screen changes: showing the
-                // game clears the dashboard's view model, cancelling this call, and a cancellation
-                // that landed after setScreen must not let the finally close the client in use.
+                // The factory owns the client and registry from here, and closes them itself if the
+                // game doesn't make it on screen.
                 handedOff = true
-                withContext(NonCancellable) {
-                    gameState.setScreen(GameScreen.ConnectedGameState(gameViewModel))
-                }
+                gameViewModelFactory.connect(
+                    client = client,
+                    key = "",
+                    windowRegistry = windowRegistry,
+                    gameState = gameState,
+                    reconnect = {
+                        val result = invoke(connection, gameState)
+                        if (result is TelnetConnectResult.Failure) {
+                            gameState.setScreen(
+                                GameScreen.ErrorState(result.message, returnTo = GameScreen.Dashboard),
+                            )
+                        }
+                    },
+                )
                 TelnetConnectResult.Success
             } catch (e: Exception) {
                 ensureActive()

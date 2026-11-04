@@ -159,15 +159,16 @@ class SgeViewModel(
                         windowRegistry = streamRegistry,
                         socket = socket,
                     )
-                val gameViewModel =
-                    gameViewModelFactory.connect(
-                        client = sfClient,
-                        key = credentials.key,
-                        windowRegistry = streamRegistry,
-                        // Reuse the same credentials (and key) on reconnect.
-                        reconnect = { connectToGame(credentials) },
-                    )
-                gameState.setScreen(GameScreen.ConnectedGameState(gameViewModel))
+                // Shows the game itself, and closes the client if it can't: backing out of the wizard
+                // clears this view model, cancelling us, and could otherwise strand a live client.
+                gameViewModelFactory.connect(
+                    client = sfClient,
+                    key = credentials.key,
+                    windowRegistry = streamRegistry,
+                    gameState = gameState,
+                    // Reuse the same credentials (and key) on reconnect.
+                    reconnect = { connectToGame(credentials) },
+                )
             } catch (e: Exception) {
                 ensureActive()
                 gameState.setScreen(

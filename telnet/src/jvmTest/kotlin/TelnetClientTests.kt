@@ -32,6 +32,7 @@ import warlockfe.warlock3.core.client.ClientEvent
 import warlockfe.warlock3.core.client.ClientGmcpEvent
 import warlockfe.warlock3.core.client.ClientPromptEvent
 import warlockfe.warlock3.core.client.ClientTextEvent
+import warlockfe.warlock3.core.client.ClientWindowInfoEvent
 import warlockfe.warlock3.core.client.HandBlock
 import warlockfe.warlock3.core.client.MudScriptOffer
 import warlockfe.warlock3.core.client.PanelObject
@@ -129,7 +130,10 @@ class TelnetClientTests {
                     ioDispatcher = Dispatchers.IO,
                     socket = socket,
                 )
-            scope.launch { client.eventFlow.collect { synchronized(events) { events += it } } }
+            // Subscribed before connect, as the game screen is: eventFlow has no replay.
+            scope.launch(start = CoroutineStart.UNDISPATCHED) {
+                client.eventFlow.collect { synchronized(events) { events += it } }
+            }
             // Subscribed before anything is sent: stream lines are only published to a collector.
             for (stream in listOf("main", "debug")) {
                 scope.launch(start = CoroutineStart.UNDISPATCHED) {
@@ -204,6 +208,20 @@ class TelnetClientTests {
         assertEquals("Bob", client.characterName.value)
         assertEquals("mud.example:bob", registry.assignedCharacterId)
     }
+
+    @Test
+    fun theClientsOwnWindowsReachASubscriberThatWasThereBeforeConnect() =
+        runBlocking<Unit> {
+            // Announced on connect, not on construction, which would be before the game screen listens.
+            val announced =
+                await("the client's windows") {
+                    eventsSnapshot()
+                        .filterIsInstance<ClientWindowInfoEvent>()
+                        .map { it.info.name }
+                        .takeIf { it.size >= 3 }
+                }
+            assertEquals(listOf("warlockscripts", "scriptoutput", "debug"), announced.take(3))
+        }
 
     @Test
     fun completeLinesGoToTheMainWindowWithTheirColors() =

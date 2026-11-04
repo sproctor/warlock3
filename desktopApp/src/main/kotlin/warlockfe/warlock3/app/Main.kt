@@ -741,11 +741,7 @@ private class WarlockCommand : CliktCommand() {
                             windowRegistry = windowRegistry,
                             socket = socket,
                         )
-                    val viewModel =
-                        appContainer.gameViewModelFactory.connect(client, key, windowRegistry)
-                    setScreen(
-                        GameScreen.ConnectedGameState(viewModel),
-                    )
+                    appContainer.gameViewModelFactory.connect(client, key, windowRegistry, gameState = this@apply)
                 } catch (e: IOException) {
                     logger.e(e) { "Failed to connect to Warlock" }
                 }

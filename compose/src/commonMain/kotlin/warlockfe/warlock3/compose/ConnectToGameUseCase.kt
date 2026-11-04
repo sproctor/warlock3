@@ -14,6 +14,7 @@ import warlockfe.warlock3.core.client.WarlockProxy
 import warlockfe.warlock3.core.sge.ConnectionProxySettings
 import warlockfe.warlock3.core.sge.SimuGameCredentials
 import warlockfe.warlock3.core.util.WarlockDirs
+import warlockfe.warlock3.core.window.WindowRegistry
 import warlockfe.warlock3.wrayth.network.NetworkSocket
 import warlockfe.warlock3.wrayth.network.WraythClient
 import kotlin.time.Duration.Companion.milliseconds
@@ -58,27 +59,34 @@ class ConnectToGameUseCase(
                     proxy = warlockProxyFactory.create(proxyCommand)
                 }
             }
-            val streamRegistry = windowRegistryFactory.create()
             val deadline = TimeSource.Monotonic.markNow() + 30.seconds
             while (true) {
+                // Each attempt's socket and registry are ours to close until they are handed off to
+                // the game view model factory, so a failed attempt leaves nothing behind when we retry.
+                val socket = NetworkSocket(ioDispatcher)
+                var streamRegistry: WindowRegistry? = null
+                var handedOff = false
                 try {
-                    val socket = NetworkSocket(ioDispatcher)
                     socket.connect(loginCredentials.host, loginCredentials.port)
+                    // Created once the socket is up, so a refused attempt doesn't make one at all.
+                    val registry = windowRegistryFactory.create().also { streamRegistry = it }
                     val sfClient =
                         warlockClientFactory.createClient(
-                            windowRegistry = streamRegistry,
+                            windowRegistry = registry,
                             socket = socket,
                         ) as WraythClient
                     proxy?.let { sfClient.setProxy(it) }
-                    val gameViewModel =
-                        gameViewModelFactory.connect(
-                            client = sfClient,
-                            key = loginCredentials.key,
-                            windowRegistry = streamRegistry,
-                            // Reuse the same credentials (and key) on reconnect.
-                            reconnect = { invoke(credentials, proxySettings, gameState) },
-                        )
-                    gameState.setScreen(GameScreen.ConnectedGameState(gameViewModel))
+                    // The factory owns the client and registry from here, and closes them itself if
+                    // the game doesn't make it on screen.
+                    handedOff = true
+                    gameViewModelFactory.connect(
+                        client = sfClient,
+                        key = loginCredentials.key,
+                        windowRegistry = registry,
+                        gameState = gameState,
+                        // Reuse the same credentials (and key) on reconnect.
+                        reconnect = { invoke(credentials, proxySettings, gameState) },
+                    )
                     break
                 } catch (e: Exception) {
                     ensureActive()
@@ -108,6 +116,12 @@ class ConnectToGameUseCase(
                         break
                     }
                     delay(500.milliseconds)
+                } finally {
+                    if (!handedOff) {
+                        // A refused connect has already closed its socket.
+                        if (!socket.isClosed) socket.close()
+                        streamRegistry?.close()
+                    }
                 }
             }
         }

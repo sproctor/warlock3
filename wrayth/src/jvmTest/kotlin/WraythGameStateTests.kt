@@ -1,11 +1,15 @@
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import kotlinx.io.files.SystemFileSystem
+import warlockfe.warlock3.core.client.ClientEvent
+import warlockfe.warlock3.core.client.ClientWindowInfoEvent
 import warlockfe.warlock3.core.prefs.SettingsProblems
 import warlockfe.warlock3.core.prefs.config.ClientConfigStore
 import warlockfe.warlock3.core.prefs.repositories.CharacterRepository
@@ -109,7 +113,19 @@ class WraythGameStateTests {
         assertEquals(listOf("Unbind a Gemstone"), objectives.single().tasks.map { it.text })
     }
 
-    private fun run(vararg lines: String): WraythClient =
+    @Test
+    fun theClientsOwnWindowsReachASubscriberThatWasThereBeforeConnect() {
+        // Announced on connect, not on construction, which would be before the game screen listens.
+        val events = mutableListOf<ClientEvent>()
+        run("<mode id=\"GAME\"/>", events = events)
+        val announced = synchronized(events) { events.filterIsInstance<ClientWindowInfoEvent>().map { it.info.name } }
+        assertEquals(listOf("warlockscripts", "scriptoutput", "debug"), announced.take(3))
+    }
+
+    private fun run(
+        vararg lines: String,
+        events: MutableList<ClientEvent>? = null,
+    ): WraythClient =
         runBlocking {
             val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
             val tempDir = Files.createTempDirectory("wrayth-state").toString()
@@ -126,6 +142,13 @@ class WraythGameStateTests {
                     socket = ScriptedSocket(lines.toList()),
                     commandListStore = null,
                 )
+            if (events != null) {
+                // Unconfined, so each event is recorded as it is emitted: all of them are in by the
+                // time the client reports the disconnect.
+                scope.launch(Dispatchers.Unconfined, start = CoroutineStart.UNDISPATCHED) {
+                    client.eventFlow.collect { synchronized(events) { events += it } }
+                }
+            }
             client.connect("key")
             withTimeout(10.seconds) { client.disconnected.first { it } }
             scope.cancel()
