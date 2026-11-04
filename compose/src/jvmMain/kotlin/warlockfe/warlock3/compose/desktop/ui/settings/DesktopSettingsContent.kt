@@ -136,36 +136,29 @@ private fun SettingsPageContent(
 
             SettingsPage.Highlights -> {
                 DesktopHighlightsView(
-                    currentCharacter = currentCharacter,
+                    viewModel = viewModel { settingsViewModelFactory.highlights(currentCharacter) },
                     allCharacters = characters,
-                    highlightRepository = highlightRepository,
-                    characterSettingsRepository = characterSettingsRepository,
                 )
             }
 
             SettingsPage.Names -> {
                 DesktopNamesView(
-                    currentCharacter = currentCharacter,
+                    viewModel = viewModel { settingsViewModelFactory.names(currentCharacter) },
                     allCharacters = characters,
-                    nameRepository = nameRepository,
-                    characterSettingsRepository = characterSettingsRepository,
                 )
             }
 
             SettingsPage.Ignores -> {
                 DesktopIgnoresView(
-                    currentCharacter = currentCharacter,
+                    viewModel = viewModel { settingsViewModelFactory.ignores(currentCharacter) },
                     allCharacters = characters,
-                    ignoreRepository = ignoreRepository,
                 )
             }
 
             SettingsPage.TextStyles -> {
                 DesktopPresetsView(
-                    initialCharacter = currentCharacter,
+                    viewModel = viewModel { settingsViewModelFactory.presets(currentCharacter) },
                     characters = characters,
-                    presetRepository = presetRepository,
-                    characterSettingsRepository = characterSettingsRepository,
                 )
             }
 

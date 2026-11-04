@@ -15,13 +15,11 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.launch
 import org.jetbrains.jewel.foundation.theme.LocalContentColor
 import org.jetbrains.jewel.ui.component.Text
 import warlockfe.warlock3.compose.components.DEFAULT_PANEL_SCALE
@@ -41,15 +39,13 @@ import warlockfe.warlock3.compose.desktop.components.DesktopFontPickerDialog
 import warlockfe.warlock3.compose.desktop.components.DesktopTextStyleEditor
 import warlockfe.warlock3.compose.desktop.shim.WarlockOutlinedButton
 import warlockfe.warlock3.compose.desktop.shim.WarlockScrollableColumn
+import warlockfe.warlock3.compose.ui.settings.PresetsViewModel
 import warlockfe.warlock3.compose.ui.settings.resolvedWindowBackground
 import warlockfe.warlock3.compose.util.LocalDarkTheme
 import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.compose.util.toColorPalette
 import warlockfe.warlock3.compose.util.toPresets
 import warlockfe.warlock3.core.client.GameCharacter
-import warlockfe.warlock3.core.prefs.config.GLOBAL_CHARACTER_ID
-import warlockfe.warlock3.core.prefs.repositories.CharacterSettingsRepository
-import warlockfe.warlock3.core.prefs.repositories.PresetRepository
 import warlockfe.warlock3.core.text.Background
 import warlockfe.warlock3.core.text.FontConfig
 import warlockfe.warlock3.core.text.ResolvedStyle
@@ -92,32 +88,28 @@ private fun PresetItem.sample(): StyleSample =
  */
 @Composable
 fun DesktopPresetsView(
-    initialCharacter: GameCharacter?,
+    viewModel: PresetsViewModel,
     characters: List<GameCharacter>,
-    presetRepository: PresetRepository,
-    characterSettingsRepository: CharacterSettingsRepository,
     modifier: Modifier = Modifier,
 ) {
-    var selectedCharacter by remember(initialCharacter) { mutableStateOf(initialCharacter) }
+    val selectedCharacter by viewModel.currentCharacter.collectAsState()
     var selectedItem by remember { mutableStateOf<PresetItem?>(null) }
-    val scope = rememberCoroutineScope()
 
     // null character = the Global (all-characters) scope; edits then target the global layer.
     val editingCharacterId = selectedCharacter?.id
-    val scopeId = editingCharacterId ?: GLOBAL_CHARACTER_ID
 
     val skin = LocalSkin.current
     val isDark = LocalDarkTheme.current
     val skinLayers = remember(skin, isDark) { skin.toPresets(isDark).mapValues { it.value.toLayer() } }
     val skinBase = remember(skin, isDark) { skin.toPresets(isDark)["default"]?.toLayer() ?: StyleLayer() }
 
-    val charPresets by remember(scopeId) { presetRepository.observeScopeLayers(scopeId) }.collectAsState(emptyMap())
-    val globalPresets by remember { presetRepository.observeScopeLayers(GLOBAL_CHARACTER_ID) }.collectAsState(emptyMap())
-    val charBase by remember(scopeId) { characterSettingsRepository.observeBaseStyle(scopeId) }.collectAsState(StyleLayer())
-    val globalBase by remember { characterSettingsRepository.observeBaseStyle(GLOBAL_CHARACTER_ID) }.collectAsState(StyleLayer())
-    val monoFont by remember(scopeId) { characterSettingsRepository.observeMonoFont(scopeId) }.collectAsState(null)
-    val panelFont by remember(scopeId) { characterSettingsRepository.observePanelFont(scopeId) }.collectAsState(null)
-    val panelScale by remember(scopeId) { characterSettingsRepository.observePanelScale(scopeId) }.collectAsState(null)
+    val charPresets by viewModel.characterPresets.collectAsState()
+    val globalPresets by viewModel.globalPresets.collectAsState()
+    val charBase by viewModel.characterBaseStyle.collectAsState()
+    val globalBase by viewModel.globalBaseStyle.collectAsState()
+    val monoFont by viewModel.monoFont.collectAsState()
+    val panelFont by viewModel.panelFont.collectAsState()
+    val panelScale by viewModel.panelScale.collectAsState()
 
     // The skin's named-color palette, and the user layers with their skin-referenced colors resolved
     // against it (the ref is kept, so the editor can still show a color as skin-tracked).
@@ -150,11 +142,9 @@ fun DesktopPresetsView(
         item: PresetItem,
         layer: StyleLayer,
     ) {
-        scope.launch {
-            when (item) {
-                PresetItem.Base -> characterSettingsRepository.saveBaseStyle(scopeId, layer)
-                is PresetItem.Named -> presetRepository.saveLayer(scopeId, item.name, layer)
-            }
+        when (item) {
+            PresetItem.Base -> viewModel.saveBaseStyle(layer)
+            is PresetItem.Named -> viewModel.savePresetLayer(item.name, layer)
         }
     }
 
@@ -193,7 +183,7 @@ fun DesktopPresetsView(
     SettingsListScaffold(
         selectedCharacter = selectedCharacter,
         characters = characters,
-        onSelectCharacter = { selectedCharacter = it },
+        onSelectCharacter = viewModel::selectCharacter,
         modifier = modifier.fillMaxSize(),
     ) {
         val current = selectedItem
@@ -207,7 +197,7 @@ fun DesktopPresetsView(
                 label = "Monospace font",
                 font = monoFont,
                 monospaceOnly = true,
-                onSave = { scope.launch { characterSettingsRepository.saveMonoFont(scopeId, it) } },
+                onSave = viewModel::saveMonoFont,
             )
             // Panel windows are widget chrome rather than prose, so they get their own font and their
             // own geometry scale instead of following the base text style above.
@@ -215,11 +205,11 @@ fun DesktopPresetsView(
                 label = "Panel font",
                 font = panelFont,
                 monospaceOnly = false,
-                onSave = { scope.launch { characterSettingsRepository.savePanelFont(scopeId, it) } },
+                onSave = viewModel::savePanelFont,
             )
             PanelScaleRow(
                 scale = panelScale,
-                onSave = { scope.launch { characterSettingsRepository.savePanelScale(scopeId, it) } },
+                onSave = viewModel::savePanelScale,
             )
             Spacer(Modifier.height(16.dp))
             Text("Presets")

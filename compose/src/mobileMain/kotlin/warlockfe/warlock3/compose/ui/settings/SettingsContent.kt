@@ -137,35 +137,28 @@ private fun SettingsPageContent(
 
             SettingsPage.Highlights -> {
                 HighlightsView(
-                    currentCharacter = currentCharacter,
+                    viewModel = viewModel { settingsViewModelFactory.highlights(currentCharacter) },
                     allCharacters = characters,
-                    highlightRepository = highlightRepository,
-                    characterSettingsRepository = characterSettingsRepository,
                 )
             }
 
             SettingsPage.Names -> {
                 NamesView(
-                    currentCharacter = currentCharacter,
+                    viewModel = viewModel { settingsViewModelFactory.names(currentCharacter) },
                     allCharacters = characters,
-                    nameRepository = nameRepository,
-                    characterSettingsRepository = characterSettingsRepository,
                 )
             }
 
             SettingsPage.Ignores -> {
                 IgnoresView(
-                    currentCharacter = currentCharacter,
+                    viewModel = viewModel { settingsViewModelFactory.ignores(currentCharacter) },
                     allCharacters = characters,
-                    ignoreRepository = ignoreRepository,
                 )
             }
 
             SettingsPage.TextStyles -> {
                 PresetsView(
-                    presetRepository = presetRepository,
-                    characterSettingsRepository = characterSettingsRepository,
-                    initialCharacter = currentCharacter,
+                    viewModel = viewModel { settingsViewModelFactory.presets(currentCharacter) },
                     characters = characters,
                 )
             }

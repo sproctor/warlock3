@@ -15,14 +15,12 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import io.github.vinceglb.filekit.absolutePath
 import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
-import kotlinx.coroutines.launch
 import org.jetbrains.jewel.ui.component.Text
 import warlockfe.warlock3.compose.components.StyleChip
 import warlockfe.warlock3.compose.desktop.components.DesktopTextStyleEditor
@@ -32,6 +30,7 @@ import warlockfe.warlock3.compose.desktop.shim.WarlockListItem
 import warlockfe.warlock3.compose.desktop.shim.WarlockOutlinedButton
 import warlockfe.warlock3.compose.desktop.shim.WarlockScrollableColumn
 import warlockfe.warlock3.compose.desktop.shim.WarlockTextField
+import warlockfe.warlock3.compose.ui.settings.NamesViewModel
 import warlockfe.warlock3.compose.ui.settings.resolvedWindowBackground
 import warlockfe.warlock3.compose.ui.settings.toStyleLayer
 import warlockfe.warlock3.compose.ui.settings.withStyle
@@ -40,10 +39,7 @@ import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.compose.util.toColorPalette
 import warlockfe.warlock3.compose.util.toPresets
 import warlockfe.warlock3.core.client.GameCharacter
-import warlockfe.warlock3.core.prefs.config.GLOBAL_CHARACTER_ID
 import warlockfe.warlock3.core.prefs.config.NameConfig
-import warlockfe.warlock3.core.prefs.repositories.CharacterSettingsRepository
-import warlockfe.warlock3.core.prefs.repositories.NameRepositoryImpl
 import warlockfe.warlock3.core.text.StyleLayer
 import warlockfe.warlock3.core.text.StyleScope
 import warlockfe.warlock3.core.text.WarlockColor
@@ -56,30 +52,20 @@ import kotlin.uuid.Uuid
 
 @Composable
 fun DesktopNamesView(
-    currentCharacter: GameCharacter?,
+    viewModel: NamesViewModel,
     allCharacters: List<GameCharacter>,
-    nameRepository: NameRepositoryImpl,
-    characterSettingsRepository: CharacterSettingsRepository,
     modifier: Modifier = Modifier,
 ) {
-    var selectedCharacter by remember(currentCharacter) { mutableStateOf(currentCharacter) }
+    val selectedCharacter by viewModel.currentCharacter.collectAsState()
     val currentCharacterId = selectedCharacter?.id
-    val names by if (currentCharacterId == null) {
-        nameRepository.observeGlobal()
-    } else {
-        nameRepository.observeByCharacter(currentCharacterId)
-    }.collectAsState(emptyList())
+    val names by viewModel.names.collectAsState()
     var editingName by remember { mutableStateOf<NameConfig?>(null) }
-    val scope = rememberCoroutineScope()
     val skin = LocalSkin.current
     val isDark = LocalDarkTheme.current
     val palette = skin.toColorPalette(isDark)
-    val editingCharacterId = currentCharacterId ?: "global"
     val skinBase = remember(skin, isDark) { skin.toPresets(isDark)["default"]?.toLayer() ?: StyleLayer() }
-    val charBase by remember(currentCharacterId) {
-        characterSettingsRepository.observeBaseStyle(currentCharacterId ?: GLOBAL_CHARACTER_ID)
-    }.collectAsState(StyleLayer())
-    val globalBase by remember { characterSettingsRepository.observeBaseStyle(GLOBAL_CHARACTER_ID) }.collectAsState(StyleLayer())
+    val charBase by viewModel.characterBaseStyle.collectAsState()
+    val globalBase by viewModel.globalBaseStyle.collectAsState()
     val windowBackground =
         resolvedWindowBackground(
             listOfNotNull(
@@ -92,7 +78,7 @@ fun DesktopNamesView(
     SettingsListScaffold(
         selectedCharacter = selectedCharacter,
         characters = allCharacters,
-        onSelectCharacter = { selectedCharacter = it },
+        onSelectCharacter = viewModel::selectCharacter,
         modifier = modifier.fillMaxSize(),
     ) {
         WarlockScrollableColumn(modifier = Modifier.fillMaxWidth().weight(1f)) {
@@ -113,7 +99,7 @@ fun DesktopNamesView(
                             )
                             WarlockOutlinedButton(
                                 onClick = {
-                                    scope.launch { nameRepository.deleteByText(editingCharacterId, name.text) }
+                                    viewModel.delete(name)
                                 },
                                 text = "Delete",
                             )
@@ -150,10 +136,7 @@ fun DesktopNamesView(
             palette = palette,
             windowBackground = windowBackground,
             saveName = { newName ->
-                scope.launch {
-                    nameRepository.save(editingCharacterId, newName)
-                    editingName = null
-                }
+                viewModel.save(newName) { editingName = null }
             },
             onClose = { editingName = null },
         )

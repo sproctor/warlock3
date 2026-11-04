@@ -43,4 +43,15 @@ class SettingsViewModelFactory(
     fun settings(): SettingsViewModel = SettingsViewModel(characterRepository)
 
     fun macros(initialCharacter: GameCharacter?): MacrosViewModel = MacrosViewModel(initialCharacter, macroRepository)
+
+    fun highlights(initialCharacter: GameCharacter?): HighlightsViewModel =
+        HighlightsViewModel(initialCharacter, highlightRepository, characterSettingsRepository)
+
+    fun names(initialCharacter: GameCharacter?): NamesViewModel =
+        NamesViewModel(initialCharacter, nameRepository, characterSettingsRepository)
+
+    fun ignores(initialCharacter: GameCharacter?): IgnoresViewModel = IgnoresViewModel(initialCharacter, ignoreRepository)
+
+    fun presets(initialCharacter: GameCharacter?): PresetsViewModel =
+        PresetsViewModel(initialCharacter, presetRepository, characterSettingsRepository)
 }

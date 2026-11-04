@@ -12,12 +12,10 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.launch
 import org.jetbrains.jewel.ui.component.CheckboxRow
 import org.jetbrains.jewel.ui.component.RadioButtonRow
 import org.jetbrains.jewel.ui.component.Text
@@ -27,32 +25,26 @@ import warlockfe.warlock3.compose.desktop.shim.WarlockListItem
 import warlockfe.warlock3.compose.desktop.shim.WarlockOutlinedButton
 import warlockfe.warlock3.compose.desktop.shim.WarlockScrollableColumn
 import warlockfe.warlock3.compose.desktop.shim.WarlockTextField
+import warlockfe.warlock3.compose.ui.settings.IgnoresViewModel
 import warlockfe.warlock3.core.client.GameCharacter
-import warlockfe.warlock3.core.prefs.config.GLOBAL_CHARACTER_ID
 import warlockfe.warlock3.core.prefs.models.Ignore
 import warlockfe.warlock3.core.prefs.models.IgnoreMatchMode
-import warlockfe.warlock3.core.prefs.repositories.IgnoreRepository
 import kotlin.uuid.Uuid
 
 @Composable
 fun DesktopIgnoresView(
-    currentCharacter: GameCharacter?,
+    viewModel: IgnoresViewModel,
     allCharacters: List<GameCharacter>,
-    ignoreRepository: IgnoreRepository,
     modifier: Modifier = Modifier,
 ) {
-    var selectedCharacter by remember(currentCharacter) { mutableStateOf(currentCharacter) }
-    val currentCharacterId = selectedCharacter?.id ?: GLOBAL_CHARACTER_ID
-    val ignores by ignoreRepository
-        .observeByCharacter(currentCharacterId)
-        .collectAsState(emptyList())
+    val selectedCharacter by viewModel.currentCharacter.collectAsState()
+    val ignores by viewModel.ignores.collectAsState()
     var editingIgnore by remember { mutableStateOf<Ignore?>(null) }
-    val scope = rememberCoroutineScope()
 
     SettingsListScaffold(
         selectedCharacter = selectedCharacter,
         characters = allCharacters,
-        onSelectCharacter = { selectedCharacter = it },
+        onSelectCharacter = viewModel::selectCharacter,
         modifier = modifier.fillMaxSize(),
     ) {
         WarlockScrollableColumn(modifier = Modifier.fillMaxWidth().weight(1f)) {
@@ -71,9 +63,7 @@ fun DesktopIgnoresView(
                                 text = "Edit",
                             )
                             WarlockOutlinedButton(
-                                onClick = {
-                                    scope.launch { ignoreRepository.deleteById(ignore.id) }
-                                },
+                                onClick = { viewModel.delete(ignore) },
                                 text = "Delete",
                             )
                         }
@@ -104,10 +94,7 @@ fun DesktopIgnoresView(
         DesktopEditIgnoreDialog(
             ignore = ignore,
             saveIgnore = { newIgnore ->
-                scope.launch {
-                    ignoreRepository.save(currentCharacterId, newIgnore)
-                    editingIgnore = null
-                }
+                viewModel.save(newIgnore) { editingIgnore = null }
             },
             onClose = { editingIgnore = null },
         )
