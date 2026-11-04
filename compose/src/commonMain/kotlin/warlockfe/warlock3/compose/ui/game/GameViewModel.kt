@@ -27,6 +27,7 @@ import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
@@ -43,11 +44,13 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
@@ -752,6 +755,18 @@ class GameViewModel(
 
     private fun handleClientEvents() {
         client.eventFlow
+            // Only the events handled below matter here, and every main-window line is an event too.
+            // Drop the rest before they reach the UI thread: emit suspends the parser once eventFlow's
+            // buffer is full, so collecting all of it on Main paced the parser to the UI thread. On
+            // Windows, where Tao presents frames on that thread and waits for VSync, a large burst
+            // took over four seconds to show instead of under one.
+            .filter {
+                it is ClientCompassEvent ||
+                    it is ClientOpenUrlEvent ||
+                    it is ClientOpenWindowEvent ||
+                    it is ClientCloseWindowEvent ||
+                    it is ClientWindowInfoEvent
+            }.flowOn(Dispatchers.Default)
             .onEach { event ->
                 when (event) {
                     is ClientCompassEvent -> {
