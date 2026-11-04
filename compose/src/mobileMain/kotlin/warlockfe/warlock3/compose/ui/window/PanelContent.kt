@@ -1,11 +1,19 @@
 package warlockfe.warlock3.compose.ui.window
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.InputTransformation
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.maxLength
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -25,11 +33,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateMap
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -46,6 +57,7 @@ import warlockfe.warlock3.compose.util.LocalStyleMap
 import warlockfe.warlock3.compose.util.getColorGroup
 import warlockfe.warlock3.compose.util.progressBarSkinFont
 import warlockfe.warlock3.compose.util.toAlignment
+import warlockfe.warlock3.compose.util.toAnnotatedString
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.compose.util.withFont
 import warlockfe.warlock3.core.client.PanelObject
@@ -85,10 +97,9 @@ fun PanelContent(
     // carrying the same string for both states, and reading the tick back off [values] would then
     // leave it permanently ticked and impossible to clear.
     val checkedStates = remember { mutableStateMapOf<String, Boolean>() }
-    val executeWidget: (String, String?) -> Unit = { cmd, echo ->
-        onAction(WarlockAction.SendWidgetCommand(substitute(cmd, values), echo))
-    }
+    val executeWidget: (String, String?) -> Unit = { cmd, echo -> onAction(widgetCommand(cmd, echo, values)) }
     val execute: (String) -> Unit = { executeWidget(it, null) }
+    val pressButton: (PanelObject.Button) -> Unit = { data -> buttonAction(data, panelId, values)?.let(onAction) }
     // Wrayth gives each widget type its own font out of the skin; we deliberately draw them all with
     // one style, so there is a single knob here rather than a size hardcoded at every call site.
     // Chrome (panelId == null) is not a window the user can configure, so it keeps the defaults: the
@@ -160,23 +171,7 @@ fun PanelContent(
                     val stateLayer = MaterialTheme.colorScheme.onPrimaryContainer
                     val borderBrush = SolidColor(MaterialTheme.colorScheme.outline)
                     PanelButton(
-                        onClick = {
-                            // A close button sends its command first and dismisses the panel after,
-                            // which is the order the real client uses. It goes as one action so the
-                            // two halves cannot be reordered on their way to the socket.
-                            val closes = panelId?.takeIf { data.closesPanel }
-                            if (closes != null) {
-                                onAction(
-                                    WarlockAction.ClosePanel(
-                                        id = closes,
-                                        command = data.cmd?.let { substitute(it, values) },
-                                        echo = data.echo,
-                                    ),
-                                )
-                            } else {
-                                data.cmd?.let { executeWidget(it, data.echo) }
-                            }
-                        },
+                        onClick = { pressButton(data) },
                         modifier = Modifier.padding(2.dp),
                         shape = MaterialTheme.shapes.extraSmall,
                         background = { isHovered, isPressed ->
@@ -247,19 +242,77 @@ fun PanelContent(
                 is PanelObject.UpDownEditBox -> {
                     UpDownEditBox(data = data, values = values, executeCommand = execute)
                 }
+
+                is PanelObject.EditBox -> {
+                    EditBox(
+                        data = data,
+                        values = values,
+                        onEnter = { enterButtonOf(data, dataObjects)?.let(pressButton) },
+                    )
+                }
+
+                is PanelObject.StreamBox -> {
+                    StreamBox(data = data, onAction = onAction)
+                }
             }
         }
     }
 }
 
-private val commandVariableRegex = Regex("%([^%]+)%")
+@Composable
+private fun EditBox(
+    data: PanelObject.EditBox,
+    values: SnapshotStateMap<String, String>,
+    onEnter: () -> Unit,
+) {
+    val state = rememberEditBoxState(data, values)
+    val focusRequester = remember { FocusRequester() }
+    if (data.focus) {
+        LaunchedEffect(Unit) { focusRequester.requestFocus() }
+    }
+    BasicTextField(
+        state = state,
+        // Fills the row the layout gives it (Wrayth's 21px unless the server sizes it), so it stays
+        // level with the label beside it.
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .border(1.dp, MaterialTheme.colorScheme.outline, MaterialTheme.shapes.extraSmall)
+                .focusRequester(focusRequester),
+        inputTransformation = data.maxChars?.let { InputTransformation.maxLength(it) },
+        textStyle = LocalPanelTextStyle.current.copy(color = LocalContentColor.current),
+        cursorBrush = SolidColor(LocalContentColor.current),
+        lineLimits = TextFieldLineLimits.SingleLine,
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+        onKeyboardAction = { onEnter() },
+        decorator = { innerTextField ->
+            Box(modifier = Modifier.fillMaxSize().padding(horizontal = 4.dp), contentAlignment = Alignment.CenterStart) {
+                innerTextField()
+            }
+        },
+    )
+}
 
-// Replaces `%<id>%` placeholders in a command with the current values of the panel's value-bearing
-// widgets (e.g. "prep %dDBSpell0%" -> "prep 401"). Unknown placeholders are left as-is.
-private fun substitute(
-    cmd: String,
-    values: Map<String, String>,
-): String = commandVariableRegex.replace(cmd) { match -> values[match.groupValues[1]] ?: match.value }
+@Composable
+private fun StreamBox(
+    data: PanelObject.StreamBox,
+    onAction: (WarlockAction) -> Unit,
+) {
+    val styleMap = LocalStyleMap.current
+    val text = remember(data.text, styleMap) { data.text?.toAnnotatedString(emptyMap(), styleMap, onAction) }
+    Box(
+        modifier =
+            Modifier
+                .padding(2.dp)
+                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, MaterialTheme.shapes.extraSmall)
+                .padding(4.dp)
+                .verticalScroll(rememberScrollState()),
+    ) {
+        if (text != null) {
+            Text(text = text, style = LocalPanelTextStyle.current)
+        }
+    }
+}
 
 @Composable
 private fun DropDownBox(

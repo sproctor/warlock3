@@ -15,6 +15,10 @@ internal class LineBuffer {
     private var line: StyledString? = null
     private var component: OpenComponent? = null
 
+    // The line's text so far, set aside while a diversion gathers text of its own in its place.
+    private var heldLine: StyledString? = null
+    private var diverting = false
+
     private data class OpenComponent(
         val id: String,
         val text: StyledString,
@@ -52,6 +56,31 @@ internal class LineBuffer {
      */
     fun discardComponent() {
         component = null
+    }
+
+    /**
+     * Sets the line's text so far aside, so that [append] gathers the diversion's text instead,
+     * until [closeDiversion] puts the line back. For a `<dynaStream>` filling a panel's streamBox
+     * from the middle of a line: the text around it is still one line.
+     */
+    fun openDiversion() {
+        if (diverting) return
+        heldLine = line
+        line = null
+        diverting = true
+    }
+
+    /**
+     * Ends the diversion, restoring the line it interrupted, and hands back what it gathered, or
+     * null when none was open.
+     */
+    fun closeDiversion(): StyledString? {
+        if (!diverting) return null
+        val text = line ?: StyledString()
+        line = heldLine
+        heldLine = null
+        diverting = false
+        return text
     }
 
     /**

@@ -2,12 +2,20 @@ package warlockfe.warlock3.compose.desktop.ui.window
 
 import androidx.compose.foundation.ContextMenuArea
 import androidx.compose.foundation.ContextMenuItem
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.input.InputTransformation
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.maxLength
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -19,6 +27,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateMap
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -35,6 +47,7 @@ import org.jetbrains.jewel.ui.component.styling.LinkStyle
 import org.jetbrains.jewel.ui.component.styling.LinkUnderlineBehavior
 import org.jetbrains.jewel.ui.theme.defaultButtonStyle
 import org.jetbrains.jewel.ui.theme.linkStyle
+import org.jetbrains.jewel.ui.theme.textFieldStyle
 import warlockfe.warlock3.compose.components.DEFAULT_PANEL_SCALE
 import warlockfe.warlock3.compose.components.PANEL_BASE_FONT_SIZE
 import warlockfe.warlock3.compose.desktop.components.DesktopColorPickerDialog
@@ -46,6 +59,10 @@ import warlockfe.warlock3.compose.ui.window.PanelButton
 import warlockfe.warlock3.compose.ui.window.PanelImage
 import warlockfe.warlock3.compose.ui.window.PanelObjectLayout
 import warlockfe.warlock3.compose.ui.window.PanelProgressBar
+import warlockfe.warlock3.compose.ui.window.buttonAction
+import warlockfe.warlock3.compose.ui.window.enterButtonOf
+import warlockfe.warlock3.compose.ui.window.rememberEditBoxState
+import warlockfe.warlock3.compose.ui.window.widgetCommand
 import warlockfe.warlock3.compose.util.LocalPanelDefaults
 import warlockfe.warlock3.compose.util.LocalPanelTextStyle
 import warlockfe.warlock3.compose.util.LocalSkin
@@ -53,6 +70,7 @@ import warlockfe.warlock3.compose.util.LocalStyleMap
 import warlockfe.warlock3.compose.util.getColorGroup
 import warlockfe.warlock3.compose.util.progressBarSkinFont
 import warlockfe.warlock3.compose.util.toAlignment
+import warlockfe.warlock3.compose.util.toAnnotatedString
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.compose.util.withFont
 import warlockfe.warlock3.core.client.PanelObject
@@ -93,10 +111,9 @@ fun DesktopPanelContent(
     // carrying the same string for both states, and reading the tick back off [values] would then
     // leave it permanently ticked and impossible to clear.
     val checkedStates = remember { mutableStateMapOf<String, Boolean>() }
-    val executeWidget: (String, String?) -> Unit = { cmd, echo ->
-        onAction(WarlockAction.SendWidgetCommand(substitute(cmd, values), echo))
-    }
+    val executeWidget: (String, String?) -> Unit = { cmd, echo -> onAction(widgetCommand(cmd, echo, values)) }
     val execute: (String) -> Unit = { executeWidget(it, null) }
+    val pressButton: (PanelObject.Button) -> Unit = { data -> buttonAction(data, panelId, values)?.let(onAction) }
     // Wrayth gives each widget type its own font out of the skin; we deliberately draw them all with
     // one style, so there is a single knob here rather than a size hardcoded at every call site.
     // Chrome (panelId == null) is not a window the user can configure, so it keeps the defaults: the
@@ -166,23 +183,7 @@ fun DesktopPanelContent(
                 is PanelObject.Button -> {
                     val colors = JewelTheme.defaultButtonStyle.colors
                     PanelButton(
-                        onClick = {
-                            // A close button sends its command first and dismisses the panel after,
-                            // which is the order the real client uses. It goes as one action so the
-                            // two halves cannot be reordered on their way to the socket.
-                            val closes = panelId?.takeIf { data.closesPanel }
-                            if (closes != null) {
-                                onAction(
-                                    WarlockAction.ClosePanel(
-                                        id = closes,
-                                        command = data.cmd?.let { substitute(it, values) },
-                                        echo = data.echo,
-                                    ),
-                                )
-                            } else {
-                                data.cmd?.let { executeWidget(it, data.echo) }
-                            }
-                        },
+                        onClick = { pressButton(data) },
                         modifier = Modifier.padding(2.dp),
                         shape = RoundedCornerShape(2.dp),
                         background = { isHovered, isPressed ->
@@ -276,19 +277,22 @@ fun DesktopPanelContent(
                 is PanelObject.UpDownEditBox -> {
                     UpDownEditBox(data = data, values = values, executeCommand = execute)
                 }
+
+                is PanelObject.EditBox -> {
+                    EditBox(
+                        data = data,
+                        values = values,
+                        onEnter = { enterButtonOf(data, dataObjects)?.let(pressButton) },
+                    )
+                }
+
+                is PanelObject.StreamBox -> {
+                    StreamBox(data = data, onAction = onAction)
+                }
             }
         }
     }
 }
-
-private val commandVariableRegex = Regex("%([^%]+)%")
-
-// Replaces `%<id>%` placeholders in a command with the current values of the panel's value-bearing
-// widgets (e.g. "prep %dDBSpell0%" -> "prep 401"). Unknown placeholders are left as-is.
-private fun substitute(
-    cmd: String,
-    values: Map<String, String>,
-): String = commandVariableRegex.replace(cmd) { match -> values[match.groupValues[1]] ?: match.value }
 
 @Composable
 private fun UpDownEditBox(
@@ -319,6 +323,66 @@ private fun UpDownEditBox(
             modifier = Modifier.clickable { step(1) }.padding(horizontal = 6.dp),
             style = LocalPanelTextStyle.current,
         )
+    }
+}
+
+@Composable
+private fun EditBox(
+    data: PanelObject.EditBox,
+    values: SnapshotStateMap<String, String>,
+    onEnter: () -> Unit,
+) {
+    val state = rememberEditBoxState(data, values)
+    val focusRequester = remember { FocusRequester() }
+    if (data.focus) {
+        LaunchedEffect(Unit) { focusRequester.requestFocus() }
+    }
+    // A plain field filling the row the layout gives it, rather than Jewel's TextField: that one has a
+    // minimum height of its own well over the 21px row Wrayth draws an edit box in, which pushed it
+    // out of line with the label beside it.
+    val colors = JewelTheme.textFieldStyle.colors
+    val textColor = colors.content
+    var focused by remember { mutableStateOf(false) }
+    BasicTextField(
+        state = state,
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .background(colors.background, RoundedCornerShape(2.dp))
+                .border(1.dp, if (focused) colors.borderFocused else colors.border, RoundedCornerShape(2.dp))
+                .focusRequester(focusRequester)
+                .onFocusChanged { focused = it.isFocused },
+        inputTransformation = data.maxChars?.let { InputTransformation.maxLength(it) },
+        textStyle = LocalPanelTextStyle.current.copy(color = textColor),
+        cursorBrush = SolidColor(textColor),
+        lineLimits = TextFieldLineLimits.SingleLine,
+        onKeyboardAction = { onEnter() },
+        decorator = { innerTextField ->
+            Box(modifier = Modifier.fillMaxSize().padding(horizontal = 4.dp), contentAlignment = Alignment.CenterStart) {
+                innerTextField()
+            }
+        },
+    )
+}
+
+@Composable
+private fun StreamBox(
+    data: PanelObject.StreamBox,
+    onAction: (WarlockAction) -> Unit,
+) {
+    val styleMap = LocalStyleMap.current
+    val text = remember(data.text, styleMap) { data.text?.toAnnotatedString(emptyMap(), styleMap, onAction) }
+    Box(
+        modifier =
+            Modifier
+                .padding(2.dp)
+                .border(1.dp, JewelTheme.globalColors.borders.normal, RoundedCornerShape(2.dp))
+                .padding(4.dp)
+                .verticalScroll(rememberScrollState()),
+    ) {
+        if (text != null) {
+            Text(text = text, style = LocalPanelTextStyle.current)
+        }
     }
 }
 

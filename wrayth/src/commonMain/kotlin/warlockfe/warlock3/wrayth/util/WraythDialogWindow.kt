@@ -6,4 +6,6 @@ data class WraythDialogWindow(
     val location: String?,
     val resident: Boolean,
     val type: String?,
+    val width: Int? = null,
+    val height: Int? = null,
 )
