@@ -3,7 +3,6 @@ package warlockfe.warlock3.compose
 import co.touchlab.kermit.Logger
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
@@ -14,7 +13,6 @@ import warlockfe.warlock3.compose.model.GameScreen
 import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.compose.ui.game.GameViewModelFactory
 import warlockfe.warlock3.compose.ui.window.WindowRegistryFactory
-import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.client.WarlockClientFactory
 import warlockfe.warlock3.core.mudmobile.CreateSessionResult
 import warlockfe.warlock3.core.mudmobile.MudMobileApi
@@ -177,50 +175,49 @@ class MudMobileConnectUseCase(
         gameState: GameState,
     ): MudMobileConnectResult =
         withContext(ioDispatcher) {
-            // Tracks the client until it's handed off to the GameViewModel. If we're cancelled (the
-            // user returned to the dashboard mid-reconnect) or fail before that handoff, the finally
-            // closes it so we don't leak the socket and the hosted session it holds open.
-            var createdClient: WarlockClient? = null
+            // Until they are handed off to the game view model factory, the socket and window registry
+            // are ours to close: if we're cancelled (the user returned to the dashboard mid-reconnect)
+            // or fail before that handoff, the finally closes them so we don't leak the socket and the
+            // hosted session it holds open.
+            val streamRegistry = windowRegistryFactory.create()
+            val socket = WarlockWebSocket(httpClient, ioDispatcher, secure = connect.tls)
+            var handedOff = false
             try {
-                val streamRegistry = windowRegistryFactory.create()
-                val socket = WarlockWebSocket(httpClient, ioDispatcher, secure = connect.tls)
                 socket.connect(connect.host, connect.port)
                 val client =
                     warlockClientFactory.createClient(
                         windowRegistry = streamRegistry,
                         socket = socket,
                     )
-                createdClient = client
-                val gameViewModel =
-                    gameViewModelFactory.connect(
-                        client = client,
-                        // Same handshake bytes Warlock sends to play.net; the router matches sha256(key).
-                        key = credentials.key,
-                        windowRegistry = streamRegistry,
-                        // Reconnect re-dials the same router with the same key; no SGE, no new session.
-                        reconnect = {
-                            val result = connectToRouter(connect, credentials, gameState)
-                            if (result is MudMobileConnectResult.Failure) {
-                                gameState.setScreen(
-                                    GameScreen.ErrorState(result.message, returnTo = GameScreen.Dashboard),
-                                )
-                            }
-                        },
-                    )
-                // Ownership passes to the GameViewModel here, before the screen changes: showing the
-                // game clears the dashboard's view model, cancelling this call, and a cancellation
-                // that landed after setScreen must not let the finally close the client in use.
-                createdClient = null
-                withContext(NonCancellable) {
-                    gameState.setScreen(GameScreen.ConnectedGameState(gameViewModel))
-                }
+                // The factory owns the client and registry from here, and closes them itself if the
+                // game doesn't make it on screen.
+                handedOff = true
+                gameViewModelFactory.connect(
+                    client = client,
+                    // Same handshake bytes Warlock sends to play.net; the router matches sha256(key).
+                    key = credentials.key,
+                    windowRegistry = streamRegistry,
+                    gameState = gameState,
+                    // Reconnect re-dials the same router with the same key; no SGE, no new session.
+                    reconnect = {
+                        val result = connectToRouter(connect, credentials, gameState)
+                        if (result is MudMobileConnectResult.Failure) {
+                            gameState.setScreen(
+                                GameScreen.ErrorState(result.message, returnTo = GameScreen.Dashboard),
+                            )
+                        }
+                    },
+                )
                 MudMobileConnectResult.Success
             } catch (e: Exception) {
                 ensureActive()
                 logger.e(e) { "Failed to connect to MUD Mobile router" }
                 MudMobileConnectResult.Failure("Error connecting to ${connect.host}:${connect.port}: ${e.message}")
             } finally {
-                createdClient?.close()
+                if (!handedOff) {
+                    socket.close()
+                    streamRegistry.close()
+                }
             }
         }
 

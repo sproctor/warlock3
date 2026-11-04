@@ -58,10 +58,11 @@ class ConnectToGameUseCase(
                     proxy = warlockProxyFactory.create(proxyCommand)
                 }
             }
-            val streamRegistry = windowRegistryFactory.create()
             val deadline = TimeSource.Monotonic.markNow() + 30.seconds
             while (true) {
                 try {
+                    // A fresh registry each attempt: a failed attempt's registry may have been closed.
+                    val streamRegistry = windowRegistryFactory.create()
                     val socket = NetworkSocket(ioDispatcher)
                     socket.connect(loginCredentials.host, loginCredentials.port)
                     val sfClient =
@@ -70,15 +71,15 @@ class ConnectToGameUseCase(
                             socket = socket,
                         ) as WraythClient
                     proxy?.let { sfClient.setProxy(it) }
-                    val gameViewModel =
-                        gameViewModelFactory.connect(
-                            client = sfClient,
-                            key = loginCredentials.key,
-                            windowRegistry = streamRegistry,
-                            // Reuse the same credentials (and key) on reconnect.
-                            reconnect = { invoke(credentials, proxySettings, gameState) },
-                        )
-                    gameState.setScreen(GameScreen.ConnectedGameState(gameViewModel))
+                    // Shows the game itself, and closes the client and registry if it can't.
+                    gameViewModelFactory.connect(
+                        client = sfClient,
+                        key = loginCredentials.key,
+                        windowRegistry = streamRegistry,
+                        gameState = gameState,
+                        // Reuse the same credentials (and key) on reconnect.
+                        reconnect = { invoke(credentials, proxySettings, gameState) },
+                    )
                     break
                 } catch (e: Exception) {
                     ensureActive()

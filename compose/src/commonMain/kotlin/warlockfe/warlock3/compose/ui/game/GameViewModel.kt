@@ -169,6 +169,8 @@ class GameViewModel(
     private val mudScriptStore: MudScriptStore,
     private val ioDispatcher: CoroutineDispatcher,
     private val reconnectAction: (suspend () -> Unit)? = null,
+    // Told the names of the scripts a reconnect stopped, once the game that replaced this one is up.
+    private val onReconnectStoppedScripts: suspend (names: List<String>) -> Unit = {},
 ) : ViewModel(),
     MacroHandler {
     private val logger = Logger.withTag("GameViewModel")
@@ -980,6 +982,13 @@ class GameViewModel(
             }
             client.print(StyledString("Stopped $count script(s)"))
         }
+    }
+
+    /** Tell the user which scripts the reconnect that opened this game stopped on the old one. */
+    suspend fun reportScriptsStoppedByReconnect(names: List<String>) {
+        client.print(
+            StyledString("Reconnecting stopped ${names.size} script(s): ${names.joinToString()}", WarlockStyle.Echo),
+        )
     }
 
     override suspend fun pauseScripts() {
@@ -1869,6 +1878,16 @@ class GameViewModel(
         viewModelScope.cancel()
     }
 
+    /**
+     * Drop a game that never made it on screen: nothing was shown, saved or started by the user, so
+     * there is no layout to flush and no one to send a quit for.
+     */
+    internal fun discard() {
+        viewModelScope.cancel()
+        client.close()
+        windowRegistry.close()
+    }
+
     /** Tear down this game's client and window registry without touching any reconnect in flight. */
     private suspend fun closeClient() {
         // Scripts run on the app's scope, not this view model's, so they would carry on against a
@@ -1907,13 +1926,26 @@ class GameViewModel(
             viewModelScope.launch {
                 try {
                     action()
-                    // The reconnect installed a fresh game screen (or an error); release this (old)
-                    // client, and stop this view model's work, since nothing shows it any more.
-                    closeClient()
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    // The connect paths report their own failures as an error screen, so getting here
+                    // means nothing replaced this one: keep it, and its client, so the user can retry.
+                    logger.e(e) { "Reconnect failed" }
+                    return@launch
                 } finally {
                     _reconnecting.value = false
                 }
-                viewModelScope.cancel()
+                // The reconnect installed a fresh game screen (or an error); release this (old)
+                // client, and stop this view model's work, since nothing shows it any more. The
+                // client's scripts go with it, which the user should hear about on the new screen.
+                val stoppedScripts = scriptManager.runningScripts.value.values.map { it.instance.name }
+                try {
+                    closeClient()
+                    if (stoppedScripts.isNotEmpty()) onReconnectStoppedScripts(stoppedScripts)
+                } finally {
+                    viewModelScope.cancel()
+                }
             }
     }
 
