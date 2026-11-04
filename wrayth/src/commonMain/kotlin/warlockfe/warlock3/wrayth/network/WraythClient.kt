@@ -628,7 +628,8 @@ class WraythClient(
 
             is WraythNavEvent -> {
                 _roomId.value = event.roomId
-                _roomMeta.value = null
+                // Room meta stays: the game sends <roommeta> ahead of <nav> (at login, at least),
+                // and the next room's replaces it. Saga keeps it the same way.
                 _creatures.value = emptyMap()
                 notifyListeners(ClientNavEvent)
             }

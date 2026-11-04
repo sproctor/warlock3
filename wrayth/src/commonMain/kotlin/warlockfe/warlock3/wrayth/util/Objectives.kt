@@ -89,30 +89,40 @@ private fun Map<String, String>.epochSeconds(name: String): Instant? =
 /**
  * The objectives list after one `<objectives>` batch. "delete-objective" removes the objectives it
  * names (by type and id, or by id alone when it gives no type), "patch-objective" replaces or adds
- * the ones it carries, and anything else - "full-refresh", or no action - replaces the whole list.
+ * the ones it carries, and "full-refresh" (or no action) replaces the whole list.
+ *
+ * Any other action leaves the list alone. That includes the older format's "patch-group" and
+ * "delete-group", whose `<group>` tags we don't read: its `<objective>` tags are a group's task
+ * lines, with no id, so they are dropped here too rather than taken for objectives.
  */
 fun applyObjectives(
     current: List<Objective>,
     action: String?,
     batch: List<Objective>,
-): List<Objective> =
-    when (action) {
+): List<Objective> {
+    val objectives = batch.filter { it.id.isNotEmpty() }
+    return when (action) {
         "delete-objective" -> {
-            val keys = batch.map { it.key }.toSet()
-            val bareIds = batch.filter { it.type.isEmpty() && it.id.isNotEmpty() }.map { it.id }.toSet()
+            val keys = objectives.map { it.key }.toSet()
+            val bareIds = objectives.filter { it.type.isEmpty() }.map { it.id }.toSet()
             current.filter { it.key !in keys && it.id !in bareIds }
         }
 
         "patch-objective" -> {
             val updated = current.toMutableList()
-            batch.forEach { objective ->
+            objectives.forEach { objective ->
                 val index = updated.indexOfFirst { it.key == objective.key }
                 if (index >= 0) updated[index] = objective else updated += objective
             }
             updated
         }
 
+        "full-refresh", null -> {
+            objectives
+        }
+
         else -> {
-            batch
+            current
         }
     }
+}

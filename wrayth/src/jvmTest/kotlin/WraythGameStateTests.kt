@@ -24,7 +24,19 @@ import kotlin.time.Duration.Companion.seconds
 // The game state a WraythClient keeps from tags the Wrayth client draws nothing for.
 class WraythGameStateTests {
     @Test
-    fun movingSetsTheRoomAndForgetsTheLastRoomsCreaturesAndMeta() {
+    fun roomMetaSentAheadOfNavIsKept() {
+        // As GemStone logs in: the room's <roommeta> comes a few lines before its <nav>
+        val client =
+            run(
+                "<mode id=\"GAME\"/>",
+                "<roommeta weather=\"0\" bonfire=\"0\" inside=\"0\" water=\"0\" sanctuary=\"0\" realm=\"7\" climate=\"6\" terrain=\"1\"/>",
+                "<nav rm='4130023'/>",
+            )
+        assertEquals(6, client.roomMeta.value?.climate)
+    }
+
+    @Test
+    fun movingSetsTheRoomAndForgetsTheLastRoomsCreatures() {
         val client =
             run(
                 "<mode id=\"GAME\"/>",
@@ -45,7 +57,6 @@ class WraythGameStateTests {
                 "<nav/>",
             )
         assertNull(moved.roomId.value)
-        assertNull(moved.roomMeta.value)
         assertTrue(moved.creatures.value.isEmpty())
     }
 

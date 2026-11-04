@@ -36,8 +36,12 @@ interface WarlockClient {
     // The game's id for the room the player is in (Wrayth's <nav rm>); null in a room without one.
     val roomId: StateFlow<String?>
 
-    // What the game says about the current room and the creatures in it; both reset on moving.
+    // What the game last said about the current room; replaced by the next room's <roommeta>.
     val roomMeta: StateFlow<RoomMeta?>
+
+    // The last status of each creature seen in this room, by exist id; reset on moving. A creature
+    // that dies or leaves stays until then, so look creatures up here from the room's objects
+    // rather than listing this (as Saga does).
     val creatures: StateFlow<Map<String, CreatureStatus>>
 
     val lastPulse: StateFlow<PulseInfo?>

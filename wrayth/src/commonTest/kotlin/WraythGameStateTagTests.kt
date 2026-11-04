@@ -209,4 +209,16 @@ class WraythGameStateTagTests {
 
         assertEquals(emptyList(), applyObjectives(all, null, emptyList()))
     }
+
+    @Test
+    fun theOlderGroupFormatLeavesObjectivesAlone() {
+        val quest = ObjectiveBuilder(mapOf("id" to "24542", "type" to "QUEST")).build()
+        // <objectives action='delete-group'><group id='17755' type='BOUNTY'/></objectives>
+        assertEquals(listOf(quest), applyObjectives(listOf(quest), "delete-group", emptyList()))
+        // <objectives action='patch-group'><group …><objective text="Slay creatures in the Rift…"/></group></objectives>
+        val taskLine = ObjectiveBuilder(mapOf("text" to "Slay creatures in the Rift")).build()
+        assertEquals(listOf(quest), applyObjectives(listOf(quest), "patch-group", listOf(taskLine)))
+        assertEquals(listOf(quest), applyObjectives(listOf(quest), "patch-objective", listOf(taskLine)))
+        assertEquals(emptyList(), applyObjectives(listOf(quest), "full-refresh", listOf(taskLine)))
+    }
 }
