@@ -18,28 +18,24 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import warlockfe.warlock3.compose.components.ScrollableColumn
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.delete
 import warlockfe.warlock3.compose.generated.resources.edit
 import warlockfe.warlock3.core.prefs.models.AccountEntity
-import warlockfe.warlock3.core.prefs.repositories.AccountRepository
 
 @Composable
 fun AccountsView(
-    accountRepository: AccountRepository,
+    viewModel: AccountsViewModel,
     modifier: Modifier = Modifier,
 ) {
-    val accounts by accountRepository.observeAll().collectAsState(emptyList())
+    val accounts by viewModel.accounts.collectAsState()
     var editingPasswordFor by remember { mutableStateOf<AccountEntity?>(null) }
     var deleting by remember { mutableStateOf<AccountEntity?>(null) }
-    val coroutineScope = rememberCoroutineScope()
 
     ScrollableColumn(modifier.fillMaxSize()) {
         accounts.forEach { account ->
@@ -73,8 +69,7 @@ fun AccountsView(
         SetPasswordDialog(
             username = account.username,
             savePassword = { password ->
-                coroutineScope.launch {
-                    accountRepository.save(account.copy(password = password))
+                viewModel.setPassword(account, password) {
                     editingPasswordFor = null
                 }
             },
@@ -90,8 +85,7 @@ fun AccountsView(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        coroutineScope.launch {
-                            accountRepository.deleteByUsername(account.username)
+                        viewModel.delete(account) {
                             deleting = null
                         }
                     },

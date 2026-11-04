@@ -63,4 +63,25 @@ class SettingsViewModelFactory(
     fun alterations(initialCharacter: GameCharacter?): AlterationsViewModel = AlterationsViewModel(initialCharacter, alterationRepository)
 
     fun actions(initialCharacter: GameCharacter?): ActionsViewModel = ActionsViewModel(initialCharacter, actionRepository)
+
+    fun general(initialCharacter: GameCharacter?): GeneralSettingsViewModel =
+        GeneralSettingsViewModel(
+            initialCharacter = initialCharacter,
+            characterSettingsRepository = characterSettingsRepository,
+            scriptDirRepository = scriptDirRepository,
+            clientSettingRepository = clientSettingRepository,
+            wraythImporter = wraythImporter,
+        )
+
+    fun windows(initialCharacter: GameCharacter?): WindowsViewModel =
+        WindowsViewModel(
+            initialCharacter = initialCharacter,
+            characterRepository = characterRepository,
+            characterSettingsRepository = characterSettingsRepository,
+            windowSettingRepository = windowSettingRepository,
+        )
+
+    fun accounts(): AccountsViewModel = AccountsViewModel(accountRepository)
+
+    fun characters(): CharactersViewModel = CharactersViewModel(characterRepository)
 }

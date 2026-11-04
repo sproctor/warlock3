@@ -107,11 +107,8 @@ private fun SettingsPageContent(
         when (page) {
             SettingsPage.General -> {
                 DesktopGeneralSettingsView(
-                    characterSettingsRepository = characterSettingsRepository,
-                    initialCharacter = currentCharacter,
+                    viewModel = viewModel { settingsViewModelFactory.general(currentCharacter) },
                     characters = characters,
-                    scriptDirRepository = scriptDirRepository,
-                    clientSettingRepository = clientSettingRepository,
                 )
             }
 
@@ -163,10 +160,8 @@ private fun SettingsPageContent(
 
             SettingsPage.Windows -> {
                 DesktopWindowsView(
-                    initialCharacter = currentCharacter,
+                    viewModel = viewModel { settingsViewModelFactory.windows(currentCharacter) },
                     characters = characters,
-                    characterSettingsRepository = characterSettingsRepository,
-                    windowSettingRepository = windowSettingRepository,
                     windowLiveContext = windowLiveContext,
                     initialWindowTarget = initialWindowTarget,
                 )
@@ -195,14 +190,14 @@ private fun SettingsPageContent(
 
             SettingsPage.Accounts -> {
                 DesktopAccountsView(
-                    accountRepository = accountRepository,
+                    viewModel = viewModel { settingsViewModelFactory.accounts() },
                 )
             }
 
             SettingsPage.Characters -> {
                 DesktopCharactersView(
+                    viewModel = viewModel { settingsViewModelFactory.characters() },
                     allCharacters = characters,
-                    characterRepository = characterRepository,
                 )
             }
         }

@@ -13,11 +13,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.launch
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Text
 import warlockfe.warlock3.compose.desktop.shim.WarlockButton
@@ -26,18 +24,17 @@ import warlockfe.warlock3.compose.desktop.shim.WarlockListItem
 import warlockfe.warlock3.compose.desktop.shim.WarlockOutlinedButton
 import warlockfe.warlock3.compose.desktop.shim.WarlockPasswordField
 import warlockfe.warlock3.compose.desktop.shim.WarlockScrollableColumn
+import warlockfe.warlock3.compose.ui.settings.AccountsViewModel
 import warlockfe.warlock3.core.prefs.models.AccountEntity
-import warlockfe.warlock3.core.prefs.repositories.AccountRepository
 
 @Composable
 fun DesktopAccountsView(
-    accountRepository: AccountRepository,
+    viewModel: AccountsViewModel,
     modifier: Modifier = Modifier,
 ) {
-    val accounts by accountRepository.observeAll().collectAsState(emptyList())
+    val accounts by viewModel.accounts.collectAsState()
     var editingPasswordFor by remember { mutableStateOf<AccountEntity?>(null) }
     var deleting by remember { mutableStateOf<AccountEntity?>(null) }
-    val scope = rememberCoroutineScope()
 
     Column(modifier.fillMaxSize()) {
         Text("Accounts")
@@ -81,8 +78,7 @@ fun DesktopAccountsView(
         DesktopSetPasswordDialog(
             username = account.username,
             savePassword = { password ->
-                scope.launch {
-                    accountRepository.save(account.copy(password = password))
+                viewModel.setPassword(account, password) {
                     editingPasswordFor = null
                 }
             },
@@ -96,8 +92,7 @@ fun DesktopAccountsView(
             text = "Delete the saved account \"${account.username}\" and its password? Your characters are not affected.",
             onDismiss = { deleting = null },
             onConfirm = {
-                scope.launch {
-                    accountRepository.deleteByUsername(account.username)
+                viewModel.delete(account) {
                     deleting = null
                 }
             },
