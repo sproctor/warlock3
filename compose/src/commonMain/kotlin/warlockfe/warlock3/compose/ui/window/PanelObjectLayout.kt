@@ -97,6 +97,12 @@ fun PanelObjectLayout(
         val heightBasis =
             if (constraints.hasBoundedHeight) constraints.maxHeight else constraints.minHeight
         val progressBarHeightPx = 16.dp.roundToPx()
+        // Wrayth gives labels, edit boxes and dropdowns one height when the server sends none, and
+        // centres a label's text in it. That shared height is what lines a form up: GS4's BUG dialog
+        // anchors each label to the label above and each field to the field above, so the two
+        // columns only stay level if a label row and a field row are the same height. Measured in
+        // utils/wrayth-lab, where those rows step by 26px with top='5' between them.
+        val fieldHeightPx = (FIELD_HEIGHT * scale).dp.roundToPx()
 
         val itemInfos =
             dataObjects.mapIndexed { index, data ->
@@ -121,12 +127,19 @@ fun PanelObjectLayout(
                 val targetHeight =
                     heightSource?.toPx(heightBasis, this, scale)
                         ?: progressBarHeightPx.takeIf { data is PanelObject.ProgressBar }
+                        ?: fieldHeightPx.takeIf { data is PanelObject.EditBox || data is PanelObject.DropDownBox }
+                // A label gets the same row as a minimum rather than a fixed height, so a label in a
+                // larger font than Wrayth's still shows whole instead of being cut off at the row.
+                val minHeight =
+                    targetHeight
+                        ?: fieldHeightPx.coerceAtMost(constraints.maxHeight).takeIf { data is PanelObject.Label }
+                        ?: 0
 
                 val childConstraints =
                     Constraints(
                         minWidth = targetWidth ?: 0,
                         maxWidth = targetWidth ?: constraints.maxWidth,
-                        minHeight = targetHeight ?: 0,
+                        minHeight = minHeight,
                         maxHeight = targetHeight ?: constraints.maxHeight,
                     )
 
@@ -359,6 +372,9 @@ fun PanelObjectLayout(
         }
     }
 }
+
+// The height Wrayth gives a label, edit box or dropdown the server did not size, in its pixels.
+private const val FIELD_HEIGHT = 21
 
 private data class ItemPlacement(
     val x: Int,

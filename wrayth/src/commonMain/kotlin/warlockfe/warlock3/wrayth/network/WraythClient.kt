@@ -40,7 +40,12 @@ import warlockfe.warlock3.core.client.ClientOpenWindowEvent
 import warlockfe.warlock3.core.client.ClientPromptEvent
 import warlockfe.warlock3.core.client.ClientTextEvent
 import warlockfe.warlock3.core.client.ClientWindowInfoEvent
+import warlockfe.warlock3.core.client.CreatureStatus
 import warlockfe.warlock3.core.client.GameCharacter
+import warlockfe.warlock3.core.client.Objective
+import warlockfe.warlock3.core.client.PanelObject
+import warlockfe.warlock3.core.client.PulseInfo
+import warlockfe.warlock3.core.client.RoomMeta
 import warlockfe.warlock3.core.client.SendCommandType
 import warlockfe.warlock3.core.client.StreamLineFeed
 import warlockfe.warlock3.core.client.WarlockAction
@@ -69,6 +74,7 @@ import warlockfe.warlock3.wrayth.protocol.WraythActionEvent
 import warlockfe.warlock3.wrayth.protocol.WraythAppEvent
 import warlockfe.warlock3.wrayth.protocol.WraythBackgroundEvent
 import warlockfe.warlock3.wrayth.protocol.WraythCastTimeEvent
+import warlockfe.warlock3.wrayth.protocol.WraythClearDynaStreamEvent
 import warlockfe.warlock3.wrayth.protocol.WraythClearStreamEvent
 import warlockfe.warlock3.wrayth.protocol.WraythCliEvent
 import warlockfe.warlock3.wrayth.protocol.WraythCloseDialogEvent
@@ -77,11 +83,13 @@ import warlockfe.warlock3.wrayth.protocol.WraythCompassEndEvent
 import warlockfe.warlock3.wrayth.protocol.WraythComponentDefinitionEvent
 import warlockfe.warlock3.wrayth.protocol.WraythComponentEndEvent
 import warlockfe.warlock3.wrayth.protocol.WraythComponentStartEvent
+import warlockfe.warlock3.wrayth.protocol.WraythCreatureStatusEvent
 import warlockfe.warlock3.wrayth.protocol.WraythDataReceivedEvent
 import warlockfe.warlock3.wrayth.protocol.WraythDialogDataEvent
 import warlockfe.warlock3.wrayth.protocol.WraythDialogObjectEvent
 import warlockfe.warlock3.wrayth.protocol.WraythDialogWindowEvent
 import warlockfe.warlock3.wrayth.protocol.WraythDirectionEvent
+import warlockfe.warlock3.wrayth.protocol.WraythDynaStreamEvent
 import warlockfe.warlock3.wrayth.protocol.WraythEndCmdList
 import warlockfe.warlock3.wrayth.protocol.WraythEolEvent
 import warlockfe.warlock3.wrayth.protocol.WraythEvent
@@ -93,16 +101,22 @@ import warlockfe.warlock3.wrayth.protocol.WraythMenuItemEvent
 import warlockfe.warlock3.wrayth.protocol.WraythMenuStartEvent
 import warlockfe.warlock3.wrayth.protocol.WraythModeEvent
 import warlockfe.warlock3.wrayth.protocol.WraythNavEvent
+import warlockfe.warlock3.wrayth.protocol.WraythObjectiveChildEvent
+import warlockfe.warlock3.wrayth.protocol.WraythObjectiveEvent
+import warlockfe.warlock3.wrayth.protocol.WraythObjectivesEndEvent
+import warlockfe.warlock3.wrayth.protocol.WraythObjectivesStartEvent
 import warlockfe.warlock3.wrayth.protocol.WraythOpenUrlEvent
 import warlockfe.warlock3.wrayth.protocol.WraythOutputEvent
 import warlockfe.warlock3.wrayth.protocol.WraythParseErrorEvent
 import warlockfe.warlock3.wrayth.protocol.WraythPopStyleEvent
 import warlockfe.warlock3.wrayth.protocol.WraythPromptEvent
 import warlockfe.warlock3.wrayth.protocol.WraythProtocolHandler
+import warlockfe.warlock3.wrayth.protocol.WraythPulseEvent
 import warlockfe.warlock3.wrayth.protocol.WraythPushCmdEvent
 import warlockfe.warlock3.wrayth.protocol.WraythPushStyleEvent
 import warlockfe.warlock3.wrayth.protocol.WraythResourceEvent
 import warlockfe.warlock3.wrayth.protocol.WraythRightEvent
+import warlockfe.warlock3.wrayth.protocol.WraythRoomMetaEvent
 import warlockfe.warlock3.wrayth.protocol.WraythRoundTimeEvent
 import warlockfe.warlock3.wrayth.protocol.WraythSettingsInfoEvent
 import warlockfe.warlock3.wrayth.protocol.WraythSpellEvent
@@ -115,8 +129,10 @@ import warlockfe.warlock3.wrayth.protocol.WraythUnhandledTagEvent
 import warlockfe.warlock3.wrayth.protocol.WraythUpdateVerbsEvent
 import warlockfe.warlock3.wrayth.util.CmdDefinition
 import warlockfe.warlock3.wrayth.util.CommandListStore
+import warlockfe.warlock3.wrayth.util.ObjectiveBuilder
 import warlockfe.warlock3.wrayth.util.WraythCmd
 import warlockfe.warlock3.wrayth.util.WraythStreamWindow
+import warlockfe.warlock3.wrayth.util.applyObjectives
 import warlockfe.warlock3.wrayth.util.resolve
 import kotlin.math.max
 import kotlin.time.Clock
@@ -188,6 +204,25 @@ class WraythClient(
     private val _indicators = MutableStateFlow<Set<String>>(emptySet())
     override val indicators = _indicators.asStateFlow()
 
+    private val _roomId = MutableStateFlow<String?>(null)
+    override val roomId = _roomId.asStateFlow()
+
+    private val _roomMeta = MutableStateFlow<RoomMeta?>(null)
+    override val roomMeta = _roomMeta.asStateFlow()
+
+    private val _creatures = MutableStateFlow<Map<String, CreatureStatus>>(emptyMap())
+    override val creatures = _creatures.asStateFlow()
+
+    private val _lastPulse = MutableStateFlow<PulseInfo?>(null)
+    override val lastPulse = _lastPulse.asStateFlow()
+
+    private val _objectives = MutableStateFlow<List<Objective>>(emptyList())
+    override val objectives = _objectives.asStateFlow()
+
+    // The <objectives> batch being gathered, between its start and end tags
+    private var objectivesAction: String? = null
+    private var objectivesBatch: MutableList<ObjectiveBuilder>? = null
+
     private val componentsMutex = Mutex()
     private var components = persistentMapOf<String, StyledString>()
 
@@ -237,6 +272,11 @@ class WraythClient(
     private var pendingText = ""
 
     private var currentStream: TextStream? = null
+
+    // Every streamBox a panel holds, by id, with the panel it sits in, so the dynaStream that fills
+    // it later can find it. Where the dynaStream being read is going, while one is open.
+    private val streamBoxes = mutableMapOf<String, StreamBoxSlot>()
+    private var openDynaStream: DynaStreamTarget? = null
 
     private var currentStyle: WarlockStyle? = null
     private val styleStack = ArrayDeque<WarlockStyle>()
@@ -525,13 +565,55 @@ class WraythClient(
                 dialogDataId = event.id
                 if (event.clear && event.id != null) {
                     this@WraythClient.windowRegistry.getOrCreatePanel(event.id).clear()
+                    streamBoxes.values.removeAll { it.panelId == event.id }
                 }
             }
 
             is WraythDialogObjectEvent -> {
                 dialogDataId?.let {
-                    windowRegistry.getOrCreatePanel(it).setObject(event.data)
+                    val data = event.data
+                    if (data is PanelObject.StreamBox) streamBoxes[data.id] = StreamBoxSlot(panelId = it, box = data)
+                    windowRegistry.getOrCreatePanel(it).setObject(data)
                 }
+            }
+
+            is WraythDynaStreamEvent -> {
+                val id = event.id
+                if (id != null) {
+                    if (id in streamBoxes) {
+                        // The text around it is still one line, so it is set aside rather than flushed.
+                        lineBuffer.openDiversion()
+                        openDynaStream = DynaStreamTarget.Box(id)
+                    } else {
+                        // No panel holds a box by that name: a stream window does, as dynaStream was
+                        // read before streamBoxes were.
+                        handleEvent(WraythStreamEvent(id))
+                        openDynaStream = DynaStreamTarget.Stream
+                    }
+                } else {
+                    when (val open = openDynaStream) {
+                        is DynaStreamTarget.Box -> {
+                            val text = lineBuffer.closeDiversion()
+                            val slot = streamBoxes[open.id]
+                            if (slot != null && text != null && text.toText().isNotEmpty()) {
+                                val previous = slot.box.text
+                                updateStreamBox(slot, if (previous == null) text else previous + StyledString("\n") + text)
+                            }
+                        }
+
+                        DynaStreamTarget.Stream -> {
+                            handleEvent(WraythStreamEvent(null))
+                        }
+
+                        // A closing tag with nothing open, such as the end of a dynaStream with no id.
+                        null -> {}
+                    }
+                    openDynaStream = null
+                }
+            }
+
+            is WraythClearDynaStreamEvent -> {
+                streamBoxes[event.id]?.let { updateStreamBox(it, null) }
             }
 
             is WraythCompassEndEvent -> {
@@ -596,8 +678,55 @@ class WraythClient(
                 }
             }
 
-            WraythNavEvent -> {
+            is WraythNavEvent -> {
+                _roomId.value = event.roomId
+                // Room meta stays: the game sends <roommeta> ahead of <nav> (at login, at least),
+                // and the next room's replaces it. Saga keeps it the same way.
+                _creatures.value = emptyMap()
                 notifyListeners(ClientNavEvent)
+            }
+
+            is WraythPulseEvent -> {
+                _lastPulse.value =
+                    PulseInfo(
+                        time = getCurrentTime(),
+                        manaNext = event.manaNext,
+                        minSeconds = event.minSeconds,
+                        maxSeconds = event.maxSeconds,
+                    )
+            }
+
+            is WraythCreatureStatusEvent -> {
+                _creatures.update { it + (event.status.exist to event.status) }
+            }
+
+            is WraythRoomMetaEvent -> {
+                // As Saga does: one sent inside another stream (a remote view of some other
+                // room) isn't about this room.
+                if (currentStream.isMainStream) {
+                    _roomMeta.value = event.roomMeta
+                }
+            }
+
+            is WraythObjectivesStartEvent -> {
+                objectivesAction = event.action
+                objectivesBatch = mutableListOf()
+            }
+
+            is WraythObjectiveEvent -> {
+                objectivesBatch?.add(ObjectiveBuilder(event.attributes))
+            }
+
+            is WraythObjectiveChildEvent -> {
+                objectivesBatch?.lastOrNull()?.addChild(event.name, event.attributes)
+            }
+
+            WraythObjectivesEndEvent -> {
+                objectivesBatch?.let { batch ->
+                    _objectives.update { applyObjectives(it, objectivesAction, batch.map { builder -> builder.build() }) }
+                }
+                objectivesBatch = null
+                objectivesAction = null
             }
 
             is WraythBackgroundEvent -> {
@@ -627,6 +756,8 @@ class WraythClient(
                             backgroundImage = existing?.backgroundImage,
                             resident = window.resident,
                             location = WindowLocation.fromProtocol(window.location),
+                            requestedWidth = window.width,
+                            requestedHeight = window.height,
                         )
                     windowInfo.replaceOrAdd(info) { it.name == info.name }
                 }
@@ -639,6 +770,7 @@ class WraythClient(
             }
 
             is WraythCloseDialogEvent -> {
+                streamBoxes.values.removeAll { it.panelId == event.id }
                 notifyListeners(ClientCloseWindowEvent(name = event.id))
             }
 
@@ -864,6 +996,17 @@ class WraythClient(
                 )
             }
         }
+    }
+
+    private suspend fun updateStreamBox(
+        slot: StreamBoxSlot,
+        text: StyledString?,
+    ) {
+        val box = slot.box.copy(text = text)
+        streamBoxes[box.id] = slot.copy(box = box)
+        val panel = windowRegistry.getOrCreatePanel(slot.panelId)
+        panel.setObject(box)
+        panel.updateState()
     }
 
     private fun bufferText(text: StyledString) {
@@ -1168,6 +1311,22 @@ class WraythClient(
 
 val TextStream?.isMainStream
     get() = this == null || this.id == "main"
+
+private sealed interface DynaStreamTarget {
+    // A panel's streamBox, gathering the dynaStream's text until it closes.
+    data class Box(
+        val id: String,
+    ) : DynaStreamTarget
+
+    // A stream window, written to as a pushStream would be.
+    data object Stream : DynaStreamTarget
+}
+
+// A streamBox as last sent to [panelId], with whatever dynaStream text it holds by now.
+private data class StreamBoxSlot(
+    val panelId: String,
+    val box: PanelObject.StreamBox,
+)
 
 private val windowsAbsolutePathRegex = Regex("^[A-Za-z]:[\\\\/].*")
 

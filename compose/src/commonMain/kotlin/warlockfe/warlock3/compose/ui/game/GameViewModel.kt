@@ -45,6 +45,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
@@ -79,6 +80,7 @@ import warlockfe.warlock3.compose.util.openUrl
 import warlockfe.warlock3.compose.util.plainText
 import warlockfe.warlock3.core.client.ClientCloseWindowEvent
 import warlockfe.warlock3.core.client.ClientCompassEvent
+import warlockfe.warlock3.core.client.ClientEvent
 import warlockfe.warlock3.core.client.ClientOpenUrlEvent
 import warlockfe.warlock3.core.client.ClientOpenWindowEvent
 import warlockfe.warlock3.core.client.ClientWindowInfoEvent
@@ -754,71 +756,89 @@ class GameViewModel(
 
     // Subscribes before the constructor returns, on whatever thread builds this view model. The
     // client's eventFlow has no replay, so an event emitted before this collector is registered is
-    // lost to it - the first compass, or a window the game opens on login. launchIn would only queue
-    // the subscription on the main thread, behind a read loop that is already running; started
-    // undispatched, it is in place before the factory starts the client (GameViewModelFactory.connect).
+    // lost to it - the first compass, or a window the game opens on login. Started undispatched, the
+    // collector is in place before the factory starts the client (GameViewModelFactory.connect).
+    // flowOn would not do: it subscribes from a new coroutine, queued like launchIn.
+    //
+    // The collector then runs off the main thread, and only the events handled below go on to the UI thread.
+    // Every main-window line is an event too, and emit suspends the parser once eventFlow's buffer is
+    // full, so collecting all of it on Main paced the parser to the UI thread. On Windows, where Tao
+    // presents frames on that thread and waits for VSync, a large burst took over four seconds to
+    // show instead of under one. Each handled event is launched rather than handled in withContext,
+    // so the parser never waits on Main either; Main runs them in the order they were launched.
     private fun handleClientEvents() {
-        viewModelScope.launch(start = CoroutineStart.UNDISPATCHED) {
-            client.eventFlow.collect { event ->
-                when (event) {
-                    is ClientCompassEvent -> {
-                        _compassState.value = event.directions.toSet()
-                    }
+        viewModelScope.launch(ioDispatcher, start = CoroutineStart.UNDISPATCHED) {
+            client.eventFlow
+                .filter {
+                    it is ClientCompassEvent ||
+                        it is ClientOpenUrlEvent ||
+                        it is ClientOpenWindowEvent ||
+                        it is ClientCloseWindowEvent ||
+                        it is ClientWindowInfoEvent
+                }.collect { event ->
+                    viewModelScope.launch { handleClientEvent(event) }
+                }
+        }
+    }
 
-                    is ClientOpenUrlEvent -> {
-                        openUrl(event.url)
-                    }
+    private fun handleClientEvent(event: ClientEvent) {
+        when (event) {
+            is ClientCompassEvent -> {
+                _compassState.value = event.directions.toSet()
+            }
 
-                    is ClientOpenWindowEvent -> {
-                        openWindowFromGame(name = event.name)
-                    }
+            is ClientOpenUrlEvent -> {
+                openUrl(event.url)
+            }
 
-                    is ClientCloseWindowEvent -> {
-                        closeWindowFromGame(event.name)
-                    }
+            is ClientOpenWindowEvent -> {
+                openWindowFromGame(name = event.name)
+            }
 
-                    is ClientWindowInfoEvent -> {
-                        if (event.info.name == "main") {
-                            _mainWindowUiState.value.windowInfo.value = event.info
-                        } else {
-                            // A non-resident panel persists nothing, but one announced late can
-                            // have picked up a saved row before its info arrived (canSaveWindow
-                            // is true for unknown windows). Clear it, or the restore and every
-                            // reorder keep tracking a window that saves nothing.
-                            if (!event.info.resident) {
-                                viewModelScope.launch {
-                                    client.characterId.value?.let { characterId ->
-                                        windowSettingsRepository.removeWindowFromLayout(characterId, event.info.name)
-                                    }
-                                }
+            is ClientCloseWindowEvent -> {
+                closeWindowFromGame(event.name)
+            }
+
+            is ClientWindowInfoEvent -> {
+                if (event.info.name == "main") {
+                    _mainWindowUiState.value.windowInfo.value = event.info
+                } else {
+                    // A non-resident panel persists nothing, but one announced late can
+                    // have picked up a saved row before its info arrived (canSaveWindow
+                    // is true for unknown windows). Clear it, or the restore and every
+                    // reorder keep tracking a window that saves nothing.
+                    if (!event.info.resident) {
+                        viewModelScope.launch {
+                            client.characterId.value?.let { characterId ->
+                                windowSettingsRepository.removeWindowFromLayout(characterId, event.info.name)
                             }
-                            _windowUiStates.value
-                                .indexOfFirst { it.name == event.info.name }
-                                .takeIf { it != -1 }
-                                ?.let { index ->
-                                    val uiState = _windowUiStates.value[index]
-                                    uiState.windowInfo.value = event.info
-                                    if (uiState.data == null) {
-                                        _windowUiStates.update { states ->
-                                            val mutableStates = states.toMutableList()
-                                            mutableStates[index] =
-                                                uiState.copy(
-                                                    data = createWindowData(event.info.windowType, event.info.name),
-                                                )
-                                            (mutableStates[index].data as? StreamWindowData)
-                                                ?.stream
-                                                ?.setNameFilter(uiState.nameFilter)
-                                            mutableStates
-                                        }
-                                    }
-                                }
                         }
                     }
-
-                    else -> {
-                        // don't care
-                    }
+                    _windowUiStates.value
+                        .indexOfFirst { it.name == event.info.name }
+                        .takeIf { it != -1 }
+                        ?.let { index ->
+                            val uiState = _windowUiStates.value[index]
+                            uiState.windowInfo.value = event.info
+                            if (uiState.data == null) {
+                                _windowUiStates.update { states ->
+                                    val mutableStates = states.toMutableList()
+                                    mutableStates[index] =
+                                        uiState.copy(
+                                            data = createWindowData(event.info.windowType, event.info.name),
+                                        )
+                                    (mutableStates[index].data as? StreamWindowData)
+                                        ?.stream
+                                        ?.setNameFilter(uiState.nameFilter)
+                                    mutableStates
+                                }
+                            }
+                        }
                 }
+            }
+
+            else -> {
+                // don't care
             }
         }
     }

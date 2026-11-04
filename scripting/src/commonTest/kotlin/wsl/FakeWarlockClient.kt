@@ -4,6 +4,10 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import warlockfe.warlock3.core.client.ClientEvent
 import warlockfe.warlock3.core.client.ClientTextEvent
+import warlockfe.warlock3.core.client.CreatureStatus
+import warlockfe.warlock3.core.client.Objective
+import warlockfe.warlock3.core.client.PulseInfo
+import warlockfe.warlock3.core.client.RoomMeta
 import warlockfe.warlock3.core.client.SendCommandType
 import warlockfe.warlock3.core.client.StreamLineFeed
 import warlockfe.warlock3.core.client.WarlockClient
@@ -33,6 +37,11 @@ open class FakeWarlockClient(
     override val rightHand = MutableStateFlow<String?>(null)
     override val spellHand = MutableStateFlow<String?>(null)
     override val indicators = MutableStateFlow<Set<String>>(emptySet())
+    override val roomId = MutableStateFlow<String?>(null)
+    override val roomMeta = MutableStateFlow<RoomMeta?>(null)
+    override val creatures = MutableStateFlow<Map<String, CreatureStatus>>(emptyMap())
+    override val lastPulse = MutableStateFlow<PulseInfo?>(null)
+    override val objectives = MutableStateFlow<List<Objective>>(emptyList())
     override val menuData = MutableStateFlow(WarlockMenuData(0, emptyList()))
     override val characterId = MutableStateFlow(characterId)
     override val windowInfo = MutableStateFlow<List<WindowInfo>>(emptyList())

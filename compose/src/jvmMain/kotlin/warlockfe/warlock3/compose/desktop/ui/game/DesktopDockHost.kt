@@ -36,7 +36,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.WindowPosition
 import com.seanproctor.docking.desktop.FloatingDockWindows
 import com.seanproctor.docking.desktop.FloatingWindowModel
 import com.seanproctor.docking.desktop.dockIntoMainWindow
@@ -64,6 +67,7 @@ import warlockfe.warlock3.compose.ui.game.GameViewModel
 import warlockfe.warlock3.compose.ui.game.GameWindowStyles
 import warlockfe.warlock3.compose.ui.game.openGameWindows
 import warlockfe.warlock3.compose.util.LocalSkin
+import warlockfe.warlock3.core.window.WindowInfo
 
 /**
  * The game screen's dock state, published back up to the application scope.
@@ -122,7 +126,17 @@ fun NucleusApplicationScope.DetachedGameWindows(
     CompositionLocalProvider(LocalSkin provides skin) {
         GameWindowStyles(viewModel) {
             JewelDocking {
+                val titleBarHeight = LocalTitleBarStyle.current.metrics.height
+                val windows by viewModel.windows.collectAsState()
                 FloatingDockWindows(state) { model ->
+                    // Keyed on the size as well, so a window whose info arrives after it was first
+                    // composed still gets it. Applied before the window is emitted, so that in the
+                    // usual order it opens at this size rather than being resized after.
+                    val requestedSize =
+                        model.dockableId?.value?.let { name ->
+                            windows.firstOrNull { it.name == name }?.requestedWindowSize(titleBarHeight)
+                        }
+                    remember(model.windowId, requestedSize) { model.applyRequestedSize(requestedSize) }
                     DecoratedWindow(
                         onCloseRequest = model.onCloseRequest,
                         state = model.state,
@@ -372,3 +386,33 @@ private fun TitleBarButton(
         Icon(key = key, contentDescription = description, tint = tint)
     }
 }
+
+/**
+ * Opens a window at the size its game window asked for, the way `openDialog width='500'
+ * height='190'` opens GS4's BUG dialog at that size in Wrayth.
+ *
+ * Only a window the layout has no bounds for yet - opened detached by the game, or detached from
+ * the menu - whose state is still the library's default and has not been placed: its position is
+ * still the platform's to choose. A window with bounds already (dragged out of the dock, restored
+ * from a saved layout, or resized by the user) keeps them.
+ */
+private fun FloatingWindowModel.applyRequestedSize(size: DpSize?) {
+    if (size == null || state.position != WindowPosition.PlatformDefault) return
+    state.size = size
+}
+
+/**
+ * The size of window this asked for: the requested content size plus the [titleBarHeight] a
+ * detached window draws above its content. A dimension the game left out falls
+ * back to the library's default for that dimension. Null when it asked for neither.
+ */
+internal fun WindowInfo.requestedWindowSize(titleBarHeight: Dp): DpSize? {
+    if (requestedWidth == null && requestedHeight == null) return null
+    return DpSize(
+        width = requestedWidth?.dp ?: DEFAULT_DETACHED_SIZE.width,
+        height = requestedHeight?.let { it.dp + titleBarHeight } ?: DEFAULT_DETACHED_SIZE.height,
+    )
+}
+
+// compose-docking's size for a floating window it has no bounds for.
+private val DEFAULT_DETACHED_SIZE = DpSize(400.dp, 300.dp)

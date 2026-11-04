@@ -8,7 +8,8 @@ import warlockfe.warlock3.wrayth.protocol.WraythEvent
 class DialogDataHandler : BaseElementListener() {
     override fun startElement(element: StartElement): WraythEvent =
         WraythDialogDataEvent(
-            id = element.attributes["id"],
+            // GS4's BUG dialog names its panel with `name` rather than `id`; Saga accepts either.
+            id = element.attributes["id"] ?: element.attributes["name"],
             clear = element.attributes["clear"]?.startsWith(prefix = "t", ignoreCase = true) == true,
         )
 

@@ -17,6 +17,11 @@ data class WindowInfo(
     // moved, resized and closed while it is up but nothing about it is persisted and it stays out of
     // settings. Stream windows are always resident.
     val resident: Boolean = true,
+    // The size of its content the game asked for, in the protocol's pixels (`openDialog`'s width
+    // and height). Used when the window opens detached, as a window of its own; a docked window takes
+    // its size from the dock. Null for a dimension the game left out.
+    val requestedWidth: Int? = null,
+    val requestedHeight: Int? = null,
 )
 
 /**

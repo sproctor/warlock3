@@ -12,6 +12,7 @@ import warlockfe.warlock3.wrayth.protocol.elements.BackgroundHandler
 import warlockfe.warlock3.wrayth.protocol.elements.CastTimeHandler
 import warlockfe.warlock3.wrayth.protocol.elements.CheckBoxHandler
 import warlockfe.warlock3.wrayth.protocol.elements.ClearContainerHandler
+import warlockfe.warlock3.wrayth.protocol.elements.ClearDynaStreamHandler
 import warlockfe.warlock3.wrayth.protocol.elements.ClearStreamHandler
 import warlockfe.warlock3.wrayth.protocol.elements.CliHandler
 import warlockfe.warlock3.wrayth.protocol.elements.CloseButtonHandler
@@ -23,11 +24,13 @@ import warlockfe.warlock3.wrayth.protocol.elements.CompDefHandler
 import warlockfe.warlock3.wrayth.protocol.elements.CompassHandler
 import warlockfe.warlock3.wrayth.protocol.elements.ComponentHandler
 import warlockfe.warlock3.wrayth.protocol.elements.ContainerHandler
+import warlockfe.warlock3.wrayth.protocol.elements.CrtrStatusHandler
 import warlockfe.warlock3.wrayth.protocol.elements.DHandler
 import warlockfe.warlock3.wrayth.protocol.elements.DialogDataHandler
 import warlockfe.warlock3.wrayth.protocol.elements.DirHandler
 import warlockfe.warlock3.wrayth.protocol.elements.DropDownBoxHandler
 import warlockfe.warlock3.wrayth.protocol.elements.DynaStreamHandler
+import warlockfe.warlock3.wrayth.protocol.elements.EditBoxHandler
 import warlockfe.warlock3.wrayth.protocol.elements.ImageHandler
 import warlockfe.warlock3.wrayth.protocol.elements.IndicatorHandler
 import warlockfe.warlock3.wrayth.protocol.elements.InvHandler
@@ -41,6 +44,9 @@ import warlockfe.warlock3.wrayth.protocol.elements.MenuLinkHandler
 import warlockfe.warlock3.wrayth.protocol.elements.MiHandler
 import warlockfe.warlock3.wrayth.protocol.elements.ModeHandler
 import warlockfe.warlock3.wrayth.protocol.elements.NavHandler
+import warlockfe.warlock3.wrayth.protocol.elements.ObjectiveChildHandler
+import warlockfe.warlock3.wrayth.protocol.elements.ObjectiveHandler
+import warlockfe.warlock3.wrayth.protocol.elements.ObjectivesHandler
 import warlockfe.warlock3.wrayth.protocol.elements.OpenDialogHandler
 import warlockfe.warlock3.wrayth.protocol.elements.OutputHandler
 import warlockfe.warlock3.wrayth.protocol.elements.PopBoldHandler
@@ -48,15 +54,18 @@ import warlockfe.warlock3.wrayth.protocol.elements.PopStreamHandler
 import warlockfe.warlock3.wrayth.protocol.elements.PresetHandler
 import warlockfe.warlock3.wrayth.protocol.elements.ProgressBarHandler
 import warlockfe.warlock3.wrayth.protocol.elements.PromptHandler
+import warlockfe.warlock3.wrayth.protocol.elements.PulseHandler
 import warlockfe.warlock3.wrayth.protocol.elements.PushBoldHandler
 import warlockfe.warlock3.wrayth.protocol.elements.PushStreamHandler
 import warlockfe.warlock3.wrayth.protocol.elements.RadioHandler
 import warlockfe.warlock3.wrayth.protocol.elements.ResourceHandler
 import warlockfe.warlock3.wrayth.protocol.elements.RightHandler
+import warlockfe.warlock3.wrayth.protocol.elements.RoomMetaHandler
 import warlockfe.warlock3.wrayth.protocol.elements.RoundTimeHandler
 import warlockfe.warlock3.wrayth.protocol.elements.SettingsInfoHandler
 import warlockfe.warlock3.wrayth.protocol.elements.SkinHandler
 import warlockfe.warlock3.wrayth.protocol.elements.SpellHandler
+import warlockfe.warlock3.wrayth.protocol.elements.StreamBoxHandler
 import warlockfe.warlock3.wrayth.protocol.elements.StreamHandler
 import warlockfe.warlock3.wrayth.protocol.elements.StreamWindowHandler
 import warlockfe.warlock3.wrayth.protocol.elements.StyleHandler
@@ -120,12 +129,14 @@ class WraythProtocolHandler {
             // sessions rather than inferred from the handler class name, which is not a
             // reliable guide - UpdateVerbsHandler answers to <updateverbs>.
             "a" to AHandler(),
+            "action" to ObjectiveChildHandler(),
             "app" to AppHandler(),
             "b" to BHandler(),
             "background" to BackgroundHandler(),
             "castTime" to CastTimeHandler(),
             "checkBox" to CheckBoxHandler(),
             "clearContainer" to ClearContainerHandler(),
+            "clearDynaStream" to ClearDynaStreamHandler(),
             "clearStream" to ClearStreamHandler(),
             "cli" to CliHandler(),
             "closeButton" to CloseButtonHandler(),
@@ -137,11 +148,13 @@ class WraythProtocolHandler {
             "compDef" to CompDefHandler(),
             "component" to ComponentHandler(),
             "container" to ContainerHandler(),
+            "crtrStatus" to CrtrStatusHandler(),
             "d" to DHandler(),
             "dialogData" to DialogDataHandler(),
             "dir" to DirHandler(),
             "dropDownBox" to DropDownBoxHandler(),
             "dynaStream" to DynaStreamHandler(),
+            "editBox" to EditBoxHandler(),
             "image" to ImageHandler(),
             "indicator" to IndicatorHandler(),
             "inv" to InvHandler(),
@@ -155,6 +168,8 @@ class WraythProtocolHandler {
             "mi" to MiHandler(),
             "mode" to ModeHandler(),
             "nav" to NavHandler(),
+            "objective" to ObjectiveHandler(),
+            "objectives" to ObjectivesHandler(),
             "openDialog" to OpenDialogHandler(),
             "output" to OutputHandler(),
             "preset" to PresetHandler(),
@@ -163,17 +178,22 @@ class WraythProtocolHandler {
             "progressBar" to ProgressBarHandler(),
             "prompt" to PromptHandler(),
             "pushBold" to PushBoldHandler(),
+            "pulse" to PulseHandler(),
             "pushStream" to PushStreamHandler(),
             "radio" to RadioHandler(),
             "resource" to ResourceHandler(),
+            "reward" to ObjectiveChildHandler(),
             "right" to RightHandler(),
+            "roommeta" to RoomMetaHandler(),
             "roundTime" to RoundTimeHandler(),
             "settingsInfo" to SettingsInfoHandler(),
             "skin" to SkinHandler(),
             "spell" to SpellHandler(),
             "stream" to StreamHandler(),
+            "streamBox" to StreamBoxHandler(),
             "streamWindow" to StreamWindowHandler(),
             "style" to StyleHandler(),
+            "task" to ObjectiveChildHandler(),
             "updateverbs" to UpdateVerbsHandler(),
             // Tags the game sends that carry nothing we use. Registered so the warning above
             // stays meaningful: anything that reaches it is genuinely new, or misspelled. Every
@@ -219,10 +239,7 @@ class WraythProtocolHandler {
             "font" to IgnoredTagHandler(),
             "group" to IgnoredTagHandler(),
             "module" to IgnoredTagHandler(),
-            "objectives" to IgnoredTagHandler(),
             "playerID" to IgnoredTagHandler(),
-            "pulse" to IgnoredTagHandler(),
-            "roommeta" to IgnoredTagHandler(),
             "sep" to IgnoredTagHandler(),
             "switchQuickBar" to IgnoredTagHandler(),
             "timestamp" to IgnoredTagHandler(),

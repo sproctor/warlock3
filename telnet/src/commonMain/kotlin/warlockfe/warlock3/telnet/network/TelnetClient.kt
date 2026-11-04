@@ -25,11 +25,15 @@ import warlockfe.warlock3.core.client.ClientGmcpEvent
 import warlockfe.warlock3.core.client.ClientPromptEvent
 import warlockfe.warlock3.core.client.ClientTextEvent
 import warlockfe.warlock3.core.client.ClientWindowInfoEvent
+import warlockfe.warlock3.core.client.CreatureStatus
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.client.HandBlock
 import warlockfe.warlock3.core.client.MudScriptOffer
+import warlockfe.warlock3.core.client.Objective
 import warlockfe.warlock3.core.client.PanelObject
 import warlockfe.warlock3.core.client.Percentage
+import warlockfe.warlock3.core.client.PulseInfo
+import warlockfe.warlock3.core.client.RoomMeta
 import warlockfe.warlock3.core.client.ScriptableClient
 import warlockfe.warlock3.core.client.SendCommandType
 import warlockfe.warlock3.core.client.StreamLineFeed
@@ -129,6 +133,11 @@ class TelnetClient(
     private val _spellHand = MutableStateFlow<String?>(null)
     override val spellHand: StateFlow<String?> = _spellHand.asStateFlow()
     override val indicators: StateFlow<Set<String>> = MutableStateFlow(emptySet())
+    override val roomId: StateFlow<String?> = MutableStateFlow(null)
+    override val roomMeta: StateFlow<RoomMeta?> = MutableStateFlow(null)
+    override val creatures: StateFlow<Map<String, CreatureStatus>> = MutableStateFlow(emptyMap())
+    override val lastPulse: StateFlow<PulseInfo?> = MutableStateFlow(null)
+    override val objectives: StateFlow<List<Objective>> = MutableStateFlow(emptyList())
     override val menuData: StateFlow<WarlockMenuData> = MutableStateFlow(WarlockMenuData(0, emptyList()))
 
     private val _windowInfo = MutableStateFlow<List<WindowInfo>>(emptyList())

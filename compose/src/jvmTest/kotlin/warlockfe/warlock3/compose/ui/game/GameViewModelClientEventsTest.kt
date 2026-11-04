@@ -2,6 +2,7 @@ package warlockfe.warlock3.compose.ui.game
 
 import androidx.room3.Room
 import kotlinx.collections.immutable.persistentHashSetOf
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -19,6 +20,10 @@ import warlockfe.warlock3.compose.crash.CrashReporting
 import warlockfe.warlock3.compose.openPrefsDatabase
 import warlockfe.warlock3.core.client.ClientCompassEvent
 import warlockfe.warlock3.core.client.ClientEvent
+import warlockfe.warlock3.core.client.CreatureStatus
+import warlockfe.warlock3.core.client.Objective
+import warlockfe.warlock3.core.client.PulseInfo
+import warlockfe.warlock3.core.client.RoomMeta
 import warlockfe.warlock3.core.client.SendCommandType
 import warlockfe.warlock3.core.client.StreamLineFeed
 import warlockfe.warlock3.core.client.WarlockClient
@@ -92,6 +97,11 @@ class GameViewModelClientEventsTest {
         override val characterId = MutableStateFlow<String?>(null)
         override val windowInfo = MutableStateFlow<List<WindowInfo>>(emptyList())
         override val disconnected = MutableStateFlow(false)
+        override val roomId = MutableStateFlow<String?>(null)
+        override val roomMeta = MutableStateFlow<RoomMeta?>(null)
+        override val creatures = MutableStateFlow<Map<String, CreatureStatus>>(emptyMap())
+        override val lastPulse = MutableStateFlow<PulseInfo?>(null)
+        override val objectives = MutableStateFlow<List<Objective>>(emptyList())
 
         override fun getCurrentTime(): Instant = Clock.System.now()
 
@@ -128,7 +138,7 @@ class GameViewModelClientEventsTest {
         override fun close() = Unit
     }
 
-    private suspend fun appContainer(): AppContainer {
+    private suspend fun appContainer(ioDispatcher: CoroutineDispatcher): AppContainer {
         database =
             openPrefsDatabase(
                 directory = Path(dir.toString()),
@@ -163,16 +173,18 @@ class GameViewModelClientEventsTest {
                         },
                     background = Dispatchers.Unconfined,
                 ),
+            ioDispatcher = ioDispatcher,
         )
     }
 
     @Test
     fun anEventSentTheMomentTheClientStartsReachesTheGameScreen() =
         runTest {
-            // A main thread that runs nothing until told to, as a busy UI thread would: anything the
-            // view model only queues there has not happened yet when the client starts reading.
+            // A main thread and a background pool that run nothing until told to, as busy ones would:
+            // anything the view model only queues there has not happened yet when the client starts
+            // reading.
             Dispatchers.setMain(StandardTestDispatcher(testScheduler))
-            val container = appContainer()
+            val container = appContainer(StandardTestDispatcher(testScheduler))
             val exits = persistentHashSetOf(Direction("n"), Direction("e"), Direction("out"))
             val windowRegistry = container.windowRegistryFactory.create()
             val client = EagerClient(ClientCompassEvent(exits), windowRegistry)
