@@ -70,10 +70,10 @@ class ConnectToGameUseCase(
                             socket = socket,
                         ) as WraythClient
                     proxy?.let { sfClient.setProxy(it) }
-                    sfClient.connect(loginCredentials.key)
                     val gameViewModel =
-                        gameViewModelFactory.create(
+                        gameViewModelFactory.connect(
                             client = sfClient,
+                            key = loginCredentials.key,
                             windowRegistry = streamRegistry,
                             // Reuse the same credentials (and key) on reconnect.
                             reconnect = { invoke(credentials, proxySettings, gameState) },

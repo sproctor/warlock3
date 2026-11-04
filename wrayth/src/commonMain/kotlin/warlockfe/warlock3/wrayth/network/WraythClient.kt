@@ -296,35 +296,6 @@ class WraythClient(
 
     init {
         scope.launch {
-            listOf(
-                WraythStreamWindow(
-                    name = "warlockscripts",
-                    title = "Running scripts",
-                    subtitle = null,
-                    ifClosed = null,
-                    styleIfClosed = null,
-                    timestamp = false,
-                    applyStyling = false,
-                ),
-                WraythStreamWindow(
-                    name = "scriptoutput",
-                    title = "Script output",
-                    subtitle = null,
-                    ifClosed = "main",
-                    styleIfClosed = "echo",
-                    timestamp = false,
-                    applyStyling = false,
-                ),
-                WraythStreamWindow(
-                    name = "debug",
-                    title = "Debug",
-                    subtitle = null,
-                    ifClosed = null,
-                    styleIfClosed = null,
-                    timestamp = false,
-                    applyStyling = false,
-                ),
-            ).forEach { addWindow(it) }
             commandQueue.consumeEach { command ->
                 if (maxTypeAhead > 0) {
                     currentTypeAhead.first { it < maxTypeAhead }
@@ -342,6 +313,37 @@ class WraythClient(
     }
 
     override suspend fun connect(key: String) {
+        // The client's own windows are announced here rather than on construction, so the game
+        // screen, which subscribes to eventFlow before it connects us, hears about them.
+        listOf(
+            WraythStreamWindow(
+                name = "warlockscripts",
+                title = "Running scripts",
+                subtitle = null,
+                ifClosed = null,
+                styleIfClosed = null,
+                timestamp = false,
+                applyStyling = false,
+            ),
+            WraythStreamWindow(
+                name = "scriptoutput",
+                title = "Script output",
+                subtitle = null,
+                ifClosed = "main",
+                styleIfClosed = "echo",
+                timestamp = false,
+                applyStyling = false,
+            ),
+            WraythStreamWindow(
+                name = "debug",
+                title = "Debug",
+                subtitle = null,
+                ifClosed = null,
+                styleIfClosed = null,
+                timestamp = false,
+                applyStyling = false,
+            ),
+        ).forEach { addWindow(it) }
         scope.launch {
             socket.write(key + "\n")
             logger.d { "Sent key" }

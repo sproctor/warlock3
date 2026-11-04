@@ -61,7 +61,7 @@ fun WarlockApp(
     AppTheme(useDarkTheme = darkMode) {
         // Held in a retained ViewModel so the navigation state and live connection survive
         // configuration changes (e.g. rotation).
-        val gameState = viewModel { AppViewModel() }.gameState
+        val gameState = viewModel { AppViewModel(appContainer.externalScope) }.gameState
         var showSettings by remember { mutableStateOf(false) }
         // Where the settings screen opens (null = the category list), plus the window whose editor to
         // focus. Set by a game window's "Window settings" action; reset when opened from the menu.
