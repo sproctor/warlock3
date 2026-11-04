@@ -18,14 +18,10 @@ import io.github.vinceglb.filekit.dialogs.init
 import kotlinx.coroutines.runBlocking
 import warlockfe.warlock3.compose.WarlockApp
 import warlockfe.warlock3.compose.generated.resources.Res
-import warlockfe.warlock3.compose.observeSkin
 import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.core.sge.SgeSettings
-import java.io.File
 
 class MainActivity : ComponentActivity() {
-    private val logger = Logger.withTag("MainActivity")
-
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
 
@@ -39,10 +35,6 @@ class MainActivity : ComponentActivity() {
 
         val warlockApplication = application as WarlockApplication
         val appContainer = warlockApplication.appContainer
-
-        appContainer.observeSkin(logger) { path ->
-            File(path).takeIf { it.exists() }?.readBytes()
-        }
 
         val simuCert = runBlocking { Res.readBytes("files/simu.pem") }
 

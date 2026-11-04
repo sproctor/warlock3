@@ -1851,6 +1851,10 @@ class GameViewModel(
 
     /** Tear down this game's client and window registry without touching any reconnect in flight. */
     private suspend fun closeClient() {
+        // Scripts run on the app's scope, not this view model's, so they would carry on against a
+        // closed client - a waitfor that can never match, or a loop sending into nothing.
+        scriptManager.runningScripts.value.values
+            .forEach { it.instance.stop() }
         // The quit is a goodbye to the server, not part of the teardown: whether it lands or not,
         // the client and the registry still have to go, and the caller still has somewhere to be
         // afterwards - the dashboard, or a window that wants to close. Only cancellation carries on

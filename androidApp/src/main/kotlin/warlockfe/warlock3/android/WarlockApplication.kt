@@ -3,11 +3,13 @@ package warlockfe.warlock3.android
 import android.app.Application
 import androidx.room3.Room
 import androidx.room3.RoomDatabase
+import co.touchlab.kermit.Logger
 import kotlinx.coroutines.runBlocking
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
 import warlockfe.warlock3.compose.AppContainer
 import warlockfe.warlock3.compose.crash.CrashReporting
+import warlockfe.warlock3.compose.observeSkin
 import warlockfe.warlock3.compose.openPrefsDatabase
 import warlockfe.warlock3.compose.util.SentryCrashReporter
 import warlockfe.warlock3.core.client.JavaProxy
@@ -15,6 +17,7 @@ import warlockfe.warlock3.core.client.WarlockProxy
 import warlockfe.warlock3.core.prefs.PrefsDatabase
 import warlockfe.warlock3.core.util.AndroidSoundPlayer
 import warlockfe.warlock3.core.util.WarlockDirs
+import java.io.File
 
 class WarlockApplication : Application() {
     lateinit var appContainer: AppContainer
@@ -74,6 +77,11 @@ class WarlockApplication : Application() {
                 warlockProxyFactory = WarlockProxy.Factory { JavaProxy(it) },
                 crashReporting = crashReporting,
             )
+        // Here rather than in the activity: it runs on the app's scope, so starting it on every
+        // activity recreation (each rotation) would stack up another watcher each time.
+        appContainer.observeSkin(Logger.withTag("WarlockApplication")) { path ->
+            File(path).takeIf { it.exists() }?.readBytes()
+        }
     }
 
     private fun getPrefsDatabaseBuilder(filename: String): RoomDatabase.Builder<PrefsDatabase> =
