@@ -15,6 +15,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -34,6 +35,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.WindowState
 import androidx.compose.ui.window.rememberWindowState
+import androidx.lifecycle.ViewModelStore
+import androidx.lifecycle.ViewModelStoreOwner
+import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.room3.Room
 import androidx.room3.RoomDatabase
 import ca.gosyer.appdirs.AppDirs
@@ -362,6 +366,15 @@ private class WarlockCommand : CliktCommand() {
                             }
                         // Where this window's game screen publishes its dock state.
                         val dockHost = remember { DesktopDockHost() }
+                        // This window's own view-model store, cleared when the game closes. A Tao
+                        // window, unlike an AWT one, gives its scene no store of its own: every
+                        // window falls back to one process-wide store, where a second window's
+                        // dashboard got the first window's view model, bound to the first window's
+                        // game, and connecting from it took that window over.
+                        val viewModelStoreOwner = remember { GameWindowViewModelStoreOwner() }
+                        DisposableEffect(viewModelStoreOwner) {
+                            onDispose { viewModelStoreOwner.viewModelStore.clear() }
+                        }
                         val subtitle by gameState.getTitle().collectAsState("loading")
                         val title = "Warlock - $subtitle"
                         val connectedScreen = gameState.screen as? GameScreen.ConnectedGameState
@@ -406,6 +419,7 @@ private class WarlockCommand : CliktCommand() {
                             onPreviewKeyEvent = dockHost::cancelDragOnEscape,
                         ) {
                             CompositionLocalProvider(
+                                LocalViewModelStoreOwner provides viewModelStoreOwner,
                                 LocalSkin provides skin,
                                 LocalDesktopDockHost provides dockHost,
                                 // A copy that cannot open the system clipboard must not take the
@@ -1065,4 +1079,13 @@ private fun migrateLegacyWindowsPrefsDb(
     } catch (e: Exception) {
         logger.e(e) { "Failed to migrate legacy prefs database" }
     }
+}
+
+/**
+ * One game window's view-model store. Held by the application composition, outside the window,
+ * which has no host to take a store from, so it is a plain store rather than one remembered from a
+ * parent.
+ */
+private class GameWindowViewModelStoreOwner : ViewModelStoreOwner {
+    override val viewModelStore = ViewModelStore()
 }
