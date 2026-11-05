@@ -121,6 +121,10 @@ kotlin {
                 // Networking libs
                 api(libs.uri)
                 api(libs.ktor.utils)
+                // Plain and TLS sockets (openPlainSocket / openTLSSocket), shared by the Wrayth and
+                // telnet clients; their signatures take a SelectorManager.
+                api(libs.ktor.network)
+                implementation(libs.ktor.network.tls)
                 // MUD Mobile integration: REST client over HTTPS
                 api(libs.ktor.client.core)
                 implementation(libs.ktor.client.cio)

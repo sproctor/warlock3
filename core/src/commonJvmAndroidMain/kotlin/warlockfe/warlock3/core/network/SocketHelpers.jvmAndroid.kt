@@ -1,4 +1,4 @@
-package warlockfe.warlock3.wrayth.util
+package warlockfe.warlock3.core.network
 
 import io.ktor.network.selector.SelectorManager
 import io.ktor.network.sockets.aSocket
@@ -16,12 +16,12 @@ actual suspend fun openPlainSocket(
     host: String,
     port: Int,
     coroutineContext: CoroutineContext,
-): TLSSocketConnection {
+): SocketConnection {
     val socket =
         aSocket(selectorManager)
             .tcp()
             .connect(host, port)
-    return TLSSocketConnection(
+    return SocketConnection(
         readChannel = socket.openReadChannel(),
         writeChannel = socket.openWriteChannel(autoFlush = true),
         close = { socket.close() },
@@ -34,7 +34,7 @@ actual suspend fun openTLSSocket(
     port: Int,
     certificate: ByteArray?,
     coroutineContext: CoroutineContext,
-): TLSSocketConnection {
+): SocketConnection {
     val socket =
         aSocket(selectorManager)
             .tcp()
@@ -56,7 +56,7 @@ actual suspend fun openTLSSocket(
                     trustManager = tmf.trustManagers.first { it is X509TrustManager } as X509TrustManager
                 }
             }
-    return TLSSocketConnection(
+    return SocketConnection(
         readChannel = socket.openReadChannel(),
         writeChannel = socket.openWriteChannel(autoFlush = true),
         close = { socket.close() },

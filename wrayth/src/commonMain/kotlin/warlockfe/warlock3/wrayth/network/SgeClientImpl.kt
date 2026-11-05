@@ -22,6 +22,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.io.IOException
+import warlockfe.warlock3.core.network.openPlainSocket
+import warlockfe.warlock3.core.network.openTLSSocket
 import warlockfe.warlock3.core.sge.AutoConnectResult
 import warlockfe.warlock3.core.sge.SgeCharacter
 import warlockfe.warlock3.core.sge.SgeClient
@@ -33,8 +35,6 @@ import warlockfe.warlock3.core.sge.SimuGameCredentials
 import warlockfe.warlock3.core.sge.StoredConnection
 import warlockfe.warlock3.core.util.decodeWindows1252
 import warlockfe.warlock3.core.util.encodeWindows1252
-import warlockfe.warlock3.wrayth.util.openPlainSocket
-import warlockfe.warlock3.wrayth.util.openTLSSocket
 import kotlin.math.min
 import kotlin.time.Duration.Companion.seconds
 

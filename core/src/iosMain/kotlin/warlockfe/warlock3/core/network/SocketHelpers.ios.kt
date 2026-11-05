@@ -1,6 +1,6 @@
 @file:OptIn(ExperimentalForeignApi::class, ExperimentalAtomicApi::class)
 
-package warlockfe.warlock3.wrayth.util
+package warlockfe.warlock3.core.network
 
 import co.touchlab.kermit.Logger
 import io.ktor.network.selector.SelectorManager
@@ -118,7 +118,7 @@ actual suspend fun openPlainSocket(
     host: String,
     port: Int,
     coroutineContext: CoroutineContext,
-): TLSSocketConnection = openNetworkSocket(host, port, coroutineContext, useTls = false)
+): SocketConnection = openNetworkSocket(host, port, coroutineContext, useTls = false)
 
 actual suspend fun openTLSSocket(
     selectorManager: SelectorManager,
@@ -126,7 +126,7 @@ actual suspend fun openTLSSocket(
     port: Int,
     certificate: ByteArray?,
     coroutineContext: CoroutineContext,
-): TLSSocketConnection {
+): SocketConnection {
     if (certificate == null) {
         // No verify block: Network.framework evaluates the chain against the system anchors and
         // checks it against the server name set in openNetworkSocket.
@@ -152,7 +152,7 @@ private suspend fun openNetworkSocket(
     coroutineContext: CoroutineContext,
     useTls: Boolean,
     configureTls: (nw_protocol_options_t) -> Unit = {},
-): TLSSocketConnection {
+): SocketConnection {
     val queue = dispatch_queue_create("warlockfe.warlock3.socket", null)
 
     // The protocol stack is assembled by hand rather than with nw_parameters_create_secure_tcp.
@@ -194,7 +194,7 @@ private suspend fun openNetworkSocket(
     } catch (t: Throwable) {
         // A failed connection still holds resources, and its state handler is still installed.
         // Nothing else can cancel it: closeConnection is only reachable through the
-        // TLSSocketConnection this function never gets to return.
+        // SocketConnection this function never gets to return.
         nw_connection_cancel(connection)
         throw t
     }
@@ -287,7 +287,7 @@ private suspend fun openNetworkSocket(
         }
     }
 
-    return TLSSocketConnection(
+    return SocketConnection(
         readChannel = readChannel,
         writeChannel = writeChannel,
         close = { closeConnection() },
