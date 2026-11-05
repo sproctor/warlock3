@@ -67,7 +67,7 @@ The project is organized into 7 Gradle modules:
 
 **Dependency Versions**: All dependency versions are centralized in `gradle/libs.versions.toml`. Use version catalog references (e.g., `libs.ktor.client.core`) in build files.
 
-**`api` vs `implementation`**: a module exposes a library through `api` only when that library's types appear in its public signatures (`core` does this for coroutines, kotlinx-io, immutable collections, uri and ktor-utils, plus tomlkt for the IDE reason its comment gives). A module that imports a library itself declares it, even if another module already brings it in transitively.
+**`api` vs `implementation`**: a module exposes a library through `api` only when that library's types appear in its public signatures (`core` does this for coroutines, kotlinx-io, immutable collections, uri and ktor-utils). A module that imports a library itself declares it, even if another module already brings it in transitively.
 
 ## Verifying Protocol Questions Against the Real Client
 

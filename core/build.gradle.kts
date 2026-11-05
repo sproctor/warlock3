@@ -116,10 +116,7 @@ kotlin {
                 // Preferences
                 implementation(libs.room.runtime)
                 implementation(libs.kotlinx.serialization.core)
-                // NOTE: api (not implementation) on purpose - IntelliJ/AS KMP support doesn't always
-                // put implementation-scoped commonMain deps on the editor analysis classpath, which
-                // shows tomlkt as "unresolved" in commonMain files even though Gradle compiles fine.
-                api(libs.tomlkt)
+                implementation(libs.tomlkt)
 
                 // Networking libs
                 api(libs.uri)
