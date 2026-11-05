@@ -110,7 +110,6 @@ kotlin {
             }
             dependencies {
                 implementation(project(":core"))
-                implementation(project(":scripting"))
                 implementation(libs.kotlinx.coroutines.core)
                 implementation(libs.kotlinx.serialization.core)
                 implementation(libs.xmlutil.serialization)
