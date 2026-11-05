@@ -6,15 +6,29 @@ import androidx.compose.runtime.setValue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import warlockfe.warlock3.compose.ui.game.GameViewModel
+import warlockfe.warlock3.core.client.WarlockSocket
+import warlockfe.warlock3.core.sge.SimuGameCredentials
+import warlockfe.warlock3.core.sge.StoredConnection
 
-class GameState {
+/**
+ * One window's game: what it shows, and what it connects to when its dashboard first appears.
+ *
+ * @param startupConnection the connection to open on first showing the dashboard; null for a
+ *   window that should just show the dashboard (a manually opened additional window).
+ */
+class GameState(
+    startupConnection: StartupConnection? = StartupConnection.LastConnection,
+) {
     var screen by mutableStateOf<GameScreen>(GameScreen.Dashboard)
         private set
 
-    // Guards the once-per-window "auto-connect last connection on startup" attempt. Set true once the
-    // attempt has been consumed (or pre-set true for windows that should never auto-connect, e.g. a
-    // window already connected via the command line, or a manually opened additional window).
-    var autoConnectAttempted: Boolean = false
+    private var pendingStartupConnection: StartupConnection? = startupConnection
+
+    /**
+     * The connection to open on startup, handed out once: returning to the dashboard after a
+     * disconnect must not connect again.
+     */
+    fun takeStartupConnection(): StartupConnection? = pendingStartupConnection.also { pendingStartupConnection = null }
 
     suspend fun setScreen(screen: GameScreen) {
         withContext(Dispatchers.Main.immediate) {
@@ -36,4 +50,25 @@ sealed interface GameScreen {
         val message: String,
         val returnTo: GameScreen,
     ) : GameScreen
+}
+
+/** What a window connects to when its dashboard first appears. */
+sealed interface StartupConnection {
+    /** The last launched connection, if the user turned auto-connect on. */
+    data object LastConnection : StartupConnection
+
+    /** A saved connection, named on the command line. */
+    data class Stored(
+        val connection: StoredConnection,
+    ) : StartupConnection
+
+    /** A game server and key given on the command line, skipping the login server. */
+    data class Credentials(
+        val credentials: SimuGameCredentials,
+    ) : StartupConnection
+
+    /** A game read from a stream (a log file being replayed, or stdin) instead of a server. */
+    class Stream(
+        val open: () -> WarlockSocket,
+    ) : StartupConnection
 }

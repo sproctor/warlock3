@@ -20,6 +20,7 @@ import warlockfe.warlock3.compose.MudMobileDiscoverUseCase
 import warlockfe.warlock3.compose.TelnetConnectResult
 import warlockfe.warlock3.compose.model.GameScreen
 import warlockfe.warlock3.compose.model.GameState
+import warlockfe.warlock3.compose.model.StartupConnection
 import warlockfe.warlock3.core.mudmobile.CharactersResult
 import warlockfe.warlock3.core.mudmobile.ConflictResolution
 import warlockfe.warlock3.core.mudmobile.MudMobileApi
@@ -113,7 +114,7 @@ class DashboardViewModel(
                 warlockSettingsSync.sync()
             }
         }
-        maybeAutoConnectLastConnection()
+        openStartupConnection()
     }
 
     // --- Settings sync ---
@@ -141,20 +142,70 @@ class DashboardViewModel(
     }
 
     /**
-     * On the first dashboard shown this session, reconnect the last launched connection if the user
-     * enabled auto-connect and that connection still exists. Guarded by
-     * [GameState.autoConnectAttempted] so it fires at most once per window (not again when returning
-     * to the dashboard after a disconnect).
+     * Opens the window's startup connection, the first time its dashboard appears: one named on the
+     * command line, or the last launched connection if the user turned auto-connect on. Not again
+     * when the dashboard comes back after a disconnect.
+     *
+     * Connecting here rather than before the window opens lets the window come up straight away,
+     * with the same progress dialog, Cancel button and error reporting as a connect the user starts.
      */
-    private fun maybeAutoConnectLastConnection() {
-        if (gameState.autoConnectAttempted) return
-        gameState.autoConnectAttempted = true
-        viewModelScope.launch {
-            if (!clientSettingRepository.getAutoConnectLastConnection()) return@launch
-            val lastConnectionId = clientSettingRepository.getLastConnectionId() ?: return@launch
-            val connection = connectionRepository.getById(lastConnectionId) ?: return@launch
-            connect(connection)
+    private fun openStartupConnection() {
+        when (val startup = gameState.takeStartupConnection()) {
+            null -> {}
+
+            StartupConnection.LastConnection -> {
+                viewModelScope.launch {
+                    if (!clientSettingRepository.getAutoConnectLastConnection()) return@launch
+                    val lastConnectionId = clientSettingRepository.getLastConnectionId() ?: return@launch
+                    val connection = connectionRepository.getById(lastConnectionId) ?: return@launch
+                    connect(connection)
+                }
+            }
+
+            is StartupConnection.Stored -> {
+                connect(startup.connection)
+            }
+
+            is StartupConnection.Credentials -> {
+                val credentials = startup.credentials
+                launchConnect("Connecting to ${credentials.host}:${credentials.port}...") {
+                    connectToGame(credentials, NO_PROXY, gameState)
+                }
+            }
+
+            is StartupConnection.Stream -> {
+                launchConnect("Loading...") {
+                    connectToGame.connectStream(startup.open(), gameState)
+                }
+            }
         }
+    }
+
+    /** Runs [block] as the dashboard's connect, with [status] in its progress dialog. */
+    private fun launchConnect(
+        status: String,
+        block: suspend () -> Unit,
+    ) {
+        if (busy) return
+        busy = true
+        connectError = null
+        connectJob?.cancel()
+        connectJob =
+            viewModelScope.launch {
+                try {
+                    message = status
+                    block()
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    logger.e(e) { "Error connecting" }
+                    message = null
+                    connectError = "Error: ${e.message}"
+                } finally {
+                    connectJob = null
+                    busy = false
+                }
+            }
     }
 
     fun connect(connection: StoredConnection) {
@@ -216,32 +267,17 @@ class DashboardViewModel(
     }
 
     private fun connectTelnet(connection: StoredConnection) {
-        if (busy) return
-        busy = true
-        connectError = null
-        connectJob?.cancel()
-        connectJob =
-            viewModelScope.launch {
-                try {
-                    // Remember this as the last launched connection (for auto-connect-on-startup).
-                    clientSettingRepository.putLastConnectionId(connection.id)
-                    val address = connection.telnetAddress
-                    message = if (address != null) "Connecting to ${address.host}:${address.port}..." else "Connecting..."
-                    val result = connectToTelnet(connection, gameState)
-                    if (result is TelnetConnectResult.Failure) {
-                        message = null
-                        connectError = result.message
-                    }
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    logger.e(e) { "Error connecting to telnet server" }
-                    connectError = "Error: ${e.message}"
-                } finally {
-                    connectJob = null
-                    busy = false
-                }
+        val address = connection.telnetAddress
+        val status = if (address != null) "Connecting to ${address.host}:${address.port}..." else "Connecting..."
+        launchConnect(status) {
+            // Remember this as the last launched connection (for auto-connect-on-startup).
+            clientSettingRepository.putLastConnectionId(connection.id)
+            val result = connectToTelnet(connection, gameState)
+            if (result is TelnetConnectResult.Failure) {
+                message = null
+                connectError = result.message
             }
+        }
     }
 
     /** Save a new telnet connection and, when [connectNow], dial it straight away. */
@@ -537,5 +573,10 @@ class DashboardViewModel(
         viewModelScope.launch {
             connectionRepository.deleteConnection(id)
         }
+    }
+
+    private companion object {
+        /** A connection given as a server and key on the command line goes direct, with no proxy. */
+        val NO_PROXY = ConnectionProxySettings(enabled = false, launchCommand = null, host = null, port = null)
     }
 }

@@ -11,6 +11,7 @@ import warlockfe.warlock3.compose.ui.game.GameViewModelFactory
 import warlockfe.warlock3.compose.ui.window.WindowRegistryFactory
 import warlockfe.warlock3.core.client.WarlockClientFactory
 import warlockfe.warlock3.core.client.WarlockProxy
+import warlockfe.warlock3.core.client.WarlockSocket
 import warlockfe.warlock3.core.sge.ConnectionProxySettings
 import warlockfe.warlock3.core.sge.SimuGameCredentials
 import warlockfe.warlock3.core.util.WarlockDirs
@@ -122,6 +123,32 @@ class ConnectToGameUseCase(
                         if (!socket.isClosed) socket.close()
                         streamRegistry?.close()
                     }
+                }
+            }
+        }
+    }
+
+    /**
+     * Plays a game read from [socket] (a log being replayed, or stdin) instead of from a server.
+     * There is no key to send and nothing to reconnect to.
+     */
+    suspend fun connectStream(
+        socket: WarlockSocket,
+        gameState: GameState,
+    ) {
+        withContext(ioDispatcher) {
+            var registry: WindowRegistry? = null
+            var handedOff = false
+            try {
+                val streamRegistry = windowRegistryFactory.create().also { registry = it }
+                val client = warlockClientFactory.createClient(windowRegistry = streamRegistry, socket = socket)
+                // The factory owns the client and registry from here, as in [invoke].
+                handedOff = true
+                gameViewModelFactory.connect(client = client, key = "", windowRegistry = streamRegistry, gameState = gameState)
+            } finally {
+                if (!handedOff) {
+                    if (!socket.isClosed) socket.close()
+                    registry?.close()
                 }
             }
         }
