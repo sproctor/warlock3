@@ -114,6 +114,9 @@ dependencies {
     implementation(project(":compose"))
 
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.kermit)
+    // Opens the preferences database (Room.databaseBuilder in WarlockApplication)
+    implementation(libs.room.runtime)
 
     // Compose dependencies
     implementation(libs.compose.material3)

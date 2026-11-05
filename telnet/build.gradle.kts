@@ -63,6 +63,8 @@ kotlin {
             implementation(project(":wrayth"))
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.ktor.network)
+            implementation(libs.kermit)
+            implementation(libs.kotlinx.serialization.json)
         }
 
         commonTest.dependencies {

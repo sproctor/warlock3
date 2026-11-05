@@ -75,6 +75,8 @@ kotlin {
                 implementation(project(":core"))
                 api(libs.kotlinx.coroutines.core)
                 api(libs.kotlinx.collections.immutable)
+                implementation(libs.kotlinx.serialization.json)
+                implementation(libs.kermit)
 
                 // Parsing
                 implementation(libs.antlr.kotlin.runtime)

@@ -33,9 +33,12 @@ dependencies {
     implementation(libs.filekit.dialogs)
 
     implementation(libs.kotlinx.serialization.json)
+    // Opens the preferences database (Room.databaseBuilder in Main.kt)
+    implementation(libs.room.runtime)
 
-    // No logging dependency: Kermit comes from :core, which also carries the slf4j provider that
-    // routes slf4j-using libraries into it. Crash reporting comes from :compose (see SentryCrashReporter.kt).
+    // Logging is Kermit. :core carries the slf4j provider that routes slf4j-using libraries into
+    // it. Crash reporting comes from :compose (see SentryCrashReporter.kt).
+    implementation(libs.kermit)
 
     // In-app updates
     implementation(libs.nucleus.updater)
