@@ -114,7 +114,7 @@ kotlin {
                 implementation(libs.kermit)
 
                 // Preferences
-                implementation(libs.room.runtime)
+                api(libs.room.runtime)
                 implementation(libs.kotlinx.serialization.core)
                 implementation(libs.tomlkt)
 
@@ -122,7 +122,7 @@ kotlin {
                 api(libs.uri)
                 api(libs.ktor.utils)
                 // MUD Mobile integration: REST client over HTTPS
-                implementation(libs.ktor.client.core)
+                api(libs.ktor.client.core)
                 implementation(libs.ktor.client.cio)
                 implementation(libs.kotlinx.serialization.json)
 
