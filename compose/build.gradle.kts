@@ -86,6 +86,11 @@ kotlin {
             implementation(project(":scripting"))
 
             implementation(libs.kotlinx.serialization.json)
+            implementation(libs.kotlinx.datetime)
+            implementation(libs.kermit)
+            // The HTTP client AppContainer builds for the MUD Mobile integration
+            implementation(libs.ktor.client.core)
+            implementation(libs.ktor.client.cio)
 
             // Compose
             api(libs.compose.components.resources)

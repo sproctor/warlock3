@@ -42,13 +42,14 @@ GraalVM Community Edition, which the Nucleus plugin downloads.
 
 The project is organized into 7 Gradle modules:
 
-- **`core/`** — Multiplatform business logic, broken into sub-modules:
+- **`core/`** — Multiplatform business logic. One Gradle module; these are its packages under `warlockfe.warlock3.core`, not sub-modules:
   - `client/` — Game client, networking, character data
   - `sge/` — SGE-specific protocol handling
   - `macro/` — ANTLR-based macro language parser
   - `prefs/` — Preferences & configuration (Room database)
   - `script/` — Script handling
-  - `compass/`, `text/`, `window/`, `util/` — Supporting domain modules
+  - `mudmobile/` — MUD Mobile integration (REST client, settings sync)
+  - `compass/`, `text/`, `window/`, `util/` — Supporting domain packages
 - **`wrayth/`** — SGE network protocol parsing (ANTLR grammars: `WraythParser.g4`, `WraythLexer.g4`)
 - **`telnet/`** — Client for plain telnet MUDs: option negotiation (`TelnetDecoder`), a UTF-8/Latin-1 text decoder, an ANSI SGR parser, GMCP (`Char.Vitals` → the status-bar vitals panel, `Room.Info` exits → the compass, `Char.Items` → the hands, `Client.GUI` → a Lua script the MUD sends, run by the scripting engine; see `docs/mud-scripts.md`), and `TelnetClient`, a second `WarlockClient` beside `WraythClient`. Depends on `wrayth/` only for its plain/TLS socket helpers
 - **`scripting/`** — Scripting engine (ANTLR-based WSL plus Lua via lua-kmp, all platforms)
@@ -65,6 +66,8 @@ The project is organized into 7 Gradle modules:
 **Multiplatform**: Shared code lives in `commonMain` source sets. Platform-specific implementations use `jvmMain`, `androidMain`, `iosMain` etc. The `compose/` module contains the bulk of shared UI.
 
 **Dependency Versions**: All dependency versions are centralized in `gradle/libs.versions.toml`. Use version catalog references (e.g., `libs.ktor.client.core`) in build files.
+
+**`api` vs `implementation`**: a module exposes a library through `api` only when that library's types appear in its public signatures (`core` does this for coroutines, kotlinx-io, immutable collections, uri, ktor-utils, Room (`PrefsDatabase`) and ktor's client core (`MudMobileApi`)). A module that imports a library declares it itself, unless the library reaches it through a dependency's `api` as part of that dependency's API; it never relies on another module's `implementation` dependencies.
 
 ## Verifying Protocol Questions Against the Real Client
 

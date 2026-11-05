@@ -109,25 +109,22 @@ kotlin {
             dependencies {
                 api(libs.kotlinx.io.core)
                 api(libs.kotlinx.coroutines.core)
-                api(libs.kotlinx.datetime)
+                implementation(libs.kotlinx.datetime)
                 api(libs.kotlinx.collections.immutable)
-                api(libs.kermit)
+                implementation(libs.kermit)
 
                 // Preferences
                 api(libs.room.runtime)
-                api(libs.kotlinx.serialization.core)
-                // NOTE: api (not implementation) on purpose - IntelliJ/AS KMP support doesn't always
-                // put implementation-scoped commonMain deps on the editor analysis classpath, which
-                // shows tomlkt as "unresolved" in commonMain files even though Gradle compiles fine.
-                api(libs.tomlkt)
+                implementation(libs.kotlinx.serialization.core)
+                implementation(libs.tomlkt)
 
                 // Networking libs
                 api(libs.uri)
                 api(libs.ktor.utils)
                 // MUD Mobile integration: REST client over HTTPS
                 api(libs.ktor.client.core)
-                api(libs.ktor.client.cio)
-                api(libs.kotlinx.serialization.json)
+                implementation(libs.ktor.client.cio)
+                implementation(libs.kotlinx.serialization.json)
 
                 implementation(libs.antlr.kotlin.runtime)
             }

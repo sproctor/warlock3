@@ -113,6 +113,7 @@ kotlin {
                 implementation(libs.kotlinx.coroutines.core)
                 implementation(libs.kotlinx.serialization.core)
                 implementation(libs.xmlutil.serialization)
+                implementation(libs.kermit)
                 api(libs.antlr.kotlin.runtime)
                 implementation(libs.ktor.client.core)
                 implementation(libs.ktor.network)
@@ -129,6 +130,8 @@ kotlin {
         jvmTest.dependencies {
             implementation(libs.ktor.server.cio)
             implementation(libs.ktor.server.websockets)
+            // The client side of that test (WarlockWebSocketTests)
+            implementation(libs.ktor.client.cio)
         }
 
         getByName("jvmBenchmark").dependencies {
