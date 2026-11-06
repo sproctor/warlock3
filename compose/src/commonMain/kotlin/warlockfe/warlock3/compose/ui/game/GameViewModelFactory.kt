@@ -1,44 +1,21 @@
 package warlockfe.warlock3.compose.ui.game
 
-import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
+import warlockfe.warlock3.compose.AppContainer
 import warlockfe.warlock3.compose.GameConnectResult
 import warlockfe.warlock3.compose.GameConnection
 import warlockfe.warlock3.compose.GameStarter
 import warlockfe.warlock3.compose.model.GameScreen
 import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.core.client.WarlockClient
-import warlockfe.warlock3.core.prefs.repositories.ActionRepository
-import warlockfe.warlock3.core.prefs.repositories.AliasRepository
-import warlockfe.warlock3.core.prefs.repositories.CharacterSettingsRepository
-import warlockfe.warlock3.core.prefs.repositories.ClientSettingRepository
-import warlockfe.warlock3.core.prefs.repositories.CommandHistoryRepository
-import warlockfe.warlock3.core.prefs.repositories.ConnectionRepository
-import warlockfe.warlock3.core.prefs.repositories.MacroRepository
-import warlockfe.warlock3.core.prefs.repositories.PresetRepository
-import warlockfe.warlock3.core.prefs.repositories.ProgressBarSettingRepository
-import warlockfe.warlock3.core.prefs.repositories.VariableRepository
-import warlockfe.warlock3.core.prefs.repositories.WindowSettingsRepository
-import warlockfe.warlock3.core.script.MudScriptStore
-import warlockfe.warlock3.core.script.ScriptManagerFactory
 import warlockfe.warlock3.core.window.WindowRegistry
 
+/**
+ * Builds a game's view model from [container]'s services and puts the game on a window's screen.
+ */
 class GameViewModelFactory(
-    private val macroRepository: MacroRepository,
-    private val variableRepository: VariableRepository,
-    private val presetRepository: PresetRepository,
-    private val characterSettingsRepository: CharacterSettingsRepository,
-    private val aliasRepository: AliasRepository,
-    private val actionRepository: ActionRepository,
-    private val scriptManagerFactory: ScriptManagerFactory,
-    private val windowSettingsRepository: WindowSettingsRepository,
-    private val progressBarSettingRepository: ProgressBarSettingRepository,
-    private val clientSettingRepository: ClientSettingRepository,
-    private val commandHistoryRepository: CommandHistoryRepository,
-    private val connectionRepository: ConnectionRepository,
-    private val mudScriptStore: MudScriptStore,
-    private val ioDispatcher: CoroutineDispatcher,
+    private val container: AppContainer,
 ) {
     /**
      * A [GameStarter] that puts its games on [gameState]'s screen, through [start]. A reconnect
@@ -102,24 +79,26 @@ class GameViewModelFactory(
         reconnect: (suspend () -> Unit)?,
         onReconnectStoppedScripts: suspend (names: List<String>) -> Unit,
     ): GameViewModel =
-        GameViewModel(
-            client = client,
-            windowSettingsRepository = windowSettingsRepository,
-            macroRepository = macroRepository,
-            variableRepository = variableRepository,
-            scriptManager = scriptManagerFactory.create(),
-            presetRepository = presetRepository,
-            characterSettingsRepository = characterSettingsRepository,
-            aliasRepository = aliasRepository,
-            actionRepository = actionRepository,
-            windowRegistry = windowRegistry,
-            progressBarSettingRepository = progressBarSettingRepository,
-            clientSettingRepository = clientSettingRepository,
-            commandHistoryRepository = commandHistoryRepository,
-            connectionRepository = connectionRepository,
-            mudScriptStore = mudScriptStore,
-            ioDispatcher = ioDispatcher,
-            reconnectAction = reconnect,
-            onReconnectStoppedScripts = onReconnectStoppedScripts,
-        )
+        with(container) {
+            GameViewModel(
+                client = client,
+                windowSettingsRepository = windowSettingRepository,
+                macroRepository = macroRepository,
+                variableRepository = variableRepository,
+                scriptManager = scriptManagerFactory.create(),
+                presetRepository = presetRepository,
+                characterSettingsRepository = characterSettingsRepository,
+                aliasRepository = aliasRepository,
+                actionRepository = actionRepository,
+                windowRegistry = windowRegistry,
+                progressBarSettingRepository = progressBarSettingRepository,
+                clientSettingRepository = clientSettings,
+                commandHistoryRepository = commandHistoryRepository,
+                connectionRepository = connectionRepository,
+                mudScriptStore = mudScriptStore,
+                ioDispatcher = ioDispatcher,
+                reconnectAction = reconnect,
+                onReconnectStoppedScripts = onReconnectStoppedScripts,
+            )
+        }
 }

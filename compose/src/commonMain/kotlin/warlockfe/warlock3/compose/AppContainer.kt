@@ -28,10 +28,8 @@ import kotlinx.io.files.Path
 import warlockfe.warlock3.compose.crash.CrashReporting
 import warlockfe.warlock3.compose.macros.KeyboardKeyMappings
 import warlockfe.warlock3.compose.model.SkinObject
-import warlockfe.warlock3.compose.ui.dashboard.DashboardViewModelFactory
 import warlockfe.warlock3.compose.ui.game.GameViewModelFactory
 import warlockfe.warlock3.compose.ui.settings.SettingsViewModelFactory
-import warlockfe.warlock3.compose.ui.sge.SgeViewModelFactory
 import warlockfe.warlock3.compose.ui.window.WindowRegistryFactory
 import warlockfe.warlock3.compose.util.seedAndMigrateDefaultMacros
 import warlockfe.warlock3.compose.util.toPresets
@@ -110,7 +108,7 @@ class AppContainer(
      * is in effect before anything here can fail; held here so the UI can reach it.
      */
     val crashReporting: CrashReporting,
-    ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    internal val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
     val externalScope = CoroutineScope(SupervisorJob() + ioDispatcher)
 
@@ -306,7 +304,7 @@ class AppContainer(
             fileSystem = fileSystem,
         )
 
-    private val scriptManagerFactory: ScriptManagerFactory =
+    internal val scriptManagerFactory: ScriptManagerFactory =
         ScriptManagerFactoryImpl(
             fileSystem = fileSystem,
             scriptEngineRepository = scriptEngineRepository,
@@ -322,24 +320,7 @@ class AppContainer(
             fileSystem = fileSystem,
         )
 
-    val gameViewModelFactory by lazy {
-        GameViewModelFactory(
-            macroRepository = macroRepository,
-            variableRepository = variableRepository,
-            presetRepository = presetRepository,
-            characterSettingsRepository = characterSettingsRepository,
-            aliasRepository = aliasRepository,
-            actionRepository = actionRepository,
-            scriptManagerFactory = scriptManagerFactory,
-            windowSettingsRepository = windowSettingRepository,
-            progressBarSettingRepository = progressBarSettingRepository,
-            clientSettingRepository = clientSettings,
-            commandHistoryRepository = commandHistoryRepository,
-            connectionRepository = connectionRepository,
-            mudScriptStore = mudScriptStore,
-            ioDispatcher = ioDispatcher,
-        )
-    }
+    val gameViewModelFactory by lazy { GameViewModelFactory(this) }
 
     val sgeClientFactory: SgeClientFactory =
         object : SgeClientFactory {
@@ -472,39 +453,11 @@ class AppContainer(
         )
     }
 
-    val dashboardViewModelFactory by lazy {
-        DashboardViewModelFactory(
-            connectionRepository = connectionRepository,
-            connectionSettingsRepository = connectionSettingsRepository,
-            sgeClientFactory = sgeClientFactory,
-            connectToGameUseCase = connectToGameUseCase,
-            clientSettingRepository = clientSettings,
-            accountRepository = accountRepository,
-            mudMobileApi = mudMobileApi,
-            mudMobileConnectUseCase = mudMobileConnectUseCase,
-            mudMobileDiscoverUseCase = mudMobileDiscoverUseCase,
-            warlockSettingsSync = warlockSettingsSync,
-            connectToTelnetUseCase = connectToTelnetUseCase,
-            gameViewModelFactory = gameViewModelFactory,
-        )
-    }
-
     val connectToTelnetUseCase by lazy {
         ConnectToTelnetUseCase(
             windowRegistryFactory = windowRegistryFactory,
             telnetClientFactory = telnetClientFactory,
             ioDispatcher = ioDispatcher,
-        )
-    }
-
-    val sgeViewModelFactory by lazy {
-        SgeViewModelFactory(
-            clientSettingRepository = clientSettings,
-            accountRepository = accountRepository,
-            connectionRepository = connectionRepository,
-            sgeClientFactory = sgeClientFactory,
-            connectToGameUseCase = connectToGameUseCase,
-            gameViewModelFactory = gameViewModelFactory,
         )
     }
 

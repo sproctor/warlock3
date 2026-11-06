@@ -10,15 +10,13 @@ import androidx.compose.ui.Modifier
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Text
 import warlockfe.warlock3.compose.MainScreen
+import warlockfe.warlock3.compose.MainScreenViewModels
 import warlockfe.warlock3.compose.desktop.shim.WarlockButton
 import warlockfe.warlock3.compose.desktop.ui.dashboard.DesktopDashboardView
 import warlockfe.warlock3.compose.desktop.ui.game.DesktopGameView
 import warlockfe.warlock3.compose.desktop.ui.sge.DesktopSgeWizard
 import warlockfe.warlock3.compose.model.GameState
-import warlockfe.warlock3.compose.ui.dashboard.DashboardViewModelFactory
-import warlockfe.warlock3.compose.ui.sge.SgeViewModelFactory
 import warlockfe.warlock3.core.client.GameCharacter
-import warlockfe.warlock3.core.sge.SgeSettings
 
 /**
  * Desktop entry into the shared [MainScreen] navigation host, supplying the Jewel screen UIs as
@@ -26,20 +24,16 @@ import warlockfe.warlock3.core.sge.SgeSettings
  */
 @Composable
 fun DesktopMainScreen(
-    sgeViewModelFactory: SgeViewModelFactory,
-    dashboardViewModelFactory: DashboardViewModelFactory,
+    viewModels: MainScreenViewModels,
     gameState: GameState,
     updateCurrentCharacter: (GameCharacter?) -> Unit,
-    sgeSettings: SgeSettings,
     sideBarVisible: Boolean,
     modifier: Modifier = Modifier,
 ) {
     MainScreen(
-        sgeViewModelFactory = sgeViewModelFactory,
-        dashboardViewModelFactory = dashboardViewModelFactory,
+        viewModels = viewModels,
         gameState = gameState,
         updateCurrentCharacter = updateCurrentCharacter,
-        sgeSettings = sgeSettings,
         modifier = modifier,
         dashboardContent = { viewModel, connectToSge ->
             DesktopDashboardView(viewModel = viewModel, connectToSGE = connectToSge)
