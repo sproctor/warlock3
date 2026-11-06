@@ -50,6 +50,7 @@ fun WarlockApp(
     sgeSettings: SgeSettings,
     modifier: Modifier = Modifier,
 ) {
+    val mainScreenViewModels = remember(appContainer, sgeSettings) { MainScreenViewModels(appContainer, sgeSettings) }
     val themeSetting by appContainer.clientSettings.observeTheme().collectAsState(ThemeSetting.AUTO)
     val darkMode =
         when (themeSetting) {
@@ -137,11 +138,9 @@ fun WarlockApp(
         } else {
             Box(modifier.safeDrawingPadding()) {
                 MainScreen(
-                    createSgeViewModel = appContainer::sgeViewModel,
-                    createDashboardViewModel = appContainer::dashboardViewModel,
+                    viewModels = mainScreenViewModels,
                     gameState = gameState,
                     updateCurrentCharacter = { currentCharacter = it },
-                    sgeSettings = sgeSettings,
                     dashboardContent = { viewModel, connectToSge ->
                         Scaffold(
                             topBar = {

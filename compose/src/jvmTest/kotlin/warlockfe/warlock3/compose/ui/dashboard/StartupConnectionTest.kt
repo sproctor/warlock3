@@ -14,6 +14,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import kotlinx.io.IOException
 import warlockfe.warlock3.compose.AppContainer
+import warlockfe.warlock3.compose.MainScreenViewModels
 import warlockfe.warlock3.compose.ReplaySocket
 import warlockfe.warlock3.compose.deleteTestDir
 import warlockfe.warlock3.compose.model.GameScreen
@@ -64,7 +65,7 @@ class StartupConnectionTest {
     ): Pair<AppContainer, DashboardViewModel> {
         val appContainer = testAppContainer(dir, ioDispatcher)
         val sgeSettings = SgeSettings(host = "127.0.0.1", port = 1, certificate = ByteArray(0), secure = false)
-        return appContainer to appContainer.dashboardViewModel(gameState, sgeSettings)
+        return appContainer to MainScreenViewModels(appContainer, sgeSettings).dashboard(gameState)
     }
 
     @Test
@@ -104,7 +105,7 @@ class StartupConnectionTest {
             appContainer.clientSettings.putMudMobileToken("token")
             val gameState = GameState(StartupConnection.Stream { ReplaySocket(emptyList()) })
             val sgeSettings = SgeSettings(host = "127.0.0.1", port = 1, certificate = ByteArray(0), secure = false)
-            val viewModel = appContainer.dashboardViewModel(gameState, sgeSettings)
+            val viewModel = MainScreenViewModels(appContainer, sgeSettings).dashboard(gameState)
             advanceUntilIdle()
 
             val sync = viewModel.syncState.value

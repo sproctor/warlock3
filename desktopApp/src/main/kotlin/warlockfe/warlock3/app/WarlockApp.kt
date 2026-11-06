@@ -16,6 +16,7 @@ import io.github.vinceglb.filekit.utils.toKotlinxIoPath
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import warlockfe.warlock3.compose.AppContainer
+import warlockfe.warlock3.compose.MainScreenViewModels
 import warlockfe.warlock3.compose.desktop.shim.WarlockAlertDialog
 import warlockfe.warlock3.compose.desktop.shim.WarlockButton
 import warlockfe.warlock3.compose.desktop.ui.DesktopMainScreen
@@ -41,6 +42,7 @@ fun DecoratedWindowScope.WarlockApp(
     showUpdateDialog: () -> Unit,
     sgeSettings: SgeSettings,
 ) {
+    val mainScreenViewModels = remember(appContainer, sgeSettings) { MainScreenViewModels(appContainer, sgeSettings) }
     var showSettings by remember { mutableStateOf(false) }
     // Which page the settings dialog opens to, plus the window whose editor to focus. Set by a game
     // window's "Window settings" action; reset to the General landing when opened from the app menu.
@@ -254,11 +256,9 @@ fun DecoratedWindowScope.WarlockApp(
     }
 
     DesktopMainScreen(
-        createSgeViewModel = appContainer::sgeViewModel,
-        createDashboardViewModel = appContainer::dashboardViewModel,
+        viewModels = mainScreenViewModels,
         gameState = gameState,
         updateCurrentCharacter = { currentCharacter = it },
-        sgeSettings = sgeSettings,
         sideBarVisible = sideBarVisible,
     )
 

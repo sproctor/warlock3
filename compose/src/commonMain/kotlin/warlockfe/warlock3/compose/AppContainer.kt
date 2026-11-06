@@ -27,13 +27,9 @@ import kotlinx.io.files.FileSystem
 import kotlinx.io.files.Path
 import warlockfe.warlock3.compose.crash.CrashReporting
 import warlockfe.warlock3.compose.macros.KeyboardKeyMappings
-import warlockfe.warlock3.compose.model.GameScreen
-import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.compose.model.SkinObject
-import warlockfe.warlock3.compose.ui.dashboard.DashboardViewModel
 import warlockfe.warlock3.compose.ui.game.GameViewModelFactory
 import warlockfe.warlock3.compose.ui.settings.SettingsViewModelFactory
-import warlockfe.warlock3.compose.ui.sge.SgeViewModel
 import warlockfe.warlock3.compose.ui.window.WindowRegistryFactory
 import warlockfe.warlock3.compose.util.seedAndMigrateDefaultMacros
 import warlockfe.warlock3.compose.util.toPresets
@@ -82,7 +78,6 @@ import warlockfe.warlock3.core.script.MudScriptStore
 import warlockfe.warlock3.core.script.ScriptManagerFactory
 import warlockfe.warlock3.core.sge.SgeClient
 import warlockfe.warlock3.core.sge.SgeClientFactory
-import warlockfe.warlock3.core.sge.SgeSettings
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.util.SoundPlayer
 import warlockfe.warlock3.core.util.WarlockDirs
@@ -113,7 +108,7 @@ class AppContainer(
      * is in effect before anything here can fail; held here so the UI can reach it.
      */
     val crashReporting: CrashReporting,
-    ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    internal val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
     val externalScope = CoroutineScope(SupervisorJob() + ioDispatcher)
 
@@ -309,7 +304,7 @@ class AppContainer(
             fileSystem = fileSystem,
         )
 
-    private val scriptManagerFactory: ScriptManagerFactory =
+    internal val scriptManagerFactory: ScriptManagerFactory =
         ScriptManagerFactoryImpl(
             fileSystem = fileSystem,
             scriptEngineRepository = scriptEngineRepository,
@@ -325,24 +320,7 @@ class AppContainer(
             fileSystem = fileSystem,
         )
 
-    val gameViewModelFactory by lazy {
-        GameViewModelFactory(
-            macroRepository = macroRepository,
-            variableRepository = variableRepository,
-            presetRepository = presetRepository,
-            characterSettingsRepository = characterSettingsRepository,
-            aliasRepository = aliasRepository,
-            actionRepository = actionRepository,
-            scriptManagerFactory = scriptManagerFactory,
-            windowSettingsRepository = windowSettingRepository,
-            progressBarSettingRepository = progressBarSettingRepository,
-            clientSettingRepository = clientSettings,
-            commandHistoryRepository = commandHistoryRepository,
-            connectionRepository = connectionRepository,
-            mudScriptStore = mudScriptStore,
-            ioDispatcher = ioDispatcher,
-        )
-    }
+    val gameViewModelFactory by lazy { GameViewModelFactory(this) }
 
     val sgeClientFactory: SgeClientFactory =
         object : SgeClientFactory {
@@ -475,28 +453,6 @@ class AppContainer(
         )
     }
 
-    /** The dashboard of the window showing [gameState]. */
-    fun dashboardViewModel(
-        gameState: GameState,
-        sgeSettings: SgeSettings,
-    ): DashboardViewModel =
-        DashboardViewModel(
-            gameState = gameState,
-            sgeSettings = sgeSettings,
-            connectionRepository = connectionRepository,
-            connectionSettingsRepository = connectionSettingsRepository,
-            sgeClientFactory = sgeClientFactory,
-            connectToGame = connectToGameUseCase,
-            gameStarter = gameViewModelFactory.starter(gameState),
-            clientSettingRepository = clientSettings,
-            accountRepository = accountRepository,
-            mudMobileApi = mudMobileApi,
-            mudMobileConnect = mudMobileConnectUseCase,
-            mudMobileDiscover = mudMobileDiscoverUseCase,
-            warlockSettingsSync = warlockSettingsSync,
-            connectToTelnet = connectToTelnetUseCase,
-        )
-
     val connectToTelnetUseCase by lazy {
         ConnectToTelnetUseCase(
             windowRegistryFactory = windowRegistryFactory,
@@ -504,23 +460,6 @@ class AppContainer(
             ioDispatcher = ioDispatcher,
         )
     }
-
-    /** The new-game wizard of the window showing [gameState]. */
-    fun sgeViewModel(
-        gameState: GameState,
-        sgeSettings: SgeSettings,
-    ): SgeViewModel =
-        SgeViewModel(
-            gameState = gameState,
-            settings = sgeSettings,
-            clientSettingRepository = clientSettings,
-            accountRepository = accountRepository,
-            connectionRepository = connectionRepository,
-            sgeClientFactory = sgeClientFactory,
-            connectToGameUseCase = connectToGameUseCase,
-            // A failed reconnect goes back to the wizard, as a failed connect does.
-            gameStarter = gameViewModelFactory.starter(gameState, returnTo = GameScreen.NewGameState),
-        )
 
     val connectToGameUseCase by lazy {
         ConnectToGameUseCase(

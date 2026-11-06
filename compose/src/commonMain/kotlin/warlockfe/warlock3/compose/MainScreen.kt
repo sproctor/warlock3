@@ -20,7 +20,6 @@ import warlockfe.warlock3.compose.ui.game.GameViewModel
 import warlockfe.warlock3.compose.ui.sge.SgeViewModel
 import warlockfe.warlock3.compose.util.SafeUriHandler
 import warlockfe.warlock3.core.client.GameCharacter
-import warlockfe.warlock3.core.sge.SgeSettings
 
 /**
  * The shared app navigation host for both desktop and mobile. The current [GameState.screen] is
@@ -35,11 +34,9 @@ import warlockfe.warlock3.core.sge.SgeSettings
 @Suppress("ktlint:compose:vm-injection-check")
 @Composable
 fun MainScreen(
-    createSgeViewModel: (GameState, SgeSettings) -> SgeViewModel,
-    createDashboardViewModel: (GameState, SgeSettings) -> DashboardViewModel,
+    viewModels: MainScreenViewModels,
     gameState: GameState,
     updateCurrentCharacter: (GameCharacter?) -> Unit,
-    sgeSettings: SgeSettings,
     dashboardContent: @Composable (viewModel: DashboardViewModel, connectToSge: () -> Unit) -> Unit,
     wizardContent: @Composable (viewModel: SgeViewModel, onCancel: () -> Unit) -> Unit,
     gameContent: @Composable (viewModel: GameViewModel, navigateToDashboard: () -> Unit) -> Unit,
@@ -89,7 +86,7 @@ fun MainScreen(
                     entry<DashboardKey> {
                         val viewModel =
                             viewModel {
-                                createDashboardViewModel(gameState, sgeSettings)
+                                viewModels.dashboard(gameState)
                             }
                         dashboardContent(viewModel) {
                             scope.launch { gameState.setScreen(GameScreen.NewGameState) }
@@ -98,7 +95,7 @@ fun MainScreen(
                     entry<WizardKey> {
                         val viewModel =
                             viewModel {
-                                createSgeViewModel(gameState, sgeSettings)
+                                viewModels.wizard(gameState)
                             }
                         wizardContent(viewModel) {
                             scope.launch { gameState.setScreen(GameScreen.Dashboard) }

@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -20,6 +21,7 @@ import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.core.client.WarlockProxy
 import warlockfe.warlock3.core.sge.ConnectionProtocol
 import warlockfe.warlock3.core.sge.ConnectionProxySettings
+import warlockfe.warlock3.core.sge.SgeSettings
 import warlockfe.warlock3.core.sge.SimuGameCredentials
 import warlockfe.warlock3.core.sge.StoredConnection
 import java.net.ServerSocket
@@ -245,28 +247,51 @@ class GameConnectionTest {
         runTest {
             Dispatchers.setMain(StandardTestDispatcher(testScheduler))
             val appContainer = testAppContainer(dir, StandardTestDispatcher(testScheduler))
-            val windowRegistry = appContainer.windowRegistryFactory.create()
-            val client =
-                appContainer.warlockClientFactory.createClient(
-                    windowRegistry = windowRegistry,
-                    socket = ReplaySocket(listOf("Welcome back.")),
-                )
             val gameState = GameState(startupConnection = null)
 
-            appContainer.gameViewModelFactory.start(
-                connection =
-                    GameConnection(
-                        client = client,
-                        windowRegistry = windowRegistry,
-                        key = "",
-                        reconnect = { GameConnectResult.Failure("The server is gone.") },
-                    ),
-                gameState = gameState,
-            )
-            advanceUntilIdle()
-            assertIs<GameScreen.ConnectedGameState>(gameState.screen).viewModel.reconnect()
-            advanceUntilIdle()
+            failReconnect(appContainer, appContainer.gameViewModelFactory.starter(gameState), gameState)
 
-            assertEquals("The server is gone.", assertIs<GameScreen.ErrorState>(gameState.screen).message)
+            val error = assertIs<GameScreen.ErrorState>(gameState.screen)
+            assertEquals("The server is gone.", error.message)
+            assertEquals(GameScreen.Dashboard, error.returnTo)
         }
+
+    @Test
+    fun aWizardGameWhoseReconnectFailsGoesBackToTheWizard() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            val appContainer = testAppContainer(dir, StandardTestDispatcher(testScheduler))
+            val gameState = GameState(startupConnection = null)
+            val sgeSettings = SgeSettings(host = "127.0.0.1", port = 1, certificate = ByteArray(0), secure = false)
+            val starter = MainScreenViewModels(appContainer, sgeSettings).wizardStarter(gameState)
+
+            failReconnect(appContainer, starter, gameState)
+
+            assertEquals(GameScreen.NewGameState, assertIs<GameScreen.ErrorState>(gameState.screen).returnTo)
+        }
+
+    /** Starts a replayed game through [starter] whose reconnect fails, and presses Reconnect. */
+    private suspend fun TestScope.failReconnect(
+        appContainer: AppContainer,
+        starter: GameStarter,
+        gameState: GameState,
+    ) {
+        val windowRegistry = appContainer.windowRegistryFactory.create()
+        val client =
+            appContainer.warlockClientFactory.createClient(
+                windowRegistry = windowRegistry,
+                socket = ReplaySocket(listOf("Welcome back.")),
+            )
+        starter.start(
+            GameConnection(
+                client = client,
+                windowRegistry = windowRegistry,
+                key = "",
+                reconnect = { GameConnectResult.Failure("The server is gone.") },
+            ),
+        )
+        advanceUntilIdle()
+        assertIs<GameScreen.ConnectedGameState>(gameState.screen).viewModel.reconnect()
+        advanceUntilIdle()
+    }
 }
