@@ -1,0 +1,58 @@
+package warlockfe.warlock3.compose
+
+import androidx.room3.Room
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.io.files.Path
+import kotlinx.io.files.SystemFileSystem
+import warlockfe.warlock3.compose.crash.CrashReporter
+import warlockfe.warlock3.compose.crash.CrashReporting
+import warlockfe.warlock3.core.prefs.PrefsDatabase
+import warlockfe.warlock3.core.util.SoundPlayer
+import warlockfe.warlock3.core.util.WarlockDirs
+
+/**
+ * A real [AppContainer] with all its files under [dir]: no sound, no proxy, no crash reports.
+ * Close its [AppContainer.database] when done.
+ */
+suspend fun testAppContainer(
+    dir: java.nio.file.Path,
+    ioDispatcher: CoroutineDispatcher,
+): AppContainer {
+    val database =
+        openPrefsDatabase(
+            directory = Path(dir.toString()),
+            fileSystem = SystemFileSystem,
+            builderFactory = { filename -> Room.databaseBuilder<PrefsDatabase>(name = filename) },
+        )
+    return AppContainer(
+        database = database,
+        warlockDirs =
+            WarlockDirs(
+                homeDir = dir.toString(),
+                dataDir = dir.resolve("data").toString(),
+                configDir = dir.toString(),
+                logDir = dir.resolve("logs").toString(),
+            ),
+        fileSystem = SystemFileSystem,
+        soundPlayer =
+            object : SoundPlayer {
+                override suspend fun playSound(filename: String): String? = null
+            },
+        warlockProxyFactory = { throw UnsupportedOperationException() },
+        crashReporting =
+            CrashReporting(
+                configDir = dir.toString(),
+                dataDir = dir.resolve("data").toString(),
+                fileSystem = SystemFileSystem,
+                reporter =
+                    object : CrashReporter {
+                        override fun start(onReport: (eventId: String, json: String) -> Unit) = Unit
+
+                        override fun stop() = Unit
+                    },
+                background = Dispatchers.Unconfined,
+            ),
+        ioDispatcher = ioDispatcher,
+    )
+}

@@ -303,7 +303,7 @@ class MudMobileConnectUseCase(
                 connection =
                     connection.copy(
                         password = password,
-                        proxySettings = ConnectionProxySettings(enabled = false, launchCommand = null, host = null, port = null),
+                        proxySettings = ConnectionProxySettings.NONE,
                     ),
             )
         } finally {

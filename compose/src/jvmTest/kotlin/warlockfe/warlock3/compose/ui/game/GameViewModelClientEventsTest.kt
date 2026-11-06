@@ -1,6 +1,5 @@
 package warlockfe.warlock3.compose.ui.game
 
-import androidx.room3.Room
 import kotlinx.collections.immutable.persistentHashSetOf
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -12,14 +11,10 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
-import kotlinx.io.files.Path
-import kotlinx.io.files.SystemFileSystem
 import warlockfe.warlock3.compose.AppContainer
-import warlockfe.warlock3.compose.crash.CrashReporter
-import warlockfe.warlock3.compose.crash.CrashReporting
 import warlockfe.warlock3.compose.model.GameScreen
 import warlockfe.warlock3.compose.model.GameState
-import warlockfe.warlock3.compose.openPrefsDatabase
+import warlockfe.warlock3.compose.testAppContainer
 import warlockfe.warlock3.core.client.ClientCompassEvent
 import warlockfe.warlock3.core.client.ClientEvent
 import warlockfe.warlock3.core.client.CreatureStatus
@@ -33,8 +28,6 @@ import warlockfe.warlock3.core.client.WarlockMenuData
 import warlockfe.warlock3.core.compass.Direction
 import warlockfe.warlock3.core.prefs.PrefsDatabase
 import warlockfe.warlock3.core.text.StyledString
-import warlockfe.warlock3.core.util.SoundPlayer
-import warlockfe.warlock3.core.util.WarlockDirs
 import warlockfe.warlock3.core.window.TextStream
 import warlockfe.warlock3.core.window.WindowInfo
 import warlockfe.warlock3.core.window.WindowRegistry
@@ -153,44 +146,8 @@ class GameViewModelClientEventsTest {
         }
     }
 
-    private suspend fun appContainer(ioDispatcher: CoroutineDispatcher): AppContainer {
-        database =
-            openPrefsDatabase(
-                directory = Path(dir.toString()),
-                fileSystem = SystemFileSystem,
-                builderFactory = { filename -> Room.databaseBuilder<PrefsDatabase>(name = filename) },
-            )
-        return AppContainer(
-            database = database,
-            warlockDirs =
-                WarlockDirs(
-                    homeDir = dir.toString(),
-                    dataDir = dir.resolve("data").toString(),
-                    configDir = dir.toString(),
-                    logDir = dir.resolve("logs").toString(),
-                ),
-            fileSystem = SystemFileSystem,
-            soundPlayer =
-                object : SoundPlayer {
-                    override suspend fun playSound(filename: String): String? = null
-                },
-            warlockProxyFactory = { throw UnsupportedOperationException() },
-            crashReporting =
-                CrashReporting(
-                    configDir = dir.toString(),
-                    dataDir = dir.resolve("data").toString(),
-                    fileSystem = SystemFileSystem,
-                    reporter =
-                        object : CrashReporter {
-                            override fun start(onReport: (eventId: String, json: String) -> Unit) = Unit
-
-                            override fun stop() = Unit
-                        },
-                    background = Dispatchers.Unconfined,
-                ),
-            ioDispatcher = ioDispatcher,
-        )
-    }
+    private suspend fun appContainer(ioDispatcher: CoroutineDispatcher): AppContainer =
+        testAppContainer(dir, ioDispatcher).also { database = it.database }
 
     @Test
     fun anEventSentTheMomentTheClientStartsReachesTheGameScreen() =

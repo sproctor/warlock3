@@ -79,7 +79,6 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
-import kotlinx.io.IOException
 import kotlinx.io.files.SystemFileSystem
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -88,7 +87,6 @@ import org.jetbrains.jewel.ui.component.Text
 import warlockfe.warlock3.app.updater.ChannelUpdater
 import warlockfe.warlock3.app.updater.channelsToCheck
 import warlockfe.warlock3.compose.AppContainer
-import warlockfe.warlock3.compose.TelnetConnectResult
 import warlockfe.warlock3.compose.crash.CrashReporting
 import warlockfe.warlock3.compose.desktop.shim.WarlockAlertDialog
 import warlockfe.warlock3.compose.desktop.shim.WarlockButton
@@ -104,27 +102,24 @@ import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.app_icon
 import warlockfe.warlock3.compose.model.GameScreen
 import warlockfe.warlock3.compose.model.GameState
+import warlockfe.warlock3.compose.model.StartupConnection
 import warlockfe.warlock3.compose.observeSkin
 import warlockfe.warlock3.compose.openPrefsDatabase
 import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.compose.util.SentryCrashReporter
 import warlockfe.warlock3.compose.util.rememberSafeClipboard
 import warlockfe.warlock3.core.client.JavaProxy
-import warlockfe.warlock3.core.client.WarlockSocket
 import warlockfe.warlock3.core.prefs.PrefsDatabase
 import warlockfe.warlock3.core.prefs.SettingsProblem
 import warlockfe.warlock3.core.prefs.SettingsUnreadableException
 import warlockfe.warlock3.core.prefs.ThemeSetting
 import warlockfe.warlock3.core.prefs.repositories.ClientSettingRepository
 import warlockfe.warlock3.core.prefs.repositories.MainWindowBounds
-import warlockfe.warlock3.core.sge.AutoConnectResult
-import warlockfe.warlock3.core.sge.ConnectionProtocol
 import warlockfe.warlock3.core.sge.SgeSettings
 import warlockfe.warlock3.core.sge.SimuGameCredentials
 import warlockfe.warlock3.core.sge.parseSalCredentials
 import warlockfe.warlock3.core.util.DesktopSoundPlayer
 import warlockfe.warlock3.core.util.WarlockDirs
-import warlockfe.warlock3.wrayth.network.NetworkSocket
 import java.io.File
 import kotlin.system.exitProcess
 import kotlin.time.Duration.Companion.seconds
@@ -223,7 +218,7 @@ private class WarlockCommand : CliktCommand() {
 
         val games =
             mutableStateListOf<GameState>().apply {
-                addAll(createInitialGameStates(appContainer, credentials, sgeSettings, logger))
+                addAll(createInitialGameStates(appContainer, credentials, logger))
             }
 
         val updater = buildUpdater(clientSettings)
@@ -440,7 +435,7 @@ private class WarlockCommand : CliktCommand() {
                                     games = games,
                                     openNewWindow = {
                                         // A manually opened window shows the dashboard; never auto-connect into it.
-                                        games.add(GameState().apply { autoConnectAttempted = true })
+                                        games.add(GameState(startupConnection = null))
                                     },
                                     showUpdateDialog = { showUpdateDialog = true },
                                     sgeSettings = sgeSettings,
@@ -683,14 +678,15 @@ private class WarlockCommand : CliktCommand() {
     }
 
     /**
-     * Build the [GameState]s to open on startup, performing any blocking initial connection up front.
+     * Build the [GameState]s to open on startup. Each one only says what to connect to: the window's
+     * dashboard connects once it is on screen (see [StartupConnection]), so nothing here waits on
+     * the network.
      *
      * Each `--input` file gets its own window/[GameState]; every other launch mode produces a single window.
      */
     private fun createInitialGameStates(
         appContainer: AppContainer,
         credentials: SimuGameCredentials?,
-        sgeSettings: SgeSettings,
         logger: Logger,
     ): List<GameState> =
         when {
@@ -701,114 +697,31 @@ private class WarlockCommand : CliktCommand() {
                         logger.e { "Input file does not exist: $path" }
                         exitProcess(1)
                     }
-                    connectSocketGameState(appContainer, key = "", logger) {
-                        WarlockStreamSocket(file.inputStream())
-                    }
+                    GameState(StartupConnection.Stream { WarlockStreamSocket(file.inputStream()) })
                 }
             }
 
             stdin -> {
-                listOf(
-                    connectSocketGameState(appContainer, key = "", logger) {
-                        WarlockStreamSocket(System.`in`)
-                    },
-                )
+                listOf(GameState(StartupConnection.Stream { WarlockStreamSocket(System.`in`) }))
             }
 
             credentials != null -> {
-                listOf(
-                    connectSocketGameState(appContainer, key = credentials.key, logger) {
-                        NetworkSocket(Dispatchers.IO)
-                            .also { socket ->
-                                socket.connect(credentials.host, credentials.port)
-                            }
-                    },
-                )
+                listOf(GameState(StartupConnection.Credentials(credentials)))
             }
 
             autoConnectName != null -> {
-                listOf(createAutoConnectGameState(appContainer, sgeSettings))
-            }
-
-            else -> {
-                listOf(GameState())
-            }
-        }
-
-    /** Build a [GameState] connected to a freshly created socket, blocking until the connection is established. */
-    private fun connectSocketGameState(
-        appContainer: AppContainer,
-        key: String,
-        logger: Logger,
-        createSocket: suspend () -> WarlockSocket,
-    ): GameState =
-        GameState().apply {
-            // Already connecting on startup; don't also auto-connect the last connection.
-            autoConnectAttempted = true
-            val windowRegistry = appContainer.windowRegistryFactory.create()
-            // TODO: move this somewhere we can control it
-            runBlocking {
-                try {
-                    val socket = createSocket()
-                    val client =
-                        appContainer.warlockClientFactory.createClient(
-                            windowRegistry = windowRegistry,
-                            socket = socket,
-                        )
-                    appContainer.gameViewModelFactory.connect(client, key, windowRegistry, gameState = this@apply)
-                } catch (e: IOException) {
-                    logger.e(e) { "Failed to connect to Warlock" }
-                }
-            }
-        }
-
-    /** Build a [GameState] auto-connected to the named CLI connection via SGE. */
-    private fun createAutoConnectGameState(
-        appContainer: AppContainer,
-        sgeSettings: SgeSettings,
-    ): GameState =
-        GameState().apply {
-            // Connecting to a named connection from the CLI; skip last-connection auto-connect.
-            autoConnectAttempted = true
-            runBlocking {
-                val connection = appContainer.connectionRepository.getByName(autoConnectName!!)
+                // A misspelled name is an error in the command line, so it is reported there, before
+                // any window opens. Connecting is left to the window.
+                val connection = runBlocking { appContainer.connectionRepository.getByName(autoConnectName!!) }
                 if (connection == null) {
                     println("Invalid connection name: $autoConnectName")
                     exitProcess(-1)
                 }
-                // A telnet MUD needs no login server: dial it and open the game screen.
-                if (connection.protocol == ConnectionProtocol.TELNET) {
-                    val result = appContainer.connectToTelnetUseCase(connection, this@apply)
-                    if (result is TelnetConnectResult.Failure) {
-                        println(result.message)
-                        exitProcess(-1)
-                    }
-                    return@runBlocking
-                }
-                val sgeClient = appContainer.sgeClientFactory.create()
-                val result = sgeClient.autoConnect(sgeSettings, connection)
-                sgeClient.close()
-                when (result) {
-                    is AutoConnectResult.Failure -> {
-                        println(result.reason)
-                        exitProcess(-1)
-                    }
+                listOf(GameState(StartupConnection.Stored(connection)))
+            }
 
-                    is AutoConnectResult.Success -> {
-                        // TODO: merge with the above, and probably below
-                        try {
-                            appContainer.connectToGameUseCase(
-                                credentials = result.credentials,
-                                proxySettings = connection.proxySettings,
-                                gameState = this@apply,
-                            )
-                        } catch (e: Exception) {
-                            ensureActive()
-                            println("Error connecting to server: ${e.message}")
-                            exitProcess(-1)
-                        }
-                    }
-                }
+            else -> {
+                listOf(GameState())
             }
         }
 
