@@ -8,13 +8,15 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
 import warlockfe.warlock3.compose.AppContainer
+import warlockfe.warlock3.compose.AppPlatform
 import warlockfe.warlock3.compose.crash.CrashReporting
 import warlockfe.warlock3.compose.observeSkin
-import warlockfe.warlock3.compose.openPrefsDatabase
 import warlockfe.warlock3.compose.util.SentryCrashReporter
 import warlockfe.warlock3.core.client.JavaProxy
 import warlockfe.warlock3.core.client.WarlockProxy
 import warlockfe.warlock3.core.prefs.PrefsDatabase
+import warlockfe.warlock3.core.prefs.SettingsProblem
+import warlockfe.warlock3.core.prefs.SettingsUnreadableException
 import warlockfe.warlock3.core.util.AndroidSoundPlayer
 import warlockfe.warlock3.core.util.WarlockDirs
 import java.io.File
@@ -23,6 +25,18 @@ class WarlockApplication : Application() {
     lateinit var appContainer: AppContainer
         private set
 
+    /**
+     * Why the app cannot start, when the user's settings could not be read; then there is no
+     * [appContainer], and the activity shows this instead of the app.
+     */
+    var settingsProblem: SettingsProblem? = null
+        private set
+
+    /**
+     * Starts crash reporting, then opens the [AppContainer] with the user's settings loaded, before
+     * any activity runs. Settings that can't be read leave no container and set [settingsProblem]
+     * instead, for [MainActivity] to show.
+     */
     override fun onCreate() {
         super.onCreate()
 
@@ -55,28 +69,31 @@ class WarlockApplication : Application() {
         configDir.mkdirs()
 
         val databaseDirectory = Path(getDatabasePath("placeholder").parentFile!!.absolutePath)
-        // A database that cannot be opened throws SettingsUnreadableException, which is left to
-        // propagate: an uncaught exception out of onCreate is how an Android app declines to start,
-        // and starting anyway would mean saving empty settings over the real ones.
-        val database =
-            runBlocking {
-                openPrefsDatabase(
-                    directory = databaseDirectory,
-                    fileSystem = SystemFileSystem,
-                    builderFactory = ::getPrefsDatabaseBuilder,
-                )
-            }
-
-        // AppContainer loads config, runs the DB->TOML migration, and seeds default macros on init.
+        // Settings that cannot be read (the database or the config files) stop the app: starting
+        // anyway would mean saving empty settings over the real ones. The activity says why.
         appContainer =
-            AppContainer(
-                database = database,
-                warlockDirs = warlockDirs,
-                fileSystem = SystemFileSystem,
-                soundPlayer = AndroidSoundPlayer(),
-                warlockProxyFactory = WarlockProxy.Factory { JavaProxy(it) },
-                crashReporting = crashReporting,
-            )
+            try {
+                runBlocking {
+                    // Loads the config files, runs the DB->TOML migration and seeds default macros, on
+                    // the IO dispatcher.
+                    AppContainer.open(
+                        platform =
+                            AppPlatform(
+                                warlockDirs = warlockDirs,
+                                fileSystem = SystemFileSystem,
+                                soundPlayer = AndroidSoundPlayer(),
+                                warlockProxyFactory = WarlockProxy.Factory { JavaProxy(it) },
+                                crashReporting = crashReporting,
+                            ),
+                        databaseDirectory = databaseDirectory,
+                        databaseBuilder = ::getPrefsDatabaseBuilder,
+                    )
+                }
+            } catch (e: SettingsUnreadableException) {
+                Logger.e(e) { "Cannot start: the settings could not be read" }
+                settingsProblem = e.problem
+                return
+            }
         // Here rather than in the activity: it runs on the app's scope, so starting it on every
         // activity recreation (each rotation) would stack up another watcher each time.
         appContainer.observeSkin(Logger.withTag("WarlockApplication")) { path ->

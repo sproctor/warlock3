@@ -16,12 +16,17 @@ import co.touchlab.kermit.platformLogWriter
 import io.github.vinceglb.filekit.FileKit
 import io.github.vinceglb.filekit.dialogs.init
 import kotlinx.coroutines.runBlocking
+import warlockfe.warlock3.compose.SettingsUnreadableScreen
 import warlockfe.warlock3.compose.WarlockApp
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.core.sge.SgeSettings
 
 class MainActivity : ComponentActivity() {
+    /**
+     * Shows the app on the container [WarlockApplication] opened, or, when the settings could not
+     * be read, a screen saying so instead.
+     */
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
 
@@ -34,6 +39,10 @@ class MainActivity : ComponentActivity() {
         FileKit.init(this)
 
         val warlockApplication = application as WarlockApplication
+        warlockApplication.settingsProblem?.let { problem ->
+            setContent { SettingsUnreadableScreen(problem) }
+            return
+        }
         val appContainer = warlockApplication.appContainer
 
         val simuCert = runBlocking { Res.readBytes("files/simu.pem") }

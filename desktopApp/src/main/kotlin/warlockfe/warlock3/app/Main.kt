@@ -87,6 +87,7 @@ import org.jetbrains.jewel.ui.component.Text
 import warlockfe.warlock3.app.updater.ChannelUpdater
 import warlockfe.warlock3.app.updater.channelsToCheck
 import warlockfe.warlock3.compose.AppContainer
+import warlockfe.warlock3.compose.AppPlatform
 import warlockfe.warlock3.compose.crash.CrashReporting
 import warlockfe.warlock3.compose.desktop.shim.WarlockAlertDialog
 import warlockfe.warlock3.compose.desktop.shim.WarlockButton
@@ -104,7 +105,6 @@ import warlockfe.warlock3.compose.model.GameScreen
 import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.compose.model.StartupConnection
 import warlockfe.warlock3.compose.observeSkin
-import warlockfe.warlock3.compose.openPrefsDatabase
 import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.compose.util.SentryCrashReporter
 import warlockfe.warlock3.compose.util.rememberSafeClipboard
@@ -163,6 +163,11 @@ private class WarlockCommand : CliktCommand() {
         help = "Exit the client when the game connection disconnects",
     ).flag()
 
+    /**
+     * Starts the desktop app: crash reporting first, then the [AppContainer] with the user's
+     * settings loaded (or the "Warlock cannot start" window and an exit, when they can't be read),
+     * then a window for each game the command line or the last session asks for.
+     */
     @OptIn(FlowPreview::class, ExperimentalFoundationApi::class)
     override fun run() {
         val started = TimeSource.Monotonic.markNow()
@@ -184,14 +189,12 @@ private class WarlockCommand : CliktCommand() {
         // unreachable, not gone.
         val appContainer =
             try {
+                // Loads the config files, runs the DB->TOML migration and seeds default macros before
+                // any startup reads below (window size, release channel, auto-connect) touch them.
                 buildAppContainer(logger, crashReporting).also { container ->
                     container.observeSkin(logger) { path ->
                         File(path).takeIf { it.exists() }?.readBytes()
                     }
-                    // Load config files + run the DB->TOML migration + seed default macros before
-                    // any startup reads below (window size, release channel, auto-connect) touch
-                    // the config stores.
-                    runBlocking { container.initialize() }
                 }
             } catch (e: SettingsUnreadableException) {
                 reportUnreadableSettingsAndExit(e.problem, logger)
@@ -658,23 +661,20 @@ private class WarlockCommand : CliktCommand() {
             )
 
         println("Loading preferences from $configDir")
-        val database =
-            runBlocking {
-                openPrefsDatabase(
-                    directory = databaseDirectory,
-                    fileSystem = SystemFileSystem,
-                    builderFactory = ::getPrefsDatabaseBuilder,
-                )
-            }
-
-        return AppContainer(
-            database = database,
-            warlockDirs = warlockDirs,
-            fileSystem = SystemFileSystem,
-            soundPlayer = DesktopSoundPlayer(warlockDirs),
-            warlockProxyFactory = { JavaProxy(it) },
-            crashReporting = crashReporting,
-        )
+        return runBlocking {
+            AppContainer.open(
+                platform =
+                    AppPlatform(
+                        warlockDirs = warlockDirs,
+                        fileSystem = SystemFileSystem,
+                        soundPlayer = DesktopSoundPlayer(warlockDirs),
+                        warlockProxyFactory = { JavaProxy(it) },
+                        crashReporting = crashReporting,
+                    ),
+                databaseDirectory = databaseDirectory,
+                databaseBuilder = ::getPrefsDatabaseBuilder,
+            )
+        }
     }
 
     /**
