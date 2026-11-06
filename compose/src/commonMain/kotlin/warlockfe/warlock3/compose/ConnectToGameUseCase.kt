@@ -3,17 +3,14 @@ package warlockfe.warlock3.compose
 import co.touchlab.kermit.Logger
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import warlockfe.warlock3.compose.ui.window.WindowRegistryFactory
-import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.client.WarlockClientFactory
 import warlockfe.warlock3.core.client.WarlockProxy
 import warlockfe.warlock3.core.client.WarlockSocket
 import warlockfe.warlock3.core.sge.ConnectionProxySettings
 import warlockfe.warlock3.core.sge.SimuGameCredentials
 import warlockfe.warlock3.core.util.WarlockDirs
-import warlockfe.warlock3.core.window.WindowRegistry
 import warlockfe.warlock3.wrayth.network.NetworkSocket
 import warlockfe.warlock3.wrayth.network.WraythClient
 import kotlin.time.Duration.Companion.milliseconds
@@ -43,51 +40,62 @@ class ConnectToGameUseCase(
         starter: GameStarter,
     ): GameConnectResult =
         withContext(ioDispatcher) {
-            var loginCredentials = credentials
-            var proxy: WarlockProxy? = null
+            val target: SimuGameCredentials
+            val proxy: WarlockProxy?
             if (proxySettings.enabled) {
                 val substitutions =
                     mapOf(
                         "{home}" to dirs.homeDir,
-                        "{host}" to loginCredentials.host,
-                        "{port}" to loginCredentials.port.toString(),
+                        "{host}" to credentials.host,
+                        "{port}" to credentials.port.toString(),
                     )
                 val proxyCommand = proxySettings.launchCommand?.substitute(substitutions)
-                val proxyHost = proxySettings.host?.substitute(substitutions) ?: "localhost"
-                val proxyPort = proxySettings.port?.substitute(substitutions)?.toIntOrNull() ?: loginCredentials.port
-                loginCredentials =
+                target =
                     credentials.copy(
-                        host = proxyHost,
-                        port = proxyPort,
+                        host = proxySettings.host?.substitute(substitutions) ?: "localhost",
+                        port = proxySettings.port?.substitute(substitutions)?.toIntOrNull() ?: credentials.port,
                     )
-                if (proxyCommand != null) {
-                    logger.d { "Launching proxy command: $proxyCommand" }
-                    proxy = warlockProxyFactory.create(proxyCommand)
-                }
+                proxy =
+                    proxyCommand?.let {
+                        logger.d { "Launching proxy command: $it" }
+                        warlockProxyFactory.create(it)
+                    }
+            } else {
+                target = credentials
+                proxy = null
             }
+            val address = "${target.host}:${target.port}"
             val deadline = TimeSource.Monotonic.markNow() + 30.seconds
             var result: GameConnectResult? = null
-            while (result == null) {
-                val socket = NetworkSocket(ioDispatcher)
-                result =
-                    try {
-                        startGame(
-                            socket = socket,
-                            key = loginCredentials.key,
+            try {
+                while (result == null) {
+                    val socket = NetworkSocket(ioDispatcher)
+                    val attempt =
+                        dialAndStart(
+                            windowRegistryFactory = windowRegistryFactory,
+                            dial = { socket.connect(target.host, target.port) },
+                            closeSocket = { if (!socket.isClosed) socket.close() },
+                            createClient = { windowRegistry ->
+                                warlockClientFactory
+                                    .createClient(windowRegistry = windowRegistry, socket = socket)
+                                    .also { client -> proxy?.let { (client as WraythClient).setProxy(it) } }
+                            },
+                            key = target.key,
+                            // Reuse the same credentials (and key) on reconnect. That launches a new
+                            // proxy, so this one goes first: it would hold the port the new one wants,
+                            // and the old client it belongs to closes it soon anyway.
+                            reconnect = {
+                                proxy?.close()
+                                invoke(credentials, proxySettings, starter)
+                            },
                             starter = starter,
-                            // Reuse the same credentials (and key) on reconnect.
-                            reconnect = { invoke(credentials, proxySettings, starter) },
-                            connectSocket = { socket.connect(loginCredentials.host, loginCredentials.port) },
-                            configureClient = { client -> proxy?.let { (client as WraythClient).setProxy(it) } },
                         )
-                        GameConnectResult.Started
-                    } catch (e: Exception) {
-                        ensureActive()
-                        val message = "Error connecting to ${loginCredentials.host}:${loginCredentials.port}"
-                        logger.d(e) { message }
+                    result =
                         when {
-                            proxy == null -> {
-                                GameConnectResult.Failure(message)
+                            // Only a proxy still starting up is worth another try, and only one that
+                            // refused us: one that let us in is up.
+                            attempt !is StartAttempt.DialFailed || proxy == null -> {
+                                attempt.toResult(address)
                             }
 
                             !proxy.isAlive -> {
@@ -95,19 +103,21 @@ class ConnectToGameUseCase(
                             }
 
                             deadline.hasPassedNow() -> {
-                                proxy.close()
                                 GameConnectResult.Failure("Timed out waiting for proxy to accept connection")
                             }
 
-                            // The proxy is still starting up: try again shortly.
                             else -> {
                                 delay(500.milliseconds)
                                 null
                             }
                         }
-                    }
+                }
+                result
+            } finally {
+                // A started game's client owns the proxy, and closes it with itself. Otherwise (a
+                // failure, or the user gave up waiting) nothing else ever will.
+                if (result != GameConnectResult.Started) proxy?.close()
             }
-            result
         }
 
     /**
@@ -120,49 +130,25 @@ class ConnectToGameUseCase(
         starter: GameStarter,
     ): GameConnectResult =
         withContext(ioDispatcher) {
-            try {
-                startGame(socket = open(), key = "", starter = starter)
-                GameConnectResult.Started
-            } catch (e: Exception) {
-                ensureActive()
-                logger.e(e) { "Failed to play the stream" }
-                GameConnectResult.Failure("Error: ${e.message}")
+            var socket: WarlockSocket? = null
+            val attempt =
+                dialAndStart(
+                    windowRegistryFactory = windowRegistryFactory,
+                    dial = { socket = open() },
+                    closeSocket = { socket?.let { if (!it.isClosed) it.close() } },
+                    createClient = { windowRegistry ->
+                        warlockClientFactory.createClient(windowRegistry = windowRegistry, socket = checkNotNull(socket))
+                    },
+                    key = "",
+                    reconnect = null,
+                    starter = starter,
+                )
+            when (attempt) {
+                StartAttempt.Started -> GameConnectResult.Started
+                is StartAttempt.DialFailed -> GameConnectResult.Failure("Could not open the stream: ${attempt.cause.reason}")
+                is StartAttempt.StartFailed -> GameConnectResult.Failure("The stream didn't play: ${attempt.cause.reason}")
             }
         }
-
-    /**
-     * Connects [socket] (through [connectSocket]), builds a client on it and hands both to [starter].
-     *
-     * The socket, and the window registry made here, are ours to close until that handoff: whatever
-     * fails before it closes them, so a failed attempt leaves nothing behind. From the handoff on,
-     * the starter owns them.
-     */
-    private suspend fun startGame(
-        socket: WarlockSocket,
-        key: String,
-        starter: GameStarter,
-        reconnect: (suspend () -> GameConnectResult)? = null,
-        connectSocket: suspend () -> Unit = {},
-        configureClient: (WarlockClient) -> Unit = {},
-    ) {
-        var registry: WindowRegistry? = null
-        var handedOff = false
-        try {
-            connectSocket()
-            // Created once the socket is up, so a refused attempt doesn't make one at all.
-            val windowRegistry = windowRegistryFactory.create().also { registry = it }
-            val client = warlockClientFactory.createClient(windowRegistry = windowRegistry, socket = socket)
-            configureClient(client)
-            handedOff = true
-            starter.start(GameConnection(client, windowRegistry, key, reconnect))
-        } finally {
-            if (!handedOff) {
-                // A refused connect has already closed its socket.
-                if (!socket.isClosed) socket.close()
-                registry?.close()
-            }
-        }
-    }
 }
 
 private fun String.substitute(substitutions: Map<String, String>): String {

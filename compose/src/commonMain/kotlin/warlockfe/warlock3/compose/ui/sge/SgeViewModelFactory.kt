@@ -1,6 +1,7 @@
 package warlockfe.warlock3.compose.ui.sge
 
 import warlockfe.warlock3.compose.ConnectToGameUseCase
+import warlockfe.warlock3.compose.model.GameScreen
 import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.compose.ui.game.GameViewModelFactory
 import warlockfe.warlock3.core.prefs.repositories.AccountRepository
@@ -29,6 +30,7 @@ class SgeViewModelFactory(
             connectionRepository = connectionRepository,
             sgeClientFactory = sgeClientFactory,
             connectToGameUseCase = connectToGameUseCase,
-            gameStarter = gameViewModelFactory.starter(gameState),
+            // A failed reconnect goes back to the wizard, as a failed connect does.
+            gameStarter = gameViewModelFactory.starter(gameState, returnTo = GameScreen.NewGameState),
         )
 }

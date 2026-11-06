@@ -175,7 +175,10 @@ class DashboardViewModel(
             is StartupConnection.Credentials -> {
                 val credentials = startup.credentials
                 launchConnect("Connecting to ${credentials.host}:${credentials.port}...") {
-                    showOnErrorScreen(connectToGame(credentials, ConnectionProxySettings.NONE, gameStarter))
+                    gameState.showFailure(
+                        connectToGame(credentials, ConnectionProxySettings.NONE, gameStarter),
+                        returnTo = GameScreen.Dashboard,
+                    )
                 }
             }
 
@@ -247,7 +250,10 @@ class DashboardViewModel(
                     }
 
                     is AutoConnectResult.Success -> {
-                        showOnErrorScreen(connectToGame(result.credentials, connection.proxySettings, gameStarter))
+                        gameState.showFailure(
+                            connectToGame(result.credentials, connection.proxySettings, gameStarter),
+                            returnTo = GameScreen.Dashboard,
+                        )
                     }
                 }
             } catch (e: CancellationException) {
@@ -261,13 +267,6 @@ class DashboardViewModel(
                     ),
                 )
             }
-        }
-    }
-
-    /** A game server that could not be reached gets the error screen, as it always has. */
-    private suspend fun showOnErrorScreen(result: GameConnectResult) {
-        if (result is GameConnectResult.Failure) {
-            gameState.setScreen(GameScreen.ErrorState(result.message, returnTo = GameScreen.Dashboard))
         }
     }
 

@@ -5,7 +5,6 @@ import io.ktor.client.HttpClient
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
@@ -171,43 +170,22 @@ class MudMobileConnectUseCase(
         starter: GameStarter,
     ): GameConnectResult =
         withContext(ioDispatcher) {
-            // Until they are handed to the starter, the socket and window registry
-            // are ours to close: if we're cancelled (the user returned to the dashboard mid-reconnect)
-            // or fail before that handoff, the finally closes them so we don't leak the socket and the
-            // hosted session it holds open.
-            val streamRegistry = windowRegistryFactory.create()
+            // A socket left open would hold the hosted session open with it: dialAndStart closes it
+            // if we're cancelled (the user returned to the dashboard mid-reconnect) or fail first.
             val socket = WarlockWebSocket(httpClient, ioDispatcher, secure = connect.tls)
-            var handedOff = false
-            try {
-                socket.connect(connect.host, connect.port)
-                val client =
-                    warlockClientFactory.createClient(
-                        windowRegistry = streamRegistry,
-                        socket = socket,
-                    )
-                // The starter owns the client and registry from here.
-                handedOff = true
-                starter.start(
-                    GameConnection(
-                        client = client,
-                        windowRegistry = streamRegistry,
-                        // Same handshake bytes Warlock sends to play.net; the router matches sha256(key).
-                        key = credentials.key,
-                        // Reconnect re-dials the same router with the same key; no SGE, no new session.
-                        reconnect = { connectToRouter(connect, credentials, starter) },
-                    ),
-                )
-                GameConnectResult.Started
-            } catch (e: Exception) {
-                ensureActive()
-                logger.e(e) { "Failed to connect to MUD Mobile router" }
-                GameConnectResult.Failure("Error connecting to ${connect.host}:${connect.port}: ${e.message}")
-            } finally {
-                if (!handedOff) {
-                    socket.close()
-                    streamRegistry.close()
-                }
-            }
+            dialAndStart(
+                windowRegistryFactory = windowRegistryFactory,
+                dial = { socket.connect(connect.host, connect.port) },
+                closeSocket = { if (!socket.isClosed) socket.close() },
+                createClient = { windowRegistry ->
+                    warlockClientFactory.createClient(windowRegistry = windowRegistry, socket = socket)
+                },
+                // Same handshake bytes Warlock sends to play.net; the router matches sha256(key).
+                key = credentials.key,
+                // Reconnect re-dials the same router with the same key; no SGE, no new session.
+                reconnect = { connectToRouter(connect, credentials, starter) },
+                starter = starter,
+            ).toResult("${connect.host}:${connect.port}")
         }
 
     /**

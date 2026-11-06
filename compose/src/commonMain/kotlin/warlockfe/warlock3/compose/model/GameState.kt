@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import warlockfe.warlock3.compose.GameConnectResult
 import warlockfe.warlock3.compose.ui.game.GameViewModel
 import warlockfe.warlock3.core.client.WarlockSocket
 import warlockfe.warlock3.core.sge.SimuGameCredentials
@@ -34,6 +35,14 @@ class GameState(
         withContext(Dispatchers.Main.immediate) {
             this@GameState.screen = screen
         }
+    }
+
+    /** Puts [result] on the error screen, which goes back to [returnTo], if it is a failure. */
+    suspend fun showFailure(
+        result: GameConnectResult,
+        returnTo: GameScreen,
+    ) {
+        if (result is GameConnectResult.Failure) setScreen(GameScreen.ErrorState(result.message, returnTo))
     }
 }
 

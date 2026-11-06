@@ -2,20 +2,29 @@ package warlockfe.warlock3.compose
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.async
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import kotlinx.coroutines.withTimeout
 import warlockfe.warlock3.compose.model.GameScreen
 import warlockfe.warlock3.compose.model.GameState
+import warlockfe.warlock3.core.client.WarlockProxy
 import warlockfe.warlock3.core.sge.ConnectionProtocol
 import warlockfe.warlock3.core.sge.ConnectionProxySettings
 import warlockfe.warlock3.core.sge.SimuGameCredentials
 import warlockfe.warlock3.core.sge.StoredConnection
 import java.net.ServerSocket
 import java.nio.file.Files
+import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.io.path.ExperimentalPathApi
 import kotlin.io.path.deleteRecursively
 import kotlin.test.AfterTest
@@ -25,6 +34,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * The connect use cases dial and hand what they dialed to a [GameStarter]; they know nothing of
@@ -112,6 +122,124 @@ class GameConnectionTest {
             assertIs<GameConnectResult.Failure>(game)
             assertIs<GameConnectResult.Failure>(telnet)
             assertTrue(starter.started.isEmpty())
+        }
+
+    /** A proxy that is alive until closed, and launches nothing. */
+    private class FakeProxy : WarlockProxy {
+        @Volatile
+        var closed = false
+
+        override val isAlive: Boolean get() = !closed
+        override val stdOut: Flow<String> = emptyFlow()
+        override val stdErr: Flow<String> = emptyFlow()
+
+        override fun close() {
+            closed = true
+        }
+    }
+
+    /** Hands out [FakeProxy]s, remembering each, and whether every earlier one was closed first. */
+    private class FakeProxyFactory : WarlockProxy.Factory {
+        val proxies = CopyOnWriteArrayList<FakeProxy>()
+        val launchedAfterEarlierClosed = CopyOnWriteArrayList<Boolean>()
+
+        override fun create(command: String): WarlockProxy {
+            launchedAfterEarlierClosed += proxies.all { it.closed }
+            return FakeProxy().also { proxies += it }
+        }
+    }
+
+    private fun proxyTo(port: Int) =
+        ConnectionProxySettings(enabled = true, launchCommand = "proxy", host = "127.0.0.1", port = port.toString())
+
+    @Test
+    fun aProxyStillStartingUpIsTriedAgainAndAReconnectShutsTheOldOneFirst() =
+        runBlocking {
+            val proxyFactory = FakeProxyFactory()
+            val appContainer = testAppContainer(dir, Dispatchers.IO, proxyFactory).also { container = it }
+            val port = ServerSocket(0).use { it.localPort }
+            val started = CopyOnWriteArrayList<GameConnection>()
+            // Keeps what it is handed open, as a game on screen would.
+            val starter = GameStarter { started += it }
+            // The proxy starts listening a while after it is launched.
+            val server =
+                async(Dispatchers.IO) {
+                    delay(1500)
+                    ServerSocket(port)
+                }
+            try {
+                val credentials = SimuGameCredentials(host = "game.example", port = 1, key = "KEY")
+                val result = appContainer.connectToGameUseCase(credentials, proxyTo(port), starter)
+
+                assertEquals(GameConnectResult.Started, result)
+                val proxy = proxyFactory.proxies.single()
+                // The game's client owns the proxy now.
+                assertTrue(!proxy.closed)
+
+                assertEquals(GameConnectResult.Started, assertNotNull(started.single().reconnect).invoke())
+                assertEquals(listOf(true, true), proxyFactory.launchedAfterEarlierClosed)
+                assertTrue(proxy.closed)
+            } finally {
+                started.forEach {
+                    it.client.close()
+                    it.windowRegistry.close()
+                }
+                server.await().close()
+            }
+        }
+
+    @Test
+    fun givingUpOnAProxyThatNeverListensShutsItDown() =
+        runBlocking {
+            val proxyFactory = FakeProxyFactory()
+            val appContainer = testAppContainer(dir, Dispatchers.IO, proxyFactory).also { container = it }
+            val closedPort = ServerSocket(0).use { it.localPort }
+            val starter = RecordingStarter()
+
+            val connect =
+                launch(Dispatchers.IO) {
+                    appContainer.connectToGameUseCase(
+                        SimuGameCredentials(host = "game.example", port = 1, key = "KEY"),
+                        proxyTo(closedPort),
+                        starter,
+                    )
+                }
+            withTimeout(10.seconds) { while (proxyFactory.proxies.isEmpty()) delay(20) }
+            delay(1200)
+            connect.cancelAndJoin()
+
+            assertTrue(proxyFactory.proxies.single().closed, "the proxy outlived the connect")
+            assertTrue(starter.started.isEmpty())
+        }
+
+    @Test
+    fun aGameThatFailsToStartIsNotADialFailureAndIsNotRetried() =
+        runBlocking {
+            val proxyFactory = FakeProxyFactory()
+            val appContainer = testAppContainer(dir, Dispatchers.IO, proxyFactory).also { container = it }
+            ServerSocket(0).use { server ->
+                var attempts = 0
+                val starter =
+                    GameStarter { connection ->
+                        attempts++
+                        // The starter owns what it was handed, failing or not.
+                        connection.client.close()
+                        connection.windowRegistry.close()
+                        throw IllegalStateException("no window for it")
+                    }
+
+                val result =
+                    appContainer.connectToGameUseCase(
+                        SimuGameCredentials(host = "game.example", port = 1, key = "KEY"),
+                        proxyTo(server.localPort),
+                        starter,
+                    )
+
+                val message = assertIs<GameConnectResult.Failure>(result).message
+                assertTrue("didn't start" in message && "no window for it" in message, message)
+                assertEquals(1, attempts)
+                assertTrue(proxyFactory.proxies.single().closed)
+            }
         }
 
     @Test

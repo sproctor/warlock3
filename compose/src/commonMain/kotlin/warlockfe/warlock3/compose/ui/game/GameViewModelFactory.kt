@@ -3,7 +3,6 @@ package warlockfe.warlock3.compose.ui.game
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
-import warlockfe.warlock3.compose.GameConnectResult
 import warlockfe.warlock3.compose.GameConnection
 import warlockfe.warlock3.compose.GameStarter
 import warlockfe.warlock3.compose.model.GameScreen
@@ -40,8 +39,14 @@ class GameViewModelFactory(
     private val mudScriptStore: MudScriptStore,
     private val ioDispatcher: CoroutineDispatcher,
 ) {
-    /** A [GameStarter] that puts its games on [gameState]'s screen, through [start]. */
-    fun starter(gameState: GameState): GameStarter = GameStarter { connection -> start(connection, gameState) }
+    /**
+     * A [GameStarter] that puts its games on [gameState]'s screen, through [start]. A reconnect
+     * that fails shows an error screen that goes back to [returnTo].
+     */
+    fun starter(
+        gameState: GameState,
+        returnTo: GameScreen = GameScreen.Dashboard,
+    ): GameStarter = GameStarter { connection -> start(connection, gameState, returnTo) }
 
     /**
      * Builds the game screen for [connection]'s client, starts the client reading with its key, and
@@ -55,20 +60,16 @@ class GameViewModelFactory(
      * here along with the view model, which nothing else would ever close: it is in no
      * ViewModelStore, and until it is on screen no one has it.
      *
-     * A reconnect that fails puts its reason on [gameState]'s screen.
+     * A reconnect that fails puts its reason on [gameState]'s screen, which goes back to [returnTo].
      */
     suspend fun start(
         connection: GameConnection,
         gameState: GameState,
+        returnTo: GameScreen = GameScreen.Dashboard,
     ) {
         val reconnect: (suspend () -> Unit)? =
             connection.reconnect?.let { redial ->
-                {
-                    val result = redial()
-                    if (result is GameConnectResult.Failure) {
-                        gameState.setScreen(GameScreen.ErrorState(result.message, returnTo = GameScreen.Dashboard))
-                    }
-                }
+                { gameState.showFailure(redial(), returnTo) }
             }
         val viewModel =
             create(connection.client, connection.windowRegistry, reconnect) { stoppedScripts ->
