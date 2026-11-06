@@ -13,11 +13,11 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import warlockfe.warlock3.compose.ConnectToGameUseCase
 import warlockfe.warlock3.compose.ConnectToTelnetUseCase
-import warlockfe.warlock3.compose.MudMobileConnectResult
+import warlockfe.warlock3.compose.GameConnectResult
+import warlockfe.warlock3.compose.GameStarter
 import warlockfe.warlock3.compose.MudMobileConnectUseCase
 import warlockfe.warlock3.compose.MudMobileDiscoverResult
 import warlockfe.warlock3.compose.MudMobileDiscoverUseCase
-import warlockfe.warlock3.compose.TelnetConnectResult
 import warlockfe.warlock3.compose.model.GameScreen
 import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.compose.model.StartupConnection
@@ -44,6 +44,8 @@ class DashboardViewModel(
     private val connectionSettingsRepository: ConnectionSettingsRepository,
     private val sgeClientFactory: SgeClientFactory,
     private val connectToGame: ConnectToGameUseCase,
+    // Puts the games the connect use cases dial on this window's screen.
+    private val gameStarter: GameStarter,
     private val clientSettingRepository: ClientSettingRepository,
     private val accountRepository: AccountRepository,
     private val mudMobileApi: MudMobileApi,
@@ -173,13 +175,14 @@ class DashboardViewModel(
             is StartupConnection.Credentials -> {
                 val credentials = startup.credentials
                 launchConnect("Connecting to ${credentials.host}:${credentials.port}...") {
-                    connectToGame(credentials, ConnectionProxySettings.NONE, gameState)
+                    showOnErrorScreen(connectToGame(credentials, ConnectionProxySettings.NONE, gameStarter))
                 }
             }
 
             is StartupConnection.Stream -> {
                 launchConnect("Loading...") {
-                    connectToGame.connectStream(startup.open, gameState)
+                    val result = connectToGame.connectStream(startup.open, gameStarter)
+                    if (result is GameConnectResult.Failure) connectError = result.message
                 }
             }
         }
@@ -239,8 +242,13 @@ class DashboardViewModel(
                         sgeClient.close()
                     }
                 when (result) {
-                    is AutoConnectResult.Failure -> connectError = result.reason
-                    is AutoConnectResult.Success -> connectToGame(result.credentials, connection.proxySettings, gameState)
+                    is AutoConnectResult.Failure -> {
+                        connectError = result.reason
+                    }
+
+                    is AutoConnectResult.Success -> {
+                        showOnErrorScreen(connectToGame(result.credentials, connection.proxySettings, gameStarter))
+                    }
                 }
             } catch (e: CancellationException) {
                 throw e
@@ -256,6 +264,13 @@ class DashboardViewModel(
         }
     }
 
+    /** A game server that could not be reached gets the error screen, as it always has. */
+    private suspend fun showOnErrorScreen(result: GameConnectResult) {
+        if (result is GameConnectResult.Failure) {
+            gameState.setScreen(GameScreen.ErrorState(result.message, returnTo = GameScreen.Dashboard))
+        }
+    }
+
     fun cancelConnect() {
         connectJob?.cancel()
         connectJob = null
@@ -268,8 +283,8 @@ class DashboardViewModel(
         launchConnect(status) {
             // Remember this as the last launched connection (for auto-connect-on-startup).
             clientSettingRepository.putLastConnectionId(connection.id)
-            val result = connectToTelnet(connection, gameState)
-            if (result is TelnetConnectResult.Failure) {
+            val result = connectToTelnet(connection, gameStarter)
+            if (result is GameConnectResult.Failure) {
                 connectError = result.message
             }
         }
@@ -487,11 +502,11 @@ class DashboardViewModel(
                             sgeSettings = sgeSettings,
                             connection = connection,
                             password = password,
-                            gameState = gameState,
+                            starter = gameStarter,
                             onStatus = { mudMobileConnectStatus = it },
                             onSessionCreated = { mudMobileSessionId = it },
                         )
-                    if (result is MudMobileConnectResult.Failure) {
+                    if (result is GameConnectResult.Failure) {
                         connectError = result.message
                     }
                 } catch (e: CancellationException) {

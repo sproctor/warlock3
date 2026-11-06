@@ -440,7 +440,6 @@ class AppContainer(
             sgeClientFactory = sgeClientFactory,
             warlockClientFactory = warlockClientFactory,
             windowRegistryFactory = windowRegistryFactory,
-            gameViewModelFactory = gameViewModelFactory,
             ioDispatcher = ioDispatcher,
         )
     }
@@ -486,6 +485,7 @@ class AppContainer(
             mudMobileDiscoverUseCase = mudMobileDiscoverUseCase,
             warlockSettingsSync = warlockSettingsSync,
             connectToTelnetUseCase = connectToTelnetUseCase,
+            gameViewModelFactory = gameViewModelFactory,
         )
     }
 
@@ -493,7 +493,6 @@ class AppContainer(
         ConnectToTelnetUseCase(
             windowRegistryFactory = windowRegistryFactory,
             telnetClientFactory = telnetClientFactory,
-            gameViewModelFactory = gameViewModelFactory,
             ioDispatcher = ioDispatcher,
         )
     }
@@ -503,11 +502,9 @@ class AppContainer(
             clientSettingRepository = clientSettings,
             accountRepository = accountRepository,
             connectionRepository = connectionRepository,
-            warlockClientFactory = warlockClientFactory,
             sgeClientFactory = sgeClientFactory,
+            connectToGameUseCase = connectToGameUseCase,
             gameViewModelFactory = gameViewModelFactory,
-            windowRegistryFactory = windowRegistryFactory,
-            ioDispatcher = ioDispatcher,
         )
     }
 
@@ -516,7 +513,6 @@ class AppContainer(
             warlockProxyFactory = warlockProxyFactory,
             windowRegistryFactory = windowRegistryFactory,
             warlockClientFactory = warlockClientFactory,
-            gameViewModelFactory = gameViewModelFactory,
             dirs = warlockDirs,
             ioDispatcher = ioDispatcher,
         )

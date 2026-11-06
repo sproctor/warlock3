@@ -12,6 +12,7 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import warlockfe.warlock3.compose.AppContainer
+import warlockfe.warlock3.compose.GameConnection
 import warlockfe.warlock3.compose.model.GameScreen
 import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.compose.testAppContainer
@@ -163,10 +164,8 @@ class GameViewModelClientEventsTest {
 
             val gameState = GameState()
 
-            container.gameViewModelFactory.connect(
-                client = client,
-                key = "key",
-                windowRegistry = windowRegistry,
+            container.gameViewModelFactory.start(
+                connection = GameConnection(client, windowRegistry, key = "key", reconnect = null),
                 gameState = gameState,
             )
             advanceUntilIdle()
@@ -189,10 +188,8 @@ class GameViewModelClientEventsTest {
 
             val thrown =
                 assertFailsWith<IllegalStateException> {
-                    container.gameViewModelFactory.connect(
-                        client = client,
-                        key = "key",
-                        windowRegistry = windowRegistry,
+                    container.gameViewModelFactory.start(
+                        connection = GameConnection(client, windowRegistry, key = "key", reconnect = null),
                         gameState = gameState,
                     )
                 }

@@ -3,6 +3,9 @@ package warlockfe.warlock3.compose.ui.game
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
+import warlockfe.warlock3.compose.GameConnectResult
+import warlockfe.warlock3.compose.GameConnection
+import warlockfe.warlock3.compose.GameStarter
 import warlockfe.warlock3.compose.model.GameScreen
 import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.core.client.WarlockClient
@@ -37,27 +40,38 @@ class GameViewModelFactory(
     private val mudScriptStore: MudScriptStore,
     private val ioDispatcher: CoroutineDispatcher,
 ) {
+    /** A [GameStarter] that puts its games on [gameState]'s screen, through [start]. */
+    fun starter(gameState: GameState): GameStarter = GameStarter { connection -> start(connection, gameState) }
+
     /**
-     * Builds the game screen for [client], starts the client reading with [key], and shows the game
-     * on [gameState]. The order is the point: the client's eventFlow has no replay, and the server
-     * sends the first windows and the compass the moment it is connected, so the view model has to
-     * be listening before the read loop starts or those events go nowhere. Every connection path
-     * comes through here for that.
+     * Builds the game screen for [connection]'s client, starts the client reading with its key, and
+     * shows the game on [gameState]. The order is the point: the client's eventFlow has no replay,
+     * and the server sends the first windows and the compass the moment it is connected, so the
+     * view model has to be listening before the read loop starts or those events go nowhere. Every
+     * connection path comes through here for that.
      *
-     * [client] and [windowRegistry] are ours from the moment this is called. If the client fails to
-     * start, or the caller is cancelled before the game is on screen, they are closed here along
-     * with the view model, which nothing else would ever close: it is in no ViewModelStore, and
-     * until it is on screen no one has it.
+     * The connection is ours from the moment this is called. If the client fails to start, or the
+     * caller is cancelled before the game is on screen, its client and window registry are closed
+     * here along with the view model, which nothing else would ever close: it is in no
+     * ViewModelStore, and until it is on screen no one has it.
+     *
+     * A reconnect that fails puts its reason on [gameState]'s screen.
      */
-    suspend fun connect(
-        client: WarlockClient,
-        key: String,
-        windowRegistry: WindowRegistry,
+    suspend fun start(
+        connection: GameConnection,
         gameState: GameState,
-        reconnect: (suspend () -> Unit)? = null,
     ) {
+        val reconnect: (suspend () -> Unit)? =
+            connection.reconnect?.let { redial ->
+                {
+                    val result = redial()
+                    if (result is GameConnectResult.Failure) {
+                        gameState.setScreen(GameScreen.ErrorState(result.message, returnTo = GameScreen.Dashboard))
+                    }
+                }
+            }
         val viewModel =
-            create(client, windowRegistry, reconnect) { stoppedScripts ->
+            create(connection.client, connection.windowRegistry, reconnect) { stoppedScripts ->
                 // By now the reconnect has put its game on screen, unless it failed to an error.
                 (gameState.screen as? GameScreen.ConnectedGameState)
                     ?.viewModel
@@ -65,7 +79,7 @@ class GameViewModelFactory(
             }
         var shown = false
         try {
-            client.connect(key)
+            connection.client.connect(connection.key)
             // Once the client is reading, the game goes on screen even if we are cancelled now:
             // showing it clears the dashboard's view model, which is what cancels most callers.
             withContext(NonCancellable) {

@@ -9,9 +9,6 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
-import warlockfe.warlock3.compose.model.GameScreen
-import warlockfe.warlock3.compose.model.GameState
-import warlockfe.warlock3.compose.ui.game.GameViewModelFactory
 import warlockfe.warlock3.compose.ui.window.WindowRegistryFactory
 import warlockfe.warlock3.core.client.WarlockClientFactory
 import warlockfe.warlock3.core.mudmobile.CreateSessionResult
@@ -34,8 +31,8 @@ import kotlin.time.TimeSource
  *  1. Run Warlock's normal local SGE/EAccess login (password stays on this machine).
  *  2. Hash the resulting game key and register a hosted-Lich session with MUD Mobile
  *     (`POST /api/sessions`) — only the hash leaves the machine.
- *  3. Open a WebSocket to the router MUD Mobile returns and send the usual Stormfront handshake,
- *     then hand off to a normal [GameScreen.ConnectedGameState].
+ *  3. Open a WebSocket to the router MUD Mobile returns and hand it, with the usual Stormfront
+ *     handshake key, to a [GameStarter].
  *
  * See docs/specs/mudmobile-integration.md.
  */
@@ -47,7 +44,6 @@ class MudMobileConnectUseCase(
     private val sgeClientFactory: SgeClientFactory,
     private val warlockClientFactory: WarlockClientFactory,
     private val windowRegistryFactory: WindowRegistryFactory,
-    private val gameViewModelFactory: GameViewModelFactory,
     private val ioDispatcher: CoroutineDispatcher,
 ) {
     private val logger = Logger.withTag("MudMobileConnect")
@@ -57,15 +53,15 @@ class MudMobileConnectUseCase(
         sgeSettings: SgeSettings,
         connection: StoredConnection,
         password: String,
-        gameState: GameState,
+        starter: GameStarter,
         onStatus: (String) -> Unit = {},
         onSessionCreated: (String) -> Unit = {},
-    ): MudMobileConnectResult {
+    ): GameConnectResult {
         // 1. Local SGE — reuse the existing auto-connect flow, matching by character name.
         onStatus("Logging in to SGE...")
         val credentials =
             when (val sge = runSge(sgeSettings, connection, password)) {
-                is AutoConnectResult.Failure -> return MudMobileConnectResult.Failure(sge.reason)
+                is AutoConnectResult.Failure -> return GameConnectResult.Failure(sge.reason)
                 is AutoConnectResult.Success -> sge.credentials
             }
 
@@ -92,19 +88,19 @@ class MudMobileConnectUseCase(
                 }
 
                 CreateSessionResult.Unauthorized -> {
-                    return MudMobileConnectResult.Failure(
+                    return GameConnectResult.Failure(
                         "Your MUD Mobile token is no longer valid. Reconnect your MUD Mobile account.",
                     )
                 }
 
                 CreateSessionResult.SubscriptionRequired -> {
-                    return MudMobileConnectResult.Failure(
+                    return GameConnectResult.Failure(
                         "A MUD Mobile subscription is required. Visit mudmobile.com to subscribe.",
                     )
                 }
 
                 is CreateSessionResult.ConcurrentLimitReached -> {
-                    return MudMobileConnectResult.Failure(
+                    return GameConnectResult.Failure(
                         "You're already at your MUD Mobile session limit" +
                             (result.active?.let { a -> result.limit?.let { l -> " ($a/$l active)" } } ?: "") +
                             ". End an existing session and try again.",
@@ -112,7 +108,7 @@ class MudMobileConnectUseCase(
                 }
 
                 is CreateSessionResult.Error -> {
-                    return MudMobileConnectResult.Failure("Couldn't start session: ${result.message}")
+                    return GameConnectResult.Failure("Couldn't start session: ${result.message}")
                 }
             }
 
@@ -150,19 +146,19 @@ class MudMobileConnectUseCase(
             ReadinessResult.Ready -> Unit
 
             // proceed to connect
-            is ReadinessResult.Failed -> return MudMobileConnectResult.Failure(readiness.reason)
+            is ReadinessResult.Failed -> return GameConnectResult.Failure(readiness.reason)
         }
 
         // 4. Connect to the router and play. The hosted session is already routable here, so this is
         // one attempt with a generous timeout (the router holds the connection through the cloud
         // machine's cold boot, ~25-60s).
         onStatus("Connecting to the game...")
-        return connectToRouter(connect, credentials, gameState)
+        return connectToRouter(connect, credentials, starter)
     }
 
     /**
-     * Open the game connection to the router and hand off to a [GameScreen.ConnectedGameState]. Used
-     * for both the initial connect and reconnects.
+     * Open the game connection to the router and hand it to [starter]. Used for both the initial
+     * connect and reconnects.
      *
      * A reconnect re-dials this same router endpoint with the same game key - no SGE login and no new
      * session. The hosted session persists across a client disconnect, and the router still bridges
@@ -172,10 +168,10 @@ class MudMobileConnectUseCase(
     private suspend fun connectToRouter(
         connect: SessionConnectInfo,
         credentials: SimuGameCredentials,
-        gameState: GameState,
-    ): MudMobileConnectResult =
+        starter: GameStarter,
+    ): GameConnectResult =
         withContext(ioDispatcher) {
-            // Until they are handed off to the game view model factory, the socket and window registry
+            // Until they are handed to the starter, the socket and window registry
             // are ours to close: if we're cancelled (the user returned to the dashboard mid-reconnect)
             // or fail before that handoff, the finally closes them so we don't leak the socket and the
             // hosted session it holds open.
@@ -189,30 +185,23 @@ class MudMobileConnectUseCase(
                         windowRegistry = streamRegistry,
                         socket = socket,
                     )
-                // The factory owns the client and registry from here, and closes them itself if the
-                // game doesn't make it on screen.
+                // The starter owns the client and registry from here.
                 handedOff = true
-                gameViewModelFactory.connect(
-                    client = client,
-                    // Same handshake bytes Warlock sends to play.net; the router matches sha256(key).
-                    key = credentials.key,
-                    windowRegistry = streamRegistry,
-                    gameState = gameState,
-                    // Reconnect re-dials the same router with the same key; no SGE, no new session.
-                    reconnect = {
-                        val result = connectToRouter(connect, credentials, gameState)
-                        if (result is MudMobileConnectResult.Failure) {
-                            gameState.setScreen(
-                                GameScreen.ErrorState(result.message, returnTo = GameScreen.Dashboard),
-                            )
-                        }
-                    },
+                starter.start(
+                    GameConnection(
+                        client = client,
+                        windowRegistry = streamRegistry,
+                        // Same handshake bytes Warlock sends to play.net; the router matches sha256(key).
+                        key = credentials.key,
+                        // Reconnect re-dials the same router with the same key; no SGE, no new session.
+                        reconnect = { connectToRouter(connect, credentials, starter) },
+                    ),
                 )
-                MudMobileConnectResult.Success
+                GameConnectResult.Started
             } catch (e: Exception) {
                 ensureActive()
                 logger.e(e) { "Failed to connect to MUD Mobile router" }
-                MudMobileConnectResult.Failure("Error connecting to ${connect.host}:${connect.port}: ${e.message}")
+                GameConnectResult.Failure("Error connecting to ${connect.host}:${connect.port}: ${e.message}")
             } finally {
                 if (!handedOff) {
                     socket.close()
@@ -317,12 +306,4 @@ class MudMobileConnectUseCase(
         val FORCE_CONNECT_AFTER = 30.seconds
         val POLL_INTERVAL = 1.seconds
     }
-}
-
-sealed interface MudMobileConnectResult {
-    data object Success : MudMobileConnectResult
-
-    data class Failure(
-        val message: String,
-    ) : MudMobileConnectResult
 }

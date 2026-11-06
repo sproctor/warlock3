@@ -14,11 +14,11 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import kotlinx.io.IOException
 import warlockfe.warlock3.compose.AppContainer
+import warlockfe.warlock3.compose.ReplaySocket
 import warlockfe.warlock3.compose.model.GameScreen
 import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.compose.model.StartupConnection
 import warlockfe.warlock3.compose.testAppContainer
-import warlockfe.warlock3.core.client.WarlockSocket
 import warlockfe.warlock3.core.mudmobile.SyncStatus
 import warlockfe.warlock3.core.sge.SgeSettings
 import warlockfe.warlock3.core.sge.SimuGameCredentials
@@ -57,32 +57,6 @@ class StartupConnectionTest {
         Dispatchers.resetMain()
         container?.database?.close()
         dir.deleteRecursively()
-    }
-
-    /** A game log being replayed: [lines], then the end of the stream. */
-    private class ReplaySocket(
-        lines: List<String>,
-    ) : WarlockSocket {
-        private val remaining = ArrayDeque(lines)
-
-        override var isClosed = false
-
-        override suspend fun connect(
-            host: String,
-            port: Int,
-        ) = Unit
-
-        override suspend fun readLine(): String? = remaining.removeFirstOrNull()
-
-        override suspend fun readAvailable(min: Int): String? = readLine()
-
-        override fun ready(): Boolean = remaining.isNotEmpty()
-
-        override suspend fun write(text: String) = Unit
-
-        override fun close() {
-            isClosed = true
-        }
     }
 
     private suspend fun dashboard(

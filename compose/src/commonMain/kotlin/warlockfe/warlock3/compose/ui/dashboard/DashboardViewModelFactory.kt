@@ -5,6 +5,7 @@ import warlockfe.warlock3.compose.ConnectToTelnetUseCase
 import warlockfe.warlock3.compose.MudMobileConnectUseCase
 import warlockfe.warlock3.compose.MudMobileDiscoverUseCase
 import warlockfe.warlock3.compose.model.GameState
+import warlockfe.warlock3.compose.ui.game.GameViewModelFactory
 import warlockfe.warlock3.core.mudmobile.MudMobileApi
 import warlockfe.warlock3.core.mudmobile.WarlockSettingsSync
 import warlockfe.warlock3.core.prefs.repositories.AccountRepository
@@ -26,6 +27,7 @@ class DashboardViewModelFactory(
     private val mudMobileDiscoverUseCase: MudMobileDiscoverUseCase,
     private val warlockSettingsSync: WarlockSettingsSync,
     private val connectToTelnetUseCase: ConnectToTelnetUseCase,
+    private val gameViewModelFactory: GameViewModelFactory,
 ) {
     fun create(
         gameState: GameState,
@@ -38,6 +40,7 @@ class DashboardViewModelFactory(
             connectionSettingsRepository = connectionSettingsRepository,
             sgeClientFactory = sgeClientFactory,
             connectToGame = connectToGameUseCase,
+            gameStarter = gameViewModelFactory.starter(gameState),
             clientSettingRepository = clientSettingRepository,
             accountRepository = accountRepository,
             mudMobileApi = mudMobileApi,
