@@ -69,20 +69,19 @@ object IosAppContainerProvider {
         // SettingsUnreadableException, which is left to propagate rather than started around:
         // coming up with empty settings would save them over the real ones.
         runBlocking {
-            val database =
-                openPrefsDatabase(
-                    directory = Path(dbDir),
-                    fileSystem = SystemFileSystem,
-                    builderFactory = { filename -> Room.databaseBuilder<PrefsDatabase>(name = filename) },
-                )
-            // Loads the config files, runs the DB->TOML migration and seeds default macros.
+            // Loads the config files, runs the DB->TOML migration and seeds default macros, on the
+            // IO dispatcher.
             AppContainer.open(
-                database = database,
-                warlockDirs = warlockDirs,
-                fileSystem = SystemFileSystem,
-                soundPlayer = IosSoundPlayer(),
-                warlockProxyFactory = WarlockProxy.Factory { IosProxy(it) },
-                crashReporting = crashReporting,
+                platform =
+                    AppPlatform(
+                        warlockDirs = warlockDirs,
+                        fileSystem = SystemFileSystem,
+                        soundPlayer = IosSoundPlayer(),
+                        warlockProxyFactory = WarlockProxy.Factory { IosProxy(it) },
+                        crashReporting = crashReporting,
+                    ),
+                databaseDirectory = Path(dbDir),
+                databaseBuilder = { filename -> Room.databaseBuilder<PrefsDatabase>(name = filename) },
             )
         }
     }

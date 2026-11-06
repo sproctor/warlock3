@@ -3,6 +3,7 @@ package warlockfe.warlock3.compose
 import androidx.room3.Room
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
 import warlockfe.warlock3.compose.crash.CrashReporter
@@ -23,44 +24,43 @@ suspend fun testAppContainer(
     dir: java.nio.file.Path,
     ioDispatcher: CoroutineDispatcher,
     warlockProxyFactory: WarlockProxy.Factory = WarlockProxy.Factory { throw UnsupportedOperationException() },
-): AppContainer {
-    val database =
-        openPrefsDatabase(
-            directory = Path(dir.toString()),
-            fileSystem = SystemFileSystem,
-            builderFactory = { filename -> Room.databaseBuilder<PrefsDatabase>(name = filename) },
-        )
-    return AppContainer.open(
-        database = database,
-        warlockDirs =
-            WarlockDirs(
-                homeDir = dir.toString(),
-                dataDir = dir.resolve("data").toString(),
-                configDir = dir.toString(),
-                logDir = dir.resolve("logs").toString(),
-            ),
-        fileSystem = SystemFileSystem,
-        soundPlayer =
-            object : SoundPlayer {
-                override suspend fun playSound(filename: String): String? = null
-            },
-        warlockProxyFactory = warlockProxyFactory,
-        crashReporting =
-            CrashReporting(
-                configDir = dir.toString(),
-                dataDir = dir.resolve("data").toString(),
+    parentJob: Job? = null,
+): AppContainer =
+    AppContainer.open(
+        platform =
+            AppPlatform(
+                warlockDirs =
+                    WarlockDirs(
+                        homeDir = dir.toString(),
+                        dataDir = dir.resolve("data").toString(),
+                        configDir = dir.toString(),
+                        logDir = dir.resolve("logs").toString(),
+                    ),
                 fileSystem = SystemFileSystem,
-                reporter =
-                    object : CrashReporter {
-                        override fun start(onReport: (eventId: String, json: String) -> Unit) = Unit
-
-                        override fun stop() = Unit
+                soundPlayer =
+                    object : SoundPlayer {
+                        override suspend fun playSound(filename: String): String? = null
                     },
-                background = Dispatchers.Unconfined,
+                warlockProxyFactory = warlockProxyFactory,
+                crashReporting =
+                    CrashReporting(
+                        configDir = dir.toString(),
+                        dataDir = dir.resolve("data").toString(),
+                        fileSystem = SystemFileSystem,
+                        reporter =
+                            object : CrashReporter {
+                                override fun start(onReport: (eventId: String, json: String) -> Unit) = Unit
+
+                                override fun stop() = Unit
+                            },
+                        background = Dispatchers.Unconfined,
+                    ),
+                ioDispatcher = ioDispatcher,
+                parentJob = parentJob,
             ),
-        ioDispatcher = ioDispatcher,
+        databaseDirectory = Path(dir.toString()),
+        databaseBuilder = { filename -> Room.databaseBuilder<PrefsDatabase>(name = filename) },
     )
-}
 
 /**
  * Deletes a test's [dir]. Work the test started on the IO dispatcher (a game's log, a settings

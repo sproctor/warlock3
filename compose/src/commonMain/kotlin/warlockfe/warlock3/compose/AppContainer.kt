@@ -14,6 +14,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,6 +23,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.io.files.FileSystem
 import kotlinx.io.files.Path
 import warlockfe.warlock3.compose.crash.CrashReporting
@@ -92,26 +94,45 @@ import warlockfe.warlock3.wrayth.settings.WraythImporter
 import warlockfe.warlock3.wrayth.util.CommandListStore
 
 /**
- * The app-wide dependency graph, shared by every platform. The two genuinely platform-specific
- * pieces -- how sound is played and how a proxy subprocess is launched -- are injected by the
- * platform entry points; everything else is wired identically everywhere.
+ * What a platform's entry point supplies to [AppContainer.open]: where things live, and the few
+ * pieces that genuinely differ by platform -- how sound is played and how a proxy subprocess is
+ * launched.
+ *
+ * @param crashReporting built by the entry point before the container, so the user's
+ *   crash-reporting choice is in effect before anything in the container can fail.
+ * @param parentJob the job the container's background work runs under, for a host that wants to
+ *   stop it; null for work that lasts as long as the app.
+ */
+class AppPlatform(
+    val warlockDirs: WarlockDirs,
+    val fileSystem: FileSystem,
+    val soundPlayer: SoundPlayer,
+    val warlockProxyFactory: WarlockProxy.Factory,
+    val crashReporting: CrashReporting,
+    val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    val parentJob: Job? = null,
+)
+
+/**
+ * The app-wide dependency graph, shared by every platform, and wired identically everywhere from
+ * the [AppPlatform] each entry point supplies.
  *
  * Made by [open], which hands it out only once its settings are loaded.
  */
 class AppContainer private constructor(
     private val database: PrefsDatabase,
-    private val warlockDirs: WarlockDirs,
-    private val fileSystem: FileSystem,
-    private val soundPlayer: SoundPlayer,
-    private val warlockProxyFactory: WarlockProxy.Factory,
-    /**
-     * Built by the platform entry point before this container, so the user's crash-reporting choice
-     * is in effect before anything here can fail; held here so the UI can reach it.
-     */
-    val crashReporting: CrashReporting,
-    internal val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    platform: AppPlatform,
 ) {
-    val externalScope = CoroutineScope(SupervisorJob() + ioDispatcher)
+    private val warlockDirs = platform.warlockDirs
+    private val fileSystem = platform.fileSystem
+    private val soundPlayer = platform.soundPlayer
+    private val warlockProxyFactory = platform.warlockProxyFactory
+
+    /** Held here so the UI can reach it; see [AppPlatform.crashReporting]. */
+    val crashReporting = platform.crashReporting
+    internal val ioDispatcher = platform.ioDispatcher
+
+    val externalScope = CoroutineScope(SupervisorJob(platform.parentJob) + ioDispatcher)
 
     // The loaded skin and current dark-mode are pushed here by the platform entry points; the
     // skin's "presets" section (resolved for the mode) becomes the default text styles.
@@ -449,40 +470,33 @@ class AppContainer private constructor(
 
     companion object {
         /**
-         * Builds the container and loads its settings (see [load]) before handing it out, so nothing
-         * ever sees the stores before the user's settings are in them.
+         * Opens the settings database in [databaseDirectory] (see [openPrefsDatabase]), builds the
+         * container on it and loads its settings (see [load]) before handing it out, so nothing ever
+         * sees the stores before the user's settings are in them. The work runs on the platform's IO
+         * dispatcher, whatever thread the caller waits on.
          *
          * Throws [SettingsUnreadableException] when the settings could not be read: the entry point
          * tells the user and stops.
          */
         suspend fun open(
-            database: PrefsDatabase,
-            warlockDirs: WarlockDirs,
-            fileSystem: FileSystem,
-            soundPlayer: SoundPlayer,
-            warlockProxyFactory: WarlockProxy.Factory,
-            crashReporting: CrashReporting,
-            ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
-        ): AppContainer {
-            val container =
-                AppContainer(
-                    database = database,
-                    warlockDirs = warlockDirs,
-                    fileSystem = fileSystem,
-                    soundPlayer = soundPlayer,
-                    warlockProxyFactory = warlockProxyFactory,
-                    crashReporting = crashReporting,
-                    ioDispatcher = ioDispatcher,
-                )
-            try {
-                container.load()
-            } catch (e: Throwable) {
-                // Nobody will have this container: stop what its scope already runs.
-                container.externalScope.cancel()
-                throw e
+            platform: AppPlatform,
+            databaseDirectory: Path,
+            databaseBuilder: (databaseFilePath: String) -> RoomDatabase.Builder<PrefsDatabase>,
+        ): AppContainer =
+            withContext(platform.ioDispatcher) {
+                val database = openPrefsDatabase(databaseDirectory, platform.fileSystem, databaseBuilder)
+                val container = AppContainer(database, platform)
+                try {
+                    container.load()
+                } catch (e: Throwable) {
+                    // Nobody will have this container: stop what its scope already runs, and let go
+                    // of the database.
+                    container.externalScope.cancel()
+                    runCatching { database.close() }
+                    throw e
+                }
+                container
             }
-            return container
-        }
     }
 }
 

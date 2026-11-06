@@ -87,6 +87,7 @@ import org.jetbrains.jewel.ui.component.Text
 import warlockfe.warlock3.app.updater.ChannelUpdater
 import warlockfe.warlock3.app.updater.channelsToCheck
 import warlockfe.warlock3.compose.AppContainer
+import warlockfe.warlock3.compose.AppPlatform
 import warlockfe.warlock3.compose.crash.CrashReporting
 import warlockfe.warlock3.compose.desktop.shim.WarlockAlertDialog
 import warlockfe.warlock3.compose.desktop.shim.WarlockButton
@@ -104,7 +105,6 @@ import warlockfe.warlock3.compose.model.GameScreen
 import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.compose.model.StartupConnection
 import warlockfe.warlock3.compose.observeSkin
-import warlockfe.warlock3.compose.openPrefsDatabase
 import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.compose.util.SentryCrashReporter
 import warlockfe.warlock3.compose.util.rememberSafeClipboard
@@ -657,19 +657,17 @@ private class WarlockCommand : CliktCommand() {
 
         println("Loading preferences from $configDir")
         return runBlocking {
-            val database =
-                openPrefsDatabase(
-                    directory = databaseDirectory,
-                    fileSystem = SystemFileSystem,
-                    builderFactory = ::getPrefsDatabaseBuilder,
-                )
             AppContainer.open(
-                database = database,
-                warlockDirs = warlockDirs,
-                fileSystem = SystemFileSystem,
-                soundPlayer = DesktopSoundPlayer(warlockDirs),
-                warlockProxyFactory = { JavaProxy(it) },
-                crashReporting = crashReporting,
+                platform =
+                    AppPlatform(
+                        warlockDirs = warlockDirs,
+                        fileSystem = SystemFileSystem,
+                        soundPlayer = DesktopSoundPlayer(warlockDirs),
+                        warlockProxyFactory = { JavaProxy(it) },
+                        crashReporting = crashReporting,
+                    ),
+                databaseDirectory = databaseDirectory,
+                databaseBuilder = ::getPrefsDatabaseBuilder,
             )
         }
     }
