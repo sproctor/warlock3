@@ -1,4 +1,4 @@
-package warlockfe.warlock3.wrayth.util
+package warlockfe.warlock3.core.network
 
 import io.ktor.network.selector.SelectorManager
 import kotlin.coroutines.CoroutineContext
@@ -15,11 +15,11 @@ expect suspend fun openTLSSocket(
     port: Int,
     certificate: ByteArray?,
     coroutineContext: CoroutineContext,
-): TLSSocketConnection
+): SocketConnection
 
 expect suspend fun openPlainSocket(
     selectorManager: SelectorManager,
     host: String,
     port: Int,
     coroutineContext: CoroutineContext,
-): TLSSocketConnection
+): SocketConnection

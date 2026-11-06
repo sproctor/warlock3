@@ -58,9 +58,6 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             implementation(project(":core"))
-            // Only for the plain/TLS socket helpers (openPlainSocket / openTLSSocket), which carry
-            // the per-platform TLS implementations. The Wrayth protocol itself is not used here.
-            implementation(project(":wrayth"))
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.ktor.network)
             implementation(libs.kermit)

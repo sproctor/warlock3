@@ -10,9 +10,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.withTimeoutOrNull
-import warlockfe.warlock3.wrayth.util.TLSSocketConnection
-import warlockfe.warlock3.wrayth.util.openPlainSocket
-import warlockfe.warlock3.wrayth.util.openTLSSocket
+import warlockfe.warlock3.core.network.SocketConnection
+import warlockfe.warlock3.core.network.openPlainSocket
+import warlockfe.warlock3.core.network.openTLSSocket
 import kotlin.time.Duration
 
 /**
@@ -29,7 +29,7 @@ class TelnetSocket(
     // Owns the IO the platform socket may run in the background (the iOS implementation drives
     // Network.framework from coroutines parented here), so closing the socket cancels it.
     private val scope = CoroutineScope(SupervisorJob() + ioDispatcher)
-    private var connection: TLSSocketConnection? = null
+    private var connection: SocketConnection? = null
     private var closed = false
 
     val isClosed: Boolean
@@ -101,5 +101,5 @@ class TelnetSocket(
         selector.close()
     }
 
-    private fun channel(): TLSSocketConnection = checkNotNull(connection) { "Socket not connected" }
+    private fun channel(): SocketConnection = checkNotNull(connection) { "Socket not connected" }
 }
