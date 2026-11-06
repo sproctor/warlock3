@@ -254,8 +254,8 @@ fun DecoratedWindowScope.WarlockApp(
     }
 
     DesktopMainScreen(
-        sgeViewModelFactory = appContainer.sgeViewModelFactory,
-        dashboardViewModelFactory = appContainer.dashboardViewModelFactory,
+        createSgeViewModel = appContainer::sgeViewModel,
+        createDashboardViewModel = appContainer::dashboardViewModel,
         gameState = gameState,
         updateCurrentCharacter = { currentCharacter = it },
         sgeSettings = sgeSettings,

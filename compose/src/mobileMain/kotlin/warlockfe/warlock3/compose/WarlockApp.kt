@@ -137,8 +137,8 @@ fun WarlockApp(
         } else {
             Box(modifier.safeDrawingPadding()) {
                 MainScreen(
-                    sgeViewModelFactory = appContainer.sgeViewModelFactory,
-                    dashboardViewModelFactory = appContainer.dashboardViewModelFactory,
+                    createSgeViewModel = appContainer::sgeViewModel,
+                    createDashboardViewModel = appContainer::dashboardViewModel,
                     gameState = gameState,
                     updateCurrentCharacter = { currentCharacter = it },
                     sgeSettings = sgeSettings,

@@ -64,7 +64,7 @@ class StartupConnectionTest {
     ): Pair<AppContainer, DashboardViewModel> {
         val appContainer = testAppContainer(dir, ioDispatcher)
         val sgeSettings = SgeSettings(host = "127.0.0.1", port = 1, certificate = ByteArray(0), secure = false)
-        return appContainer to appContainer.dashboardViewModelFactory.create(gameState, sgeSettings)
+        return appContainer to appContainer.dashboardViewModel(gameState, sgeSettings)
     }
 
     @Test
@@ -104,7 +104,7 @@ class StartupConnectionTest {
             appContainer.clientSettings.putMudMobileToken("token")
             val gameState = GameState(StartupConnection.Stream { ReplaySocket(emptyList()) })
             val sgeSettings = SgeSettings(host = "127.0.0.1", port = 1, certificate = ByteArray(0), secure = false)
-            val viewModel = appContainer.dashboardViewModelFactory.create(gameState, sgeSettings)
+            val viewModel = appContainer.dashboardViewModel(gameState, sgeSettings)
             advanceUntilIdle()
 
             val sync = viewModel.syncState.value

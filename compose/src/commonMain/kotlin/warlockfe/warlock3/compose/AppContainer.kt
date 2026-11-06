@@ -27,11 +27,13 @@ import kotlinx.io.files.FileSystem
 import kotlinx.io.files.Path
 import warlockfe.warlock3.compose.crash.CrashReporting
 import warlockfe.warlock3.compose.macros.KeyboardKeyMappings
+import warlockfe.warlock3.compose.model.GameScreen
+import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.compose.model.SkinObject
-import warlockfe.warlock3.compose.ui.dashboard.DashboardViewModelFactory
+import warlockfe.warlock3.compose.ui.dashboard.DashboardViewModel
 import warlockfe.warlock3.compose.ui.game.GameViewModelFactory
 import warlockfe.warlock3.compose.ui.settings.SettingsViewModelFactory
-import warlockfe.warlock3.compose.ui.sge.SgeViewModelFactory
+import warlockfe.warlock3.compose.ui.sge.SgeViewModel
 import warlockfe.warlock3.compose.ui.window.WindowRegistryFactory
 import warlockfe.warlock3.compose.util.seedAndMigrateDefaultMacros
 import warlockfe.warlock3.compose.util.toPresets
@@ -80,6 +82,7 @@ import warlockfe.warlock3.core.script.MudScriptStore
 import warlockfe.warlock3.core.script.ScriptManagerFactory
 import warlockfe.warlock3.core.sge.SgeClient
 import warlockfe.warlock3.core.sge.SgeClientFactory
+import warlockfe.warlock3.core.sge.SgeSettings
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.util.SoundPlayer
 import warlockfe.warlock3.core.util.WarlockDirs
@@ -472,22 +475,27 @@ class AppContainer(
         )
     }
 
-    val dashboardViewModelFactory by lazy {
-        DashboardViewModelFactory(
+    /** The dashboard of the window showing [gameState]. */
+    fun dashboardViewModel(
+        gameState: GameState,
+        sgeSettings: SgeSettings,
+    ): DashboardViewModel =
+        DashboardViewModel(
+            gameState = gameState,
+            sgeSettings = sgeSettings,
             connectionRepository = connectionRepository,
             connectionSettingsRepository = connectionSettingsRepository,
             sgeClientFactory = sgeClientFactory,
-            connectToGameUseCase = connectToGameUseCase,
+            connectToGame = connectToGameUseCase,
+            gameStarter = gameViewModelFactory.starter(gameState),
             clientSettingRepository = clientSettings,
             accountRepository = accountRepository,
             mudMobileApi = mudMobileApi,
-            mudMobileConnectUseCase = mudMobileConnectUseCase,
-            mudMobileDiscoverUseCase = mudMobileDiscoverUseCase,
+            mudMobileConnect = mudMobileConnectUseCase,
+            mudMobileDiscover = mudMobileDiscoverUseCase,
             warlockSettingsSync = warlockSettingsSync,
-            connectToTelnetUseCase = connectToTelnetUseCase,
-            gameViewModelFactory = gameViewModelFactory,
+            connectToTelnet = connectToTelnetUseCase,
         )
-    }
 
     val connectToTelnetUseCase by lazy {
         ConnectToTelnetUseCase(
@@ -497,16 +505,22 @@ class AppContainer(
         )
     }
 
-    val sgeViewModelFactory by lazy {
-        SgeViewModelFactory(
+    /** The new-game wizard of the window showing [gameState]. */
+    fun sgeViewModel(
+        gameState: GameState,
+        sgeSettings: SgeSettings,
+    ): SgeViewModel =
+        SgeViewModel(
+            gameState = gameState,
+            settings = sgeSettings,
             clientSettingRepository = clientSettings,
             accountRepository = accountRepository,
             connectionRepository = connectionRepository,
             sgeClientFactory = sgeClientFactory,
             connectToGameUseCase = connectToGameUseCase,
-            gameViewModelFactory = gameViewModelFactory,
+            // A failed reconnect goes back to the wizard, as a failed connect does.
+            gameStarter = gameViewModelFactory.starter(gameState, returnTo = GameScreen.NewGameState),
         )
-    }
 
     val connectToGameUseCase by lazy {
         ConnectToGameUseCase(

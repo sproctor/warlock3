@@ -16,10 +16,8 @@ import kotlinx.coroutines.launch
 import warlockfe.warlock3.compose.model.GameScreen
 import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.compose.ui.dashboard.DashboardViewModel
-import warlockfe.warlock3.compose.ui.dashboard.DashboardViewModelFactory
 import warlockfe.warlock3.compose.ui.game.GameViewModel
 import warlockfe.warlock3.compose.ui.sge.SgeViewModel
-import warlockfe.warlock3.compose.ui.sge.SgeViewModelFactory
 import warlockfe.warlock3.compose.util.SafeUriHandler
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.sge.SgeSettings
@@ -37,8 +35,8 @@ import warlockfe.warlock3.core.sge.SgeSettings
 @Suppress("ktlint:compose:vm-injection-check")
 @Composable
 fun MainScreen(
-    sgeViewModelFactory: SgeViewModelFactory,
-    dashboardViewModelFactory: DashboardViewModelFactory,
+    createSgeViewModel: (GameState, SgeSettings) -> SgeViewModel,
+    createDashboardViewModel: (GameState, SgeSettings) -> DashboardViewModel,
     gameState: GameState,
     updateCurrentCharacter: (GameCharacter?) -> Unit,
     sgeSettings: SgeSettings,
@@ -91,7 +89,7 @@ fun MainScreen(
                     entry<DashboardKey> {
                         val viewModel =
                             viewModel {
-                                dashboardViewModelFactory.create(gameState, sgeSettings)
+                                createDashboardViewModel(gameState, sgeSettings)
                             }
                         dashboardContent(viewModel) {
                             scope.launch { gameState.setScreen(GameScreen.NewGameState) }
@@ -100,7 +98,7 @@ fun MainScreen(
                     entry<WizardKey> {
                         val viewModel =
                             viewModel {
-                                sgeViewModelFactory.create(gameState, sgeSettings)
+                                createSgeViewModel(gameState, sgeSettings)
                             }
                         wizardContent(viewModel) {
                             scope.launch { gameState.setScreen(GameScreen.Dashboard) }
