@@ -9,6 +9,7 @@ import warlockfe.warlock3.compose.model.GameScreen
 import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.compose.ui.game.GameViewModelFactory
 import warlockfe.warlock3.compose.ui.window.WindowRegistryFactory
+import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.client.WarlockClientFactory
 import warlockfe.warlock3.core.client.WarlockProxy
 import warlockfe.warlock3.core.client.WarlockSocket
@@ -62,31 +63,16 @@ class ConnectToGameUseCase(
             }
             val deadline = TimeSource.Monotonic.markNow() + 30.seconds
             while (true) {
-                // Each attempt's socket and registry are ours to close until they are handed off to
-                // the game view model factory, so a failed attempt leaves nothing behind when we retry.
                 val socket = NetworkSocket(ioDispatcher)
-                var streamRegistry: WindowRegistry? = null
-                var handedOff = false
                 try {
-                    socket.connect(loginCredentials.host, loginCredentials.port)
-                    // Created once the socket is up, so a refused attempt doesn't make one at all.
-                    val registry = windowRegistryFactory.create().also { streamRegistry = it }
-                    val sfClient =
-                        warlockClientFactory.createClient(
-                            windowRegistry = registry,
-                            socket = socket,
-                        ) as WraythClient
-                    proxy?.let { sfClient.setProxy(it) }
-                    // The factory owns the client and registry from here, and closes them itself if
-                    // the game doesn't make it on screen.
-                    handedOff = true
-                    gameViewModelFactory.connect(
-                        client = sfClient,
+                    startGame(
+                        socket = socket,
                         key = loginCredentials.key,
-                        windowRegistry = registry,
                         gameState = gameState,
                         // Reuse the same credentials (and key) on reconnect.
                         reconnect = { invoke(credentials, proxySettings, gameState) },
+                        connectSocket = { socket.connect(loginCredentials.host, loginCredentials.port) },
+                        configureClient = { client -> proxy?.let { (client as WraythClient).setProxy(it) } },
                     )
                     break
                 } catch (e: Exception) {
@@ -117,39 +103,62 @@ class ConnectToGameUseCase(
                         break
                     }
                     delay(500.milliseconds)
-                } finally {
-                    if (!handedOff) {
-                        // A refused connect has already closed its socket.
-                        if (!socket.isClosed) socket.close()
-                        streamRegistry?.close()
-                    }
                 }
             }
         }
     }
 
     /**
-     * Plays a game read from [socket] (a log being replayed, or stdin) instead of from a server.
-     * There is no key to send and nothing to reconnect to.
+     * Plays a game read from the socket [open] returns (a log being replayed, or stdin) instead of
+     * from a server. There is no key to send and nothing to reconnect to. [open] runs on the IO
+     * dispatcher, since opening a file blocks.
      */
     suspend fun connectStream(
-        socket: WarlockSocket,
+        open: () -> WarlockSocket,
         gameState: GameState,
     ) {
         withContext(ioDispatcher) {
-            var registry: WindowRegistry? = null
-            var handedOff = false
-            try {
-                val streamRegistry = windowRegistryFactory.create().also { registry = it }
-                val client = warlockClientFactory.createClient(windowRegistry = streamRegistry, socket = socket)
-                // The factory owns the client and registry from here, as in [invoke].
-                handedOff = true
-                gameViewModelFactory.connect(client = client, key = "", windowRegistry = streamRegistry, gameState = gameState)
-            } finally {
-                if (!handedOff) {
-                    if (!socket.isClosed) socket.close()
-                    registry?.close()
-                }
+            startGame(socket = open(), key = "", gameState = gameState)
+        }
+    }
+
+    /**
+     * Connects [socket] (through [connectSocket]), builds a client on it and hands both to the game
+     * view model factory, which puts the game on screen.
+     *
+     * The socket, and the window registry made here, are ours to close until that handoff: whatever
+     * fails before it closes them, so a failed attempt leaves nothing behind. From the handoff on,
+     * the factory owns them, and closes them itself if the game doesn't make it on screen.
+     */
+    private suspend fun startGame(
+        socket: WarlockSocket,
+        key: String,
+        gameState: GameState,
+        reconnect: (suspend () -> Unit)? = null,
+        connectSocket: suspend () -> Unit = {},
+        configureClient: (WarlockClient) -> Unit = {},
+    ) {
+        var registry: WindowRegistry? = null
+        var handedOff = false
+        try {
+            connectSocket()
+            // Created once the socket is up, so a refused attempt doesn't make one at all.
+            val windowRegistry = windowRegistryFactory.create().also { registry = it }
+            val client = warlockClientFactory.createClient(windowRegistry = windowRegistry, socket = socket)
+            configureClient(client)
+            handedOff = true
+            gameViewModelFactory.connect(
+                client = client,
+                key = key,
+                windowRegistry = windowRegistry,
+                gameState = gameState,
+                reconnect = reconnect,
+            )
+        } finally {
+            if (!handedOff) {
+                // A refused connect has already closed its socket.
+                if (!socket.isClosed) socket.close()
+                registry?.close()
             }
         }
     }

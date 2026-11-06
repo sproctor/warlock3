@@ -105,16 +105,20 @@ class DashboardViewModel(
         viewModelScope.launch {
             reloadAccounts()
         }
-        // Load the saved characters if the user already connected their MUD Mobile account.
-        viewModelScope.launch {
-            if (clientSettingRepository.getMudMobileToken() != null) {
-                refreshMudMobileCharacters()
-                // Auto-sync settings whenever the dashboard appears (app start, and on return from a
-                // game after disconnect) so per-character settings follow the user between machines.
-                warlockSettingsSync.sync()
+        val startup = gameState.takeStartupConnection()
+        // Load the saved characters if the user already connected their MUD Mobile account. Not for
+        // a replayed log or stdin: that is no session of the user's, and only passes through here.
+        if (startup !is StartupConnection.Stream) {
+            viewModelScope.launch {
+                if (clientSettingRepository.getMudMobileToken() != null) {
+                    refreshMudMobileCharacters()
+                    // Auto-sync settings whenever the dashboard appears (app start, and on return from a
+                    // game after disconnect) so per-character settings follow the user between machines.
+                    warlockSettingsSync.sync()
+                }
             }
         }
-        openStartupConnection()
+        openStartupConnection(startup)
     }
 
     // --- Settings sync ---
@@ -149,8 +153,8 @@ class DashboardViewModel(
      * Connecting here rather than before the window opens lets the window come up straight away,
      * with the same progress dialog, Cancel button and error reporting as a connect the user starts.
      */
-    private fun openStartupConnection() {
-        when (val startup = gameState.takeStartupConnection()) {
+    private fun openStartupConnection(startup: StartupConnection?) {
+        when (startup) {
             null -> {}
 
             StartupConnection.LastConnection -> {
@@ -169,19 +173,23 @@ class DashboardViewModel(
             is StartupConnection.Credentials -> {
                 val credentials = startup.credentials
                 launchConnect("Connecting to ${credentials.host}:${credentials.port}...") {
-                    connectToGame(credentials, NO_PROXY, gameState)
+                    connectToGame(credentials, ConnectionProxySettings.NONE, gameState)
                 }
             }
 
             is StartupConnection.Stream -> {
                 launchConnect("Loading...") {
-                    connectToGame.connectStream(startup.open(), gameState)
+                    connectToGame.connectStream(startup.open, gameState)
                 }
             }
         }
     }
 
-    /** Runs [block] as the dashboard's connect, with [status] in its progress dialog. */
+    /**
+     * Runs [block] as the dashboard's connect, with [status] in its progress dialog. The status
+     * goes when the connect ends, however it ends: by then the game is on screen, or it failed and
+     * says so in [connectError] or an error screen.
+     */
     private fun launchConnect(
         status: String,
         block: suspend () -> Unit,
@@ -199,9 +207,9 @@ class DashboardViewModel(
                     throw e
                 } catch (e: Exception) {
                     logger.e(e) { "Error connecting" }
-                    message = null
                     connectError = "Error: ${e.message}"
                 } finally {
+                    message = null
                     connectJob = null
                     busy = false
                 }
@@ -219,45 +227,33 @@ class DashboardViewModel(
             connectMudMobile(connection, connection.password ?: "")
             return
         }
-        if (busy) return
-        busy = true
-        // The last attempt's failure is not this one's; clear it so its dialog cannot end up over a
-        // connect that is still running.
-        connectError = null
-        connectJob?.cancel()
-        connectJob =
-            viewModelScope.launch {
-                try {
-                    // Remember this as the last launched connection (for auto-connect-on-startup).
-                    clientSettingRepository.putLastConnectionId(connection.id)
-                    message = "Connecting..."
-                    val sgeClient = sgeClientFactory.create()
-                    val result = sgeClient.autoConnect(sgeSettings, connection)
-                    sgeClient.close()
-                    when (result) {
-                        is AutoConnectResult.Failure -> {
-                            message = null
-                            connectError = result.reason
-                        }
-
-                        is AutoConnectResult.Success -> {
-                            connectToGame(result.credentials, connection.proxySettings, gameState)
-                        }
+        launchConnect("Connecting...") {
+            try {
+                // Remember this as the last launched connection (for auto-connect-on-startup).
+                clientSettingRepository.putLastConnectionId(connection.id)
+                val sgeClient = sgeClientFactory.create()
+                val result =
+                    try {
+                        sgeClient.autoConnect(sgeSettings, connection)
+                    } finally {
+                        sgeClient.close()
                     }
-                } catch (e: Exception) {
-                    ensureActive()
-                    logger.e(e) { "Error connecting to server" }
-                    gameState.setScreen(
-                        GameScreen.ErrorState(
-                            message = "Error: ${e.message}",
-                            returnTo = GameScreen.Dashboard,
-                        ),
-                    )
-                } finally {
-                    connectJob = null
-                    busy = false
+                when (result) {
+                    is AutoConnectResult.Failure -> connectError = result.reason
+                    is AutoConnectResult.Success -> connectToGame(result.credentials, connection.proxySettings, gameState)
                 }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                logger.e(e) { "Error connecting to server" }
+                gameState.setScreen(
+                    GameScreen.ErrorState(
+                        message = "Error: ${e.message}",
+                        returnTo = GameScreen.Dashboard,
+                    ),
+                )
             }
+        }
     }
 
     fun cancelConnect() {
@@ -274,7 +270,6 @@ class DashboardViewModel(
             clientSettingRepository.putLastConnectionId(connection.id)
             val result = connectToTelnet(connection, gameState)
             if (result is TelnetConnectResult.Failure) {
-                message = null
                 connectError = result.message
             }
         }
@@ -573,10 +568,5 @@ class DashboardViewModel(
         viewModelScope.launch {
             connectionRepository.deleteConnection(id)
         }
-    }
-
-    private companion object {
-        /** A connection given as a server and key on the command line goes direct, with no proxy. */
-        val NO_PROXY = ConnectionProxySettings(enabled = false, launchCommand = null, host = null, port = null)
     }
 }
