@@ -30,7 +30,7 @@ suspend fun testAppContainer(
             fileSystem = SystemFileSystem,
             builderFactory = { filename -> Room.databaseBuilder<PrefsDatabase>(name = filename) },
         )
-    return AppContainer(
+    return AppContainer.open(
         database = database,
         warlockDirs =
             WarlockDirs(

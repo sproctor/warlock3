@@ -55,28 +55,28 @@ class WarlockApplication : Application() {
         configDir.mkdirs()
 
         val databaseDirectory = Path(getDatabasePath("placeholder").parentFile!!.absolutePath)
-        // A database that cannot be opened throws SettingsUnreadableException, which is left to
-        // propagate: an uncaught exception out of onCreate is how an Android app declines to start,
-        // and starting anyway would mean saving empty settings over the real ones.
-        val database =
+        // Settings that cannot be read (the database or the config files) throw
+        // SettingsUnreadableException, which is left to propagate: an uncaught exception out of
+        // onCreate is how an Android app declines to start, and starting anyway would mean saving
+        // empty settings over the real ones.
+        appContainer =
             runBlocking {
-                openPrefsDatabase(
-                    directory = databaseDirectory,
+                val database =
+                    openPrefsDatabase(
+                        directory = databaseDirectory,
+                        fileSystem = SystemFileSystem,
+                        builderFactory = ::getPrefsDatabaseBuilder,
+                    )
+                // Loads the config files, runs the DB->TOML migration and seeds default macros.
+                AppContainer.open(
+                    database = database,
+                    warlockDirs = warlockDirs,
                     fileSystem = SystemFileSystem,
-                    builderFactory = ::getPrefsDatabaseBuilder,
+                    soundPlayer = AndroidSoundPlayer(),
+                    warlockProxyFactory = WarlockProxy.Factory { JavaProxy(it) },
+                    crashReporting = crashReporting,
                 )
             }
-
-        // AppContainer loads config, runs the DB->TOML migration, and seeds default macros on init.
-        appContainer =
-            AppContainer(
-                database = database,
-                warlockDirs = warlockDirs,
-                fileSystem = SystemFileSystem,
-                soundPlayer = AndroidSoundPlayer(),
-                warlockProxyFactory = WarlockProxy.Factory { JavaProxy(it) },
-                crashReporting = crashReporting,
-            )
         // Here rather than in the activity: it runs on the app's scope, so starting it on every
         // activity recreation (each rotation) would stack up another watcher each time.
         appContainer.observeSkin(Logger.withTag("WarlockApplication")) { path ->

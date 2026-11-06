@@ -65,27 +65,26 @@ object IosAppContainerProvider {
         val dbDir = warlockDirs.configDir
         NSFileManager.defaultManager.createDirectoryAtPath(dbDir, true, null, null)
 
-        // A database that cannot be opened throws SettingsUnreadableException, which is left to
-        // propagate rather than started around: coming up with empty settings would save them over
-        // the real ones.
-        val database =
-            runBlocking {
+        // Settings that cannot be read (the database or the config files) throw
+        // SettingsUnreadableException, which is left to propagate rather than started around:
+        // coming up with empty settings would save them over the real ones.
+        runBlocking {
+            val database =
                 openPrefsDatabase(
                     directory = Path(dbDir),
                     fileSystem = SystemFileSystem,
                     builderFactory = { filename -> Room.databaseBuilder<PrefsDatabase>(name = filename) },
                 )
-            }
-
-        // AppContainer loads config, runs the DB->TOML migration, and seeds default macros on init.
-        AppContainer(
-            database = database,
-            warlockDirs = warlockDirs,
-            fileSystem = SystemFileSystem,
-            soundPlayer = IosSoundPlayer(),
-            warlockProxyFactory = WarlockProxy.Factory { IosProxy(it) },
-            crashReporting = crashReporting,
-        )
+            // Loads the config files, runs the DB->TOML migration and seeds default macros.
+            AppContainer.open(
+                database = database,
+                warlockDirs = warlockDirs,
+                fileSystem = SystemFileSystem,
+                soundPlayer = IosSoundPlayer(),
+                warlockProxyFactory = WarlockProxy.Factory { IosProxy(it) },
+                crashReporting = crashReporting,
+            )
+        }
     }
 
     val sgeSettings: SgeSettings by lazy {

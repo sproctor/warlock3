@@ -184,14 +184,12 @@ private class WarlockCommand : CliktCommand() {
         // unreachable, not gone.
         val appContainer =
             try {
+                // Loads the config files, runs the DB->TOML migration and seeds default macros before
+                // any startup reads below (window size, release channel, auto-connect) touch them.
                 buildAppContainer(logger, crashReporting).also { container ->
                     container.observeSkin(logger) { path ->
                         File(path).takeIf { it.exists() }?.readBytes()
                     }
-                    // Load config files + run the DB->TOML migration + seed default macros before
-                    // any startup reads below (window size, release channel, auto-connect) touch
-                    // the config stores.
-                    runBlocking { container.initialize() }
                 }
             } catch (e: SettingsUnreadableException) {
                 reportUnreadableSettingsAndExit(e.problem, logger)
@@ -658,23 +656,22 @@ private class WarlockCommand : CliktCommand() {
             )
 
         println("Loading preferences from $configDir")
-        val database =
-            runBlocking {
+        return runBlocking {
+            val database =
                 openPrefsDatabase(
                     directory = databaseDirectory,
                     fileSystem = SystemFileSystem,
                     builderFactory = ::getPrefsDatabaseBuilder,
                 )
-            }
-
-        return AppContainer(
-            database = database,
-            warlockDirs = warlockDirs,
-            fileSystem = SystemFileSystem,
-            soundPlayer = DesktopSoundPlayer(warlockDirs),
-            warlockProxyFactory = { JavaProxy(it) },
-            crashReporting = crashReporting,
-        )
+            AppContainer.open(
+                database = database,
+                warlockDirs = warlockDirs,
+                fileSystem = SystemFileSystem,
+                soundPlayer = DesktopSoundPlayer(warlockDirs),
+                warlockProxyFactory = { JavaProxy(it) },
+                crashReporting = crashReporting,
+            )
+        }
     }
 
     /**
