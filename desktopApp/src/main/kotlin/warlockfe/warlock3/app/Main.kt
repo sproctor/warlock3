@@ -163,6 +163,11 @@ private class WarlockCommand : CliktCommand() {
         help = "Exit the client when the game connection disconnects",
     ).flag()
 
+    /**
+     * Starts the desktop app: crash reporting first, then the [AppContainer] with the user's
+     * settings loaded (or the "Warlock cannot start" window and an exit, when they can't be read),
+     * then a window for each game the command line or the last session asks for.
+     */
     @OptIn(FlowPreview::class, ExperimentalFoundationApi::class)
     override fun run() {
         val started = TimeSource.Monotonic.markNow()

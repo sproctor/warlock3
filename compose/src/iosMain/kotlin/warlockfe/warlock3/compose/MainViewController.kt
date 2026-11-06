@@ -9,6 +9,10 @@ import co.touchlab.kermit.Logger
 import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.core.prefs.SettingsUnreadableException
 
+/**
+ * The iOS app's root view controller: the app on the shared [AppContainer], or, when the settings
+ * could not be read, a screen saying so instead.
+ */
 @Suppress("ktlint:standard:function-naming")
 fun MainViewController() =
     ComposeUIViewController {

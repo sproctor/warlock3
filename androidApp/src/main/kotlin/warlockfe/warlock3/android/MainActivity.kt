@@ -23,6 +23,10 @@ import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.core.sge.SgeSettings
 
 class MainActivity : ComponentActivity() {
+    /**
+     * Shows the app on the container [WarlockApplication] opened, or, when the settings could not
+     * be read, a screen saying so instead.
+     */
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
 

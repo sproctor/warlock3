@@ -32,6 +32,11 @@ class WarlockApplication : Application() {
     var settingsProblem: SettingsProblem? = null
         private set
 
+    /**
+     * Starts crash reporting, then opens the [AppContainer] with the user's settings loaded, before
+     * any activity runs. Settings that can't be read leave no container and set [settingsProblem]
+     * instead, for [MainActivity] to show.
+     */
     override fun onCreate() {
         super.onCreate()
 
