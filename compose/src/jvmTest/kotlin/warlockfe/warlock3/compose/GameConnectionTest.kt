@@ -25,8 +25,6 @@ import warlockfe.warlock3.core.sge.StoredConnection
 import java.net.ServerSocket
 import java.nio.file.Files
 import java.util.concurrent.CopyOnWriteArrayList
-import kotlin.io.path.ExperimentalPathApi
-import kotlin.io.path.deleteRecursively
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -44,19 +42,19 @@ import kotlin.time.Duration.Companion.seconds
 @OptIn(ExperimentalCoroutinesApi::class)
 class GameConnectionTest {
     private lateinit var dir: java.nio.file.Path
-    private var container: AppContainer? = null
 
     @BeforeTest
     fun setUp() {
         dir = Files.createTempDirectory("game-connection-test")
     }
 
-    @OptIn(ExperimentalPathApi::class)
     @AfterTest
     fun tearDown() {
         Dispatchers.resetMain()
-        container?.database?.close()
-        dir.deleteRecursively()
+        // The database stays open: a game's window registry queries it from flows that closing the
+        // registry cancels but doesn't wait for, and a query still running when the database closes
+        // crashes the JVM in native SQLite. Its files can go with it; the open handles don't mind.
+        deleteTestDir(dir)
     }
 
     /** Records what it is handed, and closes it: nothing here needs the game to run. */
@@ -73,7 +71,7 @@ class GameConnectionTest {
     @Test
     fun aGameServerIsDialedAndHandedToTheStarterAndSoIsItsReconnect() =
         runBlocking {
-            val appContainer = testAppContainer(dir, Dispatchers.IO).also { container = it }
+            val appContainer = testAppContainer(dir, Dispatchers.IO)
             ServerSocket(0).use { server ->
                 val credentials = SimuGameCredentials(host = "127.0.0.1", port = server.localPort, key = "KEY")
                 val starter = RecordingStarter()
@@ -92,7 +90,7 @@ class GameConnectionTest {
     @Test
     fun aServerThatRefusesIsAFailureAndNothingIsStarted() =
         runBlocking {
-            val appContainer = testAppContainer(dir, Dispatchers.IO).also { container = it }
+            val appContainer = testAppContainer(dir, Dispatchers.IO)
             val closedPort = ServerSocket(0).use { it.localPort }
             val starter = RecordingStarter()
 
@@ -156,7 +154,7 @@ class GameConnectionTest {
     fun aProxyStillStartingUpIsTriedAgainAndAReconnectShutsTheOldOneFirst() =
         runBlocking {
             val proxyFactory = FakeProxyFactory()
-            val appContainer = testAppContainer(dir, Dispatchers.IO, proxyFactory).also { container = it }
+            val appContainer = testAppContainer(dir, Dispatchers.IO, proxyFactory)
             val port = ServerSocket(0).use { it.localPort }
             val started = CopyOnWriteArrayList<GameConnection>()
             // Keeps what it is handed open, as a game on screen would.
@@ -192,7 +190,7 @@ class GameConnectionTest {
     fun givingUpOnAProxyThatNeverListensShutsItDown() =
         runBlocking {
             val proxyFactory = FakeProxyFactory()
-            val appContainer = testAppContainer(dir, Dispatchers.IO, proxyFactory).also { container = it }
+            val appContainer = testAppContainer(dir, Dispatchers.IO, proxyFactory)
             val closedPort = ServerSocket(0).use { it.localPort }
             val starter = RecordingStarter()
 
@@ -216,7 +214,7 @@ class GameConnectionTest {
     fun aGameThatFailsToStartIsNotADialFailureAndIsNotRetried() =
         runBlocking {
             val proxyFactory = FakeProxyFactory()
-            val appContainer = testAppContainer(dir, Dispatchers.IO, proxyFactory).also { container = it }
+            val appContainer = testAppContainer(dir, Dispatchers.IO, proxyFactory)
             ServerSocket(0).use { server ->
                 var attempts = 0
                 val starter =
@@ -246,7 +244,7 @@ class GameConnectionTest {
     fun aReconnectThatFailsPutsItsReasonOnScreen() =
         runTest {
             Dispatchers.setMain(StandardTestDispatcher(testScheduler))
-            val appContainer = testAppContainer(dir, StandardTestDispatcher(testScheduler)).also { container = it }
+            val appContainer = testAppContainer(dir, StandardTestDispatcher(testScheduler))
             val windowRegistry = appContainer.windowRegistryFactory.create()
             val client =
                 appContainer.warlockClientFactory.createClient(

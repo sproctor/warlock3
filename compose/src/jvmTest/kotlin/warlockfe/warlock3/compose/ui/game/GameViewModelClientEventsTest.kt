@@ -13,6 +13,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import warlockfe.warlock3.compose.AppContainer
 import warlockfe.warlock3.compose.GameConnection
+import warlockfe.warlock3.compose.deleteTestDir
 import warlockfe.warlock3.compose.model.GameScreen
 import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.compose.testAppContainer
@@ -27,14 +28,11 @@ import warlockfe.warlock3.core.client.StreamLineFeed
 import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.client.WarlockMenuData
 import warlockfe.warlock3.core.compass.Direction
-import warlockfe.warlock3.core.prefs.PrefsDatabase
 import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.window.TextStream
 import warlockfe.warlock3.core.window.WindowInfo
 import warlockfe.warlock3.core.window.WindowRegistry
 import java.nio.file.Files
-import kotlin.io.path.ExperimentalPathApi
-import kotlin.io.path.deleteRecursively
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -55,19 +53,19 @@ import kotlin.time.Instant
 @OptIn(ExperimentalCoroutinesApi::class)
 class GameViewModelClientEventsTest {
     private lateinit var dir: java.nio.file.Path
-    private lateinit var database: PrefsDatabase
 
     @BeforeTest
     fun setUp() {
         dir = Files.createTempDirectory("game-view-model-events-test")
     }
 
-    @OptIn(ExperimentalPathApi::class)
     @AfterTest
     fun tearDown() {
         Dispatchers.resetMain()
-        if (::database.isInitialized) database.close()
-        dir.deleteRecursively()
+        // The database stays open: a game's window registry queries it from flows that closing the
+        // registry cancels but doesn't wait for, and a query still running when the database closes
+        // crashes the JVM in native SQLite. Its files can go with it; the open handles don't mind.
+        deleteTestDir(dir)
     }
 
     /**
@@ -147,8 +145,7 @@ class GameViewModelClientEventsTest {
         }
     }
 
-    private suspend fun appContainer(ioDispatcher: CoroutineDispatcher): AppContainer =
-        testAppContainer(dir, ioDispatcher).also { database = it.database }
+    private suspend fun appContainer(ioDispatcher: CoroutineDispatcher): AppContainer = testAppContainer(dir, ioDispatcher)
 
     @Test
     fun anEventSentTheMomentTheClientStartsReachesTheGameScreen() =

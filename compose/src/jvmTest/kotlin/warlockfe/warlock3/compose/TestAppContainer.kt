@@ -11,11 +11,13 @@ import warlockfe.warlock3.core.client.WarlockProxy
 import warlockfe.warlock3.core.prefs.PrefsDatabase
 import warlockfe.warlock3.core.util.SoundPlayer
 import warlockfe.warlock3.core.util.WarlockDirs
+import java.nio.file.FileSystemException
+import kotlin.io.path.ExperimentalPathApi
+import kotlin.io.path.deleteRecursively
 
 /**
  * A real [AppContainer] with all its files under [dir]: no sound, no crash reports, and no proxy
  * unless the test brings its own [warlockProxyFactory].
- * Close its [AppContainer.database] when done.
  */
 suspend fun testAppContainer(
     dir: java.nio.file.Path,
@@ -58,4 +60,22 @@ suspend fun testAppContainer(
             ),
         ioDispatcher = ioDispatcher,
     )
+}
+
+/**
+ * Deletes a test's [dir]. Work the test started on the IO dispatcher (a game's log, a settings
+ * write) can still be adding files as it goes, so a delete that finds the folder refilled is tried
+ * again for a little while.
+ */
+@OptIn(ExperimentalPathApi::class)
+fun deleteTestDir(dir: java.nio.file.Path) {
+    repeat(20) {
+        try {
+            dir.deleteRecursively()
+            return
+        } catch (_: FileSystemException) {
+            Thread.sleep(50)
+        }
+    }
+    dir.deleteRecursively()
 }

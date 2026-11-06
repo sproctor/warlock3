@@ -10,6 +10,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import warlockfe.warlock3.compose.ConnectToGameUseCase
+import warlockfe.warlock3.compose.GameConnectResult
 import warlockfe.warlock3.compose.GameStarter
 import warlockfe.warlock3.compose.model.GameScreen
 import warlockfe.warlock3.compose.model.GameState
@@ -145,10 +146,10 @@ class SgeViewModel(
 
     private suspend fun connectToGame(credentials: SimuGameCredentials) {
         // The wizard never goes through a proxy.
-        gameState.showFailure(
-            connectToGameUseCase(credentials, ConnectionProxySettings.NONE, gameStarter),
-            returnTo = GameScreen.NewGameState,
-        )
+        val result = connectToGameUseCase(credentials, ConnectionProxySettings.NONE, gameStarter)
+        if (result is GameConnectResult.Failure) {
+            gameState.showError(result.message, returnTo = GameScreen.NewGameState)
+        }
     }
 
     fun accountSelected(account: AccountEntity) {

@@ -175,10 +175,10 @@ class DashboardViewModel(
             is StartupConnection.Credentials -> {
                 val credentials = startup.credentials
                 launchConnect("Connecting to ${credentials.host}:${credentials.port}...") {
-                    gameState.showFailure(
-                        connectToGame(credentials, ConnectionProxySettings.NONE, gameStarter),
-                        returnTo = GameScreen.Dashboard,
-                    )
+                    val result = connectToGame(credentials, ConnectionProxySettings.NONE, gameStarter)
+                    if (result is GameConnectResult.Failure) {
+                        gameState.showError(result.message, returnTo = GameScreen.Dashboard)
+                    }
                 }
             }
 
@@ -250,22 +250,17 @@ class DashboardViewModel(
                     }
 
                     is AutoConnectResult.Success -> {
-                        gameState.showFailure(
-                            connectToGame(result.credentials, connection.proxySettings, gameStarter),
-                            returnTo = GameScreen.Dashboard,
-                        )
+                        val game = connectToGame(result.credentials, connection.proxySettings, gameStarter)
+                        if (game is GameConnectResult.Failure) {
+                            gameState.showError(game.message, returnTo = GameScreen.Dashboard)
+                        }
                     }
                 }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 logger.e(e) { "Error connecting to server" }
-                gameState.setScreen(
-                    GameScreen.ErrorState(
-                        message = "Error: ${e.message}",
-                        returnTo = GameScreen.Dashboard,
-                    ),
-                )
+                gameState.showError("Error: ${e.message}", returnTo = GameScreen.Dashboard)
             }
         }
     }

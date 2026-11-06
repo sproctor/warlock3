@@ -3,6 +3,7 @@ package warlockfe.warlock3.compose.ui.game
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
+import warlockfe.warlock3.compose.GameConnectResult
 import warlockfe.warlock3.compose.GameConnection
 import warlockfe.warlock3.compose.GameStarter
 import warlockfe.warlock3.compose.model.GameScreen
@@ -69,7 +70,10 @@ class GameViewModelFactory(
     ) {
         val reconnect: (suspend () -> Unit)? =
             connection.reconnect?.let { redial ->
-                { gameState.showFailure(redial(), returnTo) }
+                {
+                    val result = redial()
+                    if (result is GameConnectResult.Failure) gameState.showError(result.message, returnTo)
+                }
             }
         val viewModel =
             create(connection.client, connection.windowRegistry, reconnect) { stoppedScripts ->
