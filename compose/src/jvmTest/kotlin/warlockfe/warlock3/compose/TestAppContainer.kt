@@ -7,17 +7,22 @@ import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
 import warlockfe.warlock3.compose.crash.CrashReporter
 import warlockfe.warlock3.compose.crash.CrashReporting
+import warlockfe.warlock3.core.client.WarlockProxy
 import warlockfe.warlock3.core.prefs.PrefsDatabase
 import warlockfe.warlock3.core.util.SoundPlayer
 import warlockfe.warlock3.core.util.WarlockDirs
+import java.nio.file.FileSystemException
+import kotlin.io.path.ExperimentalPathApi
+import kotlin.io.path.deleteRecursively
 
 /**
- * A real [AppContainer] with all its files under [dir]: no sound, no proxy, no crash reports.
- * Close its [AppContainer.database] when done.
+ * A real [AppContainer] with all its files under [dir]: no sound, no crash reports, and no proxy
+ * unless the test brings its own [warlockProxyFactory].
  */
 suspend fun testAppContainer(
     dir: java.nio.file.Path,
     ioDispatcher: CoroutineDispatcher,
+    warlockProxyFactory: WarlockProxy.Factory = WarlockProxy.Factory { throw UnsupportedOperationException() },
 ): AppContainer {
     val database =
         openPrefsDatabase(
@@ -39,7 +44,7 @@ suspend fun testAppContainer(
             object : SoundPlayer {
                 override suspend fun playSound(filename: String): String? = null
             },
-        warlockProxyFactory = { throw UnsupportedOperationException() },
+        warlockProxyFactory = warlockProxyFactory,
         crashReporting =
             CrashReporting(
                 configDir = dir.toString(),
@@ -55,4 +60,22 @@ suspend fun testAppContainer(
             ),
         ioDispatcher = ioDispatcher,
     )
+}
+
+/**
+ * Deletes a test's [dir]. Work the test started on the IO dispatcher (a game's log, a settings
+ * write) can still be adding files as it goes, so a delete that finds the folder refilled is tried
+ * again for a little while.
+ */
+@OptIn(ExperimentalPathApi::class)
+fun deleteTestDir(dir: java.nio.file.Path) {
+    repeat(20) {
+        try {
+            dir.deleteRecursively()
+            return
+        } catch (_: FileSystemException) {
+            Thread.sleep(50)
+        }
+    }
+    dir.deleteRecursively()
 }

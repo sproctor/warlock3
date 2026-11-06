@@ -14,18 +14,17 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import kotlinx.io.IOException
 import warlockfe.warlock3.compose.AppContainer
+import warlockfe.warlock3.compose.ReplaySocket
+import warlockfe.warlock3.compose.deleteTestDir
 import warlockfe.warlock3.compose.model.GameScreen
 import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.compose.model.StartupConnection
 import warlockfe.warlock3.compose.testAppContainer
-import warlockfe.warlock3.core.client.WarlockSocket
 import warlockfe.warlock3.core.mudmobile.SyncStatus
 import warlockfe.warlock3.core.sge.SgeSettings
 import warlockfe.warlock3.core.sge.SimuGameCredentials
 import java.net.ServerSocket
 import java.nio.file.Files
-import kotlin.io.path.ExperimentalPathApi
-import kotlin.io.path.deleteRecursively
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -44,52 +43,26 @@ import kotlin.time.Duration.Companion.seconds
 @OptIn(ExperimentalCoroutinesApi::class)
 class StartupConnectionTest {
     private lateinit var dir: java.nio.file.Path
-    private var container: AppContainer? = null
 
     @BeforeTest
     fun setUp() {
         dir = Files.createTempDirectory("startup-connection-test")
     }
 
-    @OptIn(ExperimentalPathApi::class)
     @AfterTest
     fun tearDown() {
         Dispatchers.resetMain()
-        container?.database?.close()
-        dir.deleteRecursively()
-    }
-
-    /** A game log being replayed: [lines], then the end of the stream. */
-    private class ReplaySocket(
-        lines: List<String>,
-    ) : WarlockSocket {
-        private val remaining = ArrayDeque(lines)
-
-        override var isClosed = false
-
-        override suspend fun connect(
-            host: String,
-            port: Int,
-        ) = Unit
-
-        override suspend fun readLine(): String? = remaining.removeFirstOrNull()
-
-        override suspend fun readAvailable(min: Int): String? = readLine()
-
-        override fun ready(): Boolean = remaining.isNotEmpty()
-
-        override suspend fun write(text: String) = Unit
-
-        override fun close() {
-            isClosed = true
-        }
+        // The database stays open: a game's window registry queries it from flows that closing the
+        // registry cancels but doesn't wait for, and a query still running when the database closes
+        // crashes the JVM in native SQLite. Its files can go with it; the open handles don't mind.
+        deleteTestDir(dir)
     }
 
     private suspend fun dashboard(
         gameState: GameState,
         ioDispatcher: CoroutineDispatcher,
     ): Pair<AppContainer, DashboardViewModel> {
-        val appContainer = testAppContainer(dir, ioDispatcher).also { container = it }
+        val appContainer = testAppContainer(dir, ioDispatcher)
         val sgeSettings = SgeSettings(host = "127.0.0.1", port = 1, certificate = ByteArray(0), secure = false)
         return appContainer to appContainer.dashboardViewModelFactory.create(gameState, sgeSettings)
     }
@@ -126,7 +99,7 @@ class StartupConnectionTest {
     fun aReplayDoesNotStartTheSettingsSync() =
         runTest {
             Dispatchers.setMain(StandardTestDispatcher(testScheduler))
-            val appContainer = testAppContainer(dir, StandardTestDispatcher(testScheduler)).also { container = it }
+            val appContainer = testAppContainer(dir, StandardTestDispatcher(testScheduler))
             // A saved MUD Mobile account: the dashboard of a session of the user's would sync it.
             appContainer.clientSettings.putMudMobileToken("token")
             val gameState = GameState(StartupConnection.Stream { ReplaySocket(emptyList()) })

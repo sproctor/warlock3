@@ -35,6 +35,14 @@ class GameState(
             this@GameState.screen = screen
         }
     }
+
+    /** Shows the error screen with [message]; leaving it goes back to [returnTo]. */
+    suspend fun showError(
+        message: String,
+        returnTo: GameScreen,
+    ) {
+        setScreen(GameScreen.ErrorState(message, returnTo))
+    }
 }
 
 sealed interface GameScreen {

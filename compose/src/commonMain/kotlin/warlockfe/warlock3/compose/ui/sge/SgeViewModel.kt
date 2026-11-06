@@ -6,21 +6,19 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import co.touchlab.kermit.Logger
-import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import warlockfe.warlock3.compose.ConnectToGameUseCase
+import warlockfe.warlock3.compose.GameConnectResult
+import warlockfe.warlock3.compose.GameStarter
 import warlockfe.warlock3.compose.model.GameScreen
 import warlockfe.warlock3.compose.model.GameState
-import warlockfe.warlock3.compose.ui.game.GameViewModelFactory
-import warlockfe.warlock3.compose.ui.window.WindowRegistryFactory
-import warlockfe.warlock3.core.client.WarlockClientFactory
 import warlockfe.warlock3.core.prefs.models.AccountEntity
 import warlockfe.warlock3.core.prefs.repositories.AccountRepository
 import warlockfe.warlock3.core.prefs.repositories.ClientSettingRepository
 import warlockfe.warlock3.core.prefs.repositories.ConnectionRepository
+import warlockfe.warlock3.core.sge.ConnectionProxySettings
 import warlockfe.warlock3.core.sge.SgeCharacter
 import warlockfe.warlock3.core.sge.SgeClientFactory
 import warlockfe.warlock3.core.sge.SgeError
@@ -28,7 +26,6 @@ import warlockfe.warlock3.core.sge.SgeEvent
 import warlockfe.warlock3.core.sge.SgeGame
 import warlockfe.warlock3.core.sge.SgeSettings
 import warlockfe.warlock3.core.sge.SimuGameCredentials
-import warlockfe.warlock3.wrayth.network.NetworkSocket
 
 // FIXME: This needs some re-organization
 class SgeViewModel(
@@ -37,11 +34,10 @@ class SgeViewModel(
     private val clientSettingRepository: ClientSettingRepository,
     private val accountRepository: AccountRepository,
     private val connectionRepository: ConnectionRepository,
-    private val warlockClientFactory: WarlockClientFactory,
     sgeClientFactory: SgeClientFactory,
-    private val gameViewModelFactory: GameViewModelFactory,
-    private val windowRegistryFactory: WindowRegistryFactory,
-    private val ioDispatcher: CoroutineDispatcher,
+    private val connectToGameUseCase: ConnectToGameUseCase,
+    // Puts the game the login ends in on this window's screen.
+    private val gameStarter: GameStarter,
 ) : ViewModel() {
     private val logger = Logger.withTag("SgeViewModel")
 
@@ -149,35 +145,10 @@ class SgeViewModel(
     }
 
     private suspend fun connectToGame(credentials: SimuGameCredentials) {
-        withContext(ioDispatcher) {
-            try {
-                val streamRegistry = windowRegistryFactory.create()
-                val socket = NetworkSocket(ioDispatcher)
-                socket.connect(credentials.host, credentials.port)
-                val sfClient =
-                    warlockClientFactory.createClient(
-                        windowRegistry = streamRegistry,
-                        socket = socket,
-                    )
-                // Shows the game itself, and closes the client if it can't: backing out of the wizard
-                // clears this view model, cancelling us, and could otherwise strand a live client.
-                gameViewModelFactory.connect(
-                    client = sfClient,
-                    key = credentials.key,
-                    windowRegistry = streamRegistry,
-                    gameState = gameState,
-                    // Reuse the same credentials (and key) on reconnect.
-                    reconnect = { connectToGame(credentials) },
-                )
-            } catch (e: Exception) {
-                ensureActive()
-                gameState.setScreen(
-                    GameScreen.ErrorState(
-                        message = "Unknown host: ${e.message}",
-                        returnTo = GameScreen.NewGameState,
-                    ),
-                )
-            }
+        // The wizard never goes through a proxy.
+        val result = connectToGameUseCase(credentials, ConnectionProxySettings.NONE, gameStarter)
+        if (result is GameConnectResult.Failure) {
+            gameState.showError(result.message, returnTo = GameScreen.NewGameState)
         }
     }
 
