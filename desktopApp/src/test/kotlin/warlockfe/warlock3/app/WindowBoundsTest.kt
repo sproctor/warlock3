@@ -2,7 +2,9 @@ package warlockfe.warlock3.app
 
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.WindowPlacement
 import androidx.compose.ui.window.WindowPosition
+import androidx.compose.ui.window.WindowState
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
@@ -13,6 +15,7 @@ import kotlinx.coroutines.test.runTest
 import warlockfe.warlock3.core.prefs.repositories.MainWindowBounds
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -129,36 +132,102 @@ class WindowBoundsTest {
             }
         }
 
-    private fun placement(sizeFromCommandLine: Boolean) =
-        GameWindowPlacement(
-            size = DpSize(640.dp, 480.dp),
-            position = WindowPosition.PlatformDefault,
-            sizeFromCommandLine = sizeFromCommandLine,
-        )
+    @Test
+    fun `saves no character bounds while the window has no position`() =
+        runTest {
+            val store = FakeStore()
+            val snapshots = MutableStateFlow(WindowSnapshot("a", bounds(800, 600), positioned = false))
+            saving(snapshots, store) {
+                advanceTimeBy(pastDelay)
+                assertEquals(listOf(800), store.widths)
+                assertEquals(emptyList(), store.characterSaves)
+
+                snapshots.value = WindowSnapshot("a", bounds(800, 600, x = 10, y = 20))
+                advanceTimeBy(pastDelay)
+                assertEquals(listOf("a" to bounds(800, 600, x = 10, y = 20)), store.characterSaves)
+            }
+        }
+
+    @Test
+    fun `a move alone does not save the size again`() =
+        runTest {
+            val store = FakeStore()
+            val snapshots = MutableStateFlow(WindowSnapshot(null, bounds(800, 600)))
+            saving(snapshots, store) {
+                advanceTimeBy(pastDelay)
+                snapshots.value = WindowSnapshot(null, bounds(800, 600, x = 50, y = 50))
+                advanceTimeBy(pastDelay)
+                assertEquals(listOf(800), store.widths)
+                assertEquals(listOf(600), store.heights)
+            }
+        }
+
+    private fun placement(
+        sizeFromCommandLine: Boolean = false,
+        positionFromCommandLine: Boolean = false,
+    ) = GameWindowPlacement(
+        size = DpSize(640.dp, 480.dp),
+        position = WindowPosition.PlatformDefault,
+        sizeFromCommandLine = sizeFromCommandLine,
+        positionFromCommandLine = positionFromCommandLine,
+    )
 
     @Test
     fun `restores a character's saved bounds`() =
         runTest {
             val store = FakeStore().apply { characterBounds["a"] = bounds(1000, 700, x = 5, y = 6) }
             assertEquals(
-                bounds(1000, 700, x = 5, y = 6),
-                characterBoundsToRestore("a", placement(sizeFromCommandLine = false), store),
+                RestoredBounds(DpSize(1000.dp, 700.dp), WindowPosition(5.dp, 6.dp)),
+                characterBoundsToRestore("a", placement(), store),
             )
         }
 
     @Test
-    fun `a size from the command line wins over the character's`() =
+    fun `a size or position from the command line wins over the character's`() =
         runTest {
-            val store = FakeStore().apply { characterBounds["a"] = bounds(1000, 700) }
-            assertNull(characterBoundsToRestore("a", placement(sizeFromCommandLine = true), store))
+            val store = FakeStore().apply { characterBounds["a"] = bounds(1000, 700, x = 5, y = 6) }
+            assertEquals(
+                RestoredBounds(size = null, position = WindowPosition(5.dp, 6.dp)),
+                characterBoundsToRestore("a", placement(sizeFromCommandLine = true), store),
+            )
+            assertEquals(
+                RestoredBounds(size = DpSize(1000.dp, 700.dp), position = null),
+                characterBoundsToRestore("a", placement(positionFromCommandLine = true), store),
+            )
+            assertNull(
+                characterBoundsToRestore(
+                    "a",
+                    placement(sizeFromCommandLine = true, positionFromCommandLine = true),
+                    store,
+                ),
+            )
         }
 
     @Test
     fun `restores nothing without a character or with unusable bounds`() =
         runTest {
             val store = FakeStore().apply { characterBounds["small"] = bounds(1000, MIN_WINDOW_DIMENSION - 1) }
-            assertNull(characterBoundsToRestore(null, placement(sizeFromCommandLine = false), store))
-            assertNull(characterBoundsToRestore("small", placement(sizeFromCommandLine = false), store))
-            assertNull(characterBoundsToRestore("unknown", placement(sizeFromCommandLine = false), store))
+            assertNull(characterBoundsToRestore(null, placement(), store))
+            assertNull(characterBoundsToRestore("small", placement(), store))
+            assertNull(characterBoundsToRestore("unknown", placement(), store))
         }
+
+    @Test
+    fun `a new window takes a normal opener's size`() {
+        val opener = WindowState(placement = WindowPlacement.Floating, size = DpSize(900.dp, 700.dp))
+        val placement = newWindowPlacement(opener, defaultSize = DpSize(640.dp, 480.dp))
+        assertEquals(DpSize(900.dp, 700.dp), placement.size)
+        assertEquals(WindowPosition.PlatformDefault, placement.position)
+        assertFalse(placement.sizeFromCommandLine)
+        assertFalse(placement.positionFromCommandLine)
+    }
+
+    @Test
+    fun `a new window opened from a maximized or fullscreen one takes the default size`() {
+        for (openerPlacement in listOf(WindowPlacement.Maximized, WindowPlacement.Fullscreen)) {
+            val opener = WindowState(placement = openerPlacement, size = DpSize(2560.dp, 1440.dp))
+            val placement = newWindowPlacement(opener, defaultSize = DpSize(640.dp, 480.dp))
+            assertEquals(DpSize(640.dp, 480.dp), placement.size, "opened from $openerPlacement")
+        }
+    }
 }

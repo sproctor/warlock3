@@ -144,9 +144,8 @@ private class WarlockCommand : CliktCommand() {
                 secure = sgeSecure,
             )
         val startupPlacement = windowPlacement(clientSettings)
-        // Windows opened from the menu, which open at the size of the window they were opened from
-        // and wherever the platform puts them. Startup windows aren't here: they take
-        // [startupPlacement].
+        // Windows opened from the menu (see [newWindowPlacement]). Startup windows aren't here: they
+        // take [startupPlacement].
         val openedPlacements = mutableMapOf<GameState, GameWindowPlacement>()
 
         val games =
@@ -242,15 +241,10 @@ private class WarlockCommand : CliktCommand() {
                                 } else {
                                     null
                                 },
-                            onOpenNewWindow = { size ->
+                            onOpenNewWindow = { opener ->
                                 // A manually opened window shows the dashboard; never auto-connect into it.
                                 val newGame = GameState(startupConnection = null)
-                                openedPlacements[newGame] =
-                                    GameWindowPlacement(
-                                        size = size,
-                                        position = WindowPosition.PlatformDefault,
-                                        sizeFromCommandLine = false,
-                                    )
+                                openedPlacements[newGame] = newWindowPlacement(opener, startupPlacement.size)
                                 games.add(newGame)
                             },
                             showUpdateDialog = { showUpdateDialog = true },
@@ -278,6 +272,7 @@ private class WarlockCommand : CliktCommand() {
             size = DpSize((openWidth ?: 640).dp, (openHeight ?: 480).dp),
             position = position,
             sizeFromCommandLine = width != null || height != null,
+            positionFromCommandLine = positionX != null && positionY != null,
         )
     }
 

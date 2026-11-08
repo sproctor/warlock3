@@ -45,7 +45,8 @@ import warlockfe.warlock3.core.sge.SgeSettings
  *   window should.
  * @param onDisconnect when not null, the window closes as soon as its connection drops (e.g. an
  *   input file replayed to EOF) instead of offering to reconnect, and this runs first.
- * @param onOpenNewWindow opens another game window, passing this window's current size for it to open at.
+ * @param onOpenNewWindow opens another game window, passing this window's state for it to take its
+ *   size from (see [newWindowPlacement]).
  */
 @Composable
 internal fun NucleusApplicationScope.GameWindow(
@@ -60,7 +61,7 @@ internal fun NucleusApplicationScope.GameWindow(
     showCrashReportingNotice: Boolean,
     onCrashReportingNoticeDismiss: () -> Unit,
     onDisconnect: (() -> Unit)?,
-    onOpenNewWindow: (size: DpSize) -> Unit,
+    onOpenNewWindow: (opener: WindowState) -> Unit,
     showUpdateDialog: () -> Unit,
 ) {
     val windowState =
@@ -144,7 +145,7 @@ internal fun NucleusApplicationScope.GameWindow(
                 appContainer = appContainer,
                 gameState = gameState,
                 games = games,
-                openNewWindow = { onOpenNewWindow(windowState.size) },
+                openNewWindow = { onOpenNewWindow(windowState) },
                 showUpdateDialog = showUpdateDialog,
                 sgeSettings = sgeSettings,
             )
