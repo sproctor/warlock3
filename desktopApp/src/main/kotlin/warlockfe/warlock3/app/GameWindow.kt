@@ -9,27 +9,21 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.WindowState
 import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import dev.nucleusframework.application.DecoratedWindow
 import dev.nucleusframework.application.NucleusApplicationScope
-import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import warlockfe.warlock3.compose.AppContainer
 import warlockfe.warlock3.compose.desktop.ui.game.DesktopDockHost
@@ -41,23 +35,7 @@ import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.compose.model.SkinObject
 import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.compose.util.rememberSafeClipboard
-import warlockfe.warlock3.core.prefs.repositories.MainWindowBounds
 import warlockfe.warlock3.core.sge.SgeSettings
-import kotlin.time.Duration.Companion.seconds
-
-/** The smallest width or height, in dp, that a game window opens at or has its size saved from. */
-internal const val MIN_WINDOW_DIMENSION = 240
-
-/** How a game window opens, from the command line and the size the last session saved. */
-internal class GameWindowPlacement(
-    val size: DpSize,
-    val position: WindowPosition,
-    /**
-     * The command line set the size, so it wins over the size saved for the character that
-     * connects in the window.
-     */
-    val sizeFromCommandLine: Boolean,
-)
 
 /**
  * One game's top-level window, with the windows torn off its dock beside it. Closing it closes its
@@ -67,6 +45,7 @@ internal class GameWindowPlacement(
  *   window should.
  * @param onDisconnect when not null, the window closes as soon as its connection drops (e.g. an
  *   input file replayed to EOF) instead of offering to reconnect, and this runs first.
+ * @param onOpenNewWindow opens another game window, passing this window's current size for it to open at.
  */
 @Composable
 internal fun NucleusApplicationScope.GameWindow(
@@ -81,6 +60,7 @@ internal fun NucleusApplicationScope.GameWindow(
     showCrashReportingNotice: Boolean,
     onCrashReportingNoticeDismiss: () -> Unit,
     onDisconnect: (() -> Unit)?,
+    onOpenNewWindow: (size: DpSize) -> Unit,
     showUpdateDialog: () -> Unit,
 ) {
     val windowState =
@@ -164,18 +144,15 @@ internal fun NucleusApplicationScope.GameWindow(
                 appContainer = appContainer,
                 gameState = gameState,
                 games = games,
-                openNewWindow = {
-                    // A manually opened window shows the dashboard; never auto-connect into it.
-                    games.add(GameState(startupConnection = null))
-                },
+                openNewWindow = { onOpenNewWindow(windowState.size) },
                 showUpdateDialog = showUpdateDialog,
                 sgeSettings = sgeSettings,
             )
             WindowBoundsPersistence(
                 windowState = windowState,
                 characterId = connectedCharacter?.id,
-                restoreCharacterBounds = !placement.sizeFromCommandLine,
-                appContainer = appContainer,
+                placement = placement,
+                store = remember(appContainer) { appContainer.windowBoundsStore() },
             )
         }
     }
@@ -186,64 +163,6 @@ internal fun NucleusApplicationScope.GameWindow(
         viewModel = connectedScreen?.viewModel,
         skin = skin,
     )
-}
-
-/**
- * Saves the window's size as the size new windows open at, and its bounds as the connected
- * character's, each once the window has held still for a moment. When a character connects, its
- * saved bounds are restored, unless [restoreCharacterBounds] is false.
- */
-@OptIn(FlowPreview::class)
-@Composable
-private fun WindowBoundsPersistence(
-    windowState: WindowState,
-    characterId: String?,
-    restoreCharacterBounds: Boolean,
-    appContainer: AppContainer,
-) {
-    val clientSettings = appContainer.clientSettings
-    val characterSettings = appContainer.characterSettingsRepository
-    LaunchedEffect(windowState, characterId) {
-        if (!restoreCharacterBounds) return@LaunchedEffect
-        if (characterId == null) return@LaunchedEffect
-        val bounds = characterSettings.getMainWindowBounds(characterId) ?: return@LaunchedEffect
-        if (bounds.width >= MIN_WINDOW_DIMENSION && bounds.height >= MIN_WINDOW_DIMENSION) {
-            windowState.size = DpSize(bounds.width.dp, bounds.height.dp)
-            windowState.position = WindowPosition(bounds.x.dp, bounds.y.dp)
-        }
-    }
-    LaunchedEffect(windowState) {
-        snapshotFlow { windowState.size }
-            .debounce(2.seconds)
-            .onEach { size ->
-                val width = size.width.value.toInt()
-                if (width >= MIN_WINDOW_DIMENSION) {
-                    clientSettings.putWidth(width)
-                }
-                val height = size.height.value.toInt()
-                if (height >= MIN_WINDOW_DIMENSION) {
-                    clientSettings.putHeight(height)
-                }
-            }.launchIn(this)
-    }
-    LaunchedEffect(windowState, characterId) {
-        if (characterId == null) return@LaunchedEffect
-        snapshotFlow {
-            val position = windowState.position
-            val size = windowState.size
-            MainWindowBounds(
-                x = position.x.value.toInt(),
-                y = position.y.value.toInt(),
-                width = size.width.value.toInt(),
-                height = size.height.value.toInt(),
-            )
-        }.debounce(2.seconds)
-            .onEach { bounds ->
-                if (bounds.width >= MIN_WINDOW_DIMENSION && bounds.height >= MIN_WINDOW_DIMENSION) {
-                    characterSettings.saveMainWindowBounds(characterId, bounds)
-                }
-            }.launchIn(this)
-    }
 }
 
 internal fun GameState.getTitle(): Flow<String> =

@@ -3,6 +3,7 @@ package warlockfe.warlock3.app
 import androidx.compose.foundation.ComposeFoundationFlags
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -58,12 +59,13 @@ import java.io.File
 import kotlin.system.exitProcess
 import kotlin.time.TimeSource
 
-private val version = NucleusApp.version?.takeIf { it.isNotBlank() }
-
 // Nucleus bakes the version into the app's generated properties, including for `./gradlew run`,
-// where it is "0.0.0-dev". Treat any 0.0.0.x (or absent) version as a dev build with no real
-// release behind it.
-private val isDev = version?.startsWith("0.0.0") ?: true
+// where it is "0.0.0-dev". An absent one is treated the same way, so the window, --version, crash
+// reports and the updater all name the same version.
+private val appVersion = NucleusApp.version?.takeIf { it.isNotBlank() } ?: "0.0.0-dev"
+
+// Any 0.0.0.x version is a dev build with no real release behind it.
+private val isDev = appVersion.startsWith("0.0.0")
 
 private class WarlockCommand : CliktCommand() {
     val port: Int? by option("-p", "--port", help = "Port to connect to").int()
@@ -141,14 +143,18 @@ private class WarlockCommand : CliktCommand() {
                 certificate = runBlocking { Res.readBytes("files/simu.pem") },
                 secure = sgeSecure,
             )
-        val placement = windowPlacement(clientSettings)
+        val startupPlacement = windowPlacement(clientSettings)
+        // Windows opened from the menu, which open at the size of the window they were opened from
+        // and wherever the platform puts them. Startup windows aren't here: they take
+        // [startupPlacement].
+        val openedPlacements = mutableMapOf<GameState, GameWindowPlacement>()
 
         val games =
             mutableStateListOf<GameState>().apply {
                 addAll(createInitialGameStates(appContainer, credentials, logger))
             }
 
-        val updater = buildUpdater(currentVersion = version ?: "0.0.0", clientSettings = clientSettings)
+        val updater = buildUpdater(appVersion = appVersion, clientSettings = clientSettings)
         val updateSupported = updater.isUpdateSupported()
 
         // Not in the scripted modes (replays, benchmarks), where nobody is there to answer and a
@@ -215,15 +221,18 @@ private class WarlockCommand : CliktCommand() {
 
                 games.forEach { gameState ->
                     key(gameState) {
+                        DisposableEffect(gameState) {
+                            onDispose { openedPlacements.remove(gameState) }
+                        }
                         GameWindow(
                             gameState = gameState,
                             games = games,
                             appContainer = appContainer,
                             sgeSettings = sgeSettings,
-                            placement = placement,
+                            placement = openedPlacements[gameState] ?: startupPlacement,
                             icon = appIcon,
                             skin = skin,
-                            warlockVersion = version ?: "Development",
+                            warlockVersion = appVersion,
                             showCrashReportingNotice =
                                 crashReportingConsent == null && !crashNoticeClosed && gameState == games.first(),
                             onCrashReportingNoticeDismiss = { crashNoticeClosed = true },
@@ -233,6 +242,17 @@ private class WarlockCommand : CliktCommand() {
                                 } else {
                                     null
                                 },
+                            onOpenNewWindow = { size ->
+                                // A manually opened window shows the dashboard; never auto-connect into it.
+                                val newGame = GameState(startupConnection = null)
+                                openedPlacements[newGame] =
+                                    GameWindowPlacement(
+                                        size = size,
+                                        position = WindowPosition.PlatformDefault,
+                                        sizeFromCommandLine = false,
+                                    )
+                                games.add(newGame)
+                            },
                             showUpdateDialog = { showUpdateDialog = true },
                         )
                     }
@@ -242,8 +262,8 @@ private class WarlockCommand : CliktCommand() {
     }
 
     /**
-     * Where game windows open and how big: the command line's size and position when it gives them,
-     * otherwise the size the last session saved.
+     * Where the startup windows open and how big: the command line's size and position when it gives
+     * them, otherwise the size the last session saved.
      */
     private fun windowPlacement(clientSettings: ClientSettingRepository): GameWindowPlacement {
         val openWidth = width ?: runBlocking { clientSettings.getWidth() }?.takeIf { it >= MIN_WINDOW_DIMENSION }
@@ -304,7 +324,7 @@ private class WarlockCommand : CliktCommand() {
             reporter =
                 SentryCrashReporter(
                     platform = "desktop",
-                    version = version ?: "unknown",
+                    version = appVersion,
                     isRelease = !isDev,
                 ),
         ).also { it.startIfConsented() }
@@ -396,7 +416,7 @@ private class WarlockCommand : CliktCommand() {
 
 fun main(args: Array<String>) =
     WarlockCommand()
-        .versionOption(version ?: "Development")
+        .versionOption(appVersion)
         // Nucleus packs the Linux AppImage via electron-builder, whose AppRun injects --no-sandbox
         // when the kernel blocks unprivileged user namespaces (Ubuntu 24.04+ default), assuming an
         // Electron binary. We're a JVM app with no sandbox to disable, so drop the flag rather than

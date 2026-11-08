@@ -37,16 +37,16 @@ import java.io.File
 
 /** An updater for every release channel the user's setting says to check, from Warlock's GitHub releases. */
 internal fun buildUpdater(
-    currentVersion: String,
+    appVersion: String,
     clientSettings: ClientSettingRepository,
 ): ChannelUpdater {
     val channelSetting = runBlocking { clientSettings.getReleaseChannel() }
     return ChannelUpdater(
-        channelSetting.channelsToCheck(currentVersion).map { channelName ->
+        channelSetting.channelsToCheck(appVersion).map { channelName ->
             NucleusUpdater {
                 provider = GitHubProvider(owner = "sproctor", repo = "warlock3")
                 channel = channelName
-                this.currentVersion = currentVersion
+                currentVersion = appVersion
             }
         },
     )
@@ -72,22 +72,21 @@ internal fun UpdatePrompt(
 
     if (checkOnLaunch) {
         LaunchedEffect(Unit) {
-            withContext(Dispatchers.IO) {
-                when (val result = updater.checkForUpdates()) {
-                    is UpdateResult.Available -> {
-                        availableUpdate = result.info
-                        if (updateSupported && !clientSettings.getIgnoreUpdates()) {
-                            currentOnShowDialogChange(true)
-                        }
+            // Only the network check runs off the main thread; the state it leads to is set here.
+            when (val result = withContext(Dispatchers.IO) { updater.checkForUpdates() }) {
+                is UpdateResult.Available -> {
+                    availableUpdate = result.info
+                    if (updateSupported && !clientSettings.getIgnoreUpdates()) {
+                        currentOnShowDialogChange(true)
                     }
+                }
 
-                    is UpdateResult.NotAvailable -> {
-                        availableUpdate = null
-                    }
+                is UpdateResult.NotAvailable -> {
+                    availableUpdate = null
+                }
 
-                    is UpdateResult.Error -> {
-                        logger.e(result.exception) { "Update check failed" }
-                    }
+                is UpdateResult.Error -> {
+                    logger.e(result.exception) { "Update check failed" }
                 }
             }
         }
