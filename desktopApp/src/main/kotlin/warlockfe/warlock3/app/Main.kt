@@ -271,7 +271,8 @@ private class WarlockCommand : CliktCommand() {
         return GameWindowPlacement(
             size = DpSize((openWidth ?: 640).dp, (openHeight ?: 480).dp),
             position = position,
-            sizeFromCommandLine = width != null || height != null,
+            widthFromCommandLine = width != null,
+            heightFromCommandLine = height != null,
             positionFromCommandLine = positionX != null && positionY != null,
         )
     }

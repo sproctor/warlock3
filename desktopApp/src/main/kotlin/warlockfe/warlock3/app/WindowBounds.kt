@@ -30,10 +30,12 @@ internal class GameWindowPlacement(
     val size: DpSize,
     val position: WindowPosition,
     /**
-     * The command line set the size, so it wins over the size saved for the character that
+     * The command line set the width, so it wins over the width saved for the character that
      * connects in the window.
      */
-    val sizeFromCommandLine: Boolean,
+    val widthFromCommandLine: Boolean,
+    /** The command line set the height; as [widthFromCommandLine]. */
+    val heightFromCommandLine: Boolean,
     /**
      * The command line set the position, so it wins over the position saved for the character that
      * connects in the window.
@@ -53,20 +55,37 @@ internal fun newWindowPlacement(
     GameWindowPlacement(
         size = if (opener.placement == WindowPlacement.Floating) opener.size else defaultSize,
         position = WindowPosition.PlatformDefault,
-        sizeFromCommandLine = false,
+        widthFromCommandLine = false,
+        heightFromCommandLine = false,
         positionFromCommandLine = false,
     )
 
-/**
- * A window's bounds at one moment, and the character connected in it, if any. [positioned] is false
- * while the window has no absolute position yet (still where the platform put it), when the x and y
- * in [bounds] mean nothing.
- */
+/** A window's bounds and placement at one moment, and the character connected in it, if any. */
 internal data class WindowSnapshot(
     val characterId: String?,
     val bounds: MainWindowBounds,
-    val positioned: Boolean = true,
+    val placement: WindowPlacement,
 )
+
+/**
+ * This window's [WindowSnapshot] now. The position is left out (null x and y) while the window has
+ * none of its own: still where the platform put it, or on Wayland, which never says where a window
+ * is. Its x and y are then Dp.Unspecified (NaN), which would save as 0.
+ */
+internal fun WindowState.snapshot(characterId: String?): WindowSnapshot {
+    val absolute = position as? WindowPosition.Absolute
+    return WindowSnapshot(
+        characterId = characterId,
+        bounds =
+            MainWindowBounds(
+                x = absolute?.x?.value?.toInt(),
+                y = absolute?.y?.value?.toInt(),
+                width = size.width.value.toInt(),
+                height = size.height.value.toInt(),
+            ),
+        placement = placement,
+    )
+}
 
 /** Where window sizes and per-character window bounds are kept. */
 internal interface WindowBoundsStore {
@@ -76,6 +95,7 @@ internal interface WindowBoundsStore {
 
     suspend fun getCharacterBounds(characterId: String): MainWindowBounds?
 
+    /** Saves [bounds] as [characterId]'s; with null x and y, keeps the position saved before. */
     suspend fun putCharacterBounds(
         characterId: String,
         bounds: MainWindowBounds,
@@ -98,20 +118,24 @@ internal fun AppContainer.windowBoundsStore(): WindowBoundsStore =
 
 /**
  * Saves a window's size as the size new windows open at, and its bounds as the connected
- * character's, each once the window has held still for [WINDOW_BOUNDS_SAVE_DELAY]. A dimension below
- * [MIN_WINDOW_DIMENSION] is never saved, nor a character's bounds while the window has no position.
- * Runs until cancelled.
+ * character's, each once the window has held still for [WINDOW_BOUNDS_SAVE_DELAY]. Nothing is saved
+ * while the window is maximized or fullscreen, whose size is the screen's, and a dimension below
+ * [MIN_WINDOW_DIMENSION] never is. The size the window opened at, [openingSize], is not saved as
+ * the default until the window changes it: it is either saved already or came from the command
+ * line, which is for that launch only. Runs until cancelled.
  */
 @OptIn(FlowPreview::class)
 internal suspend fun saveWindowBounds(
     snapshots: Flow<WindowSnapshot>,
     store: WindowBoundsStore,
+    openingSize: DpSize,
 ) {
-    var savedSize: Pair<Int, Int>? = null
+    var savedSize = openingSize.width.value.toInt() to openingSize.height.value.toInt()
     snapshots
         .distinctUntilChanged()
         .debounce(WINDOW_BOUNDS_SAVE_DELAY)
-        .collect { (characterId, bounds, positioned) ->
+        .collect { (characterId, bounds, placement) ->
+            if (placement != WindowPlacement.Floating) return@collect
             // A move alone leaves the size as it was saved.
             val size = bounds.width to bounds.height
             if (size != savedSize) {
@@ -123,7 +147,7 @@ internal suspend fun saveWindowBounds(
                     store.putDefaultHeight(bounds.height)
                 }
             }
-            if (characterId != null && positioned && bounds.isUsable()) {
+            if (characterId != null && bounds.isUsable()) {
                 store.putCharacterBounds(characterId, bounds)
             }
         }
@@ -137,7 +161,7 @@ internal data class RestoredBounds(
 
 /**
  * The parts of the bounds saved for [characterId] that its window should take, or null to leave the
- * window as it is. A size or position the command line gave wins over the saved one.
+ * window as it is. A width, height or position the command line gave wins over the saved one.
  */
 internal suspend fun characterBoundsToRestore(
     characterId: String?,
@@ -145,12 +169,21 @@ internal suspend fun characterBoundsToRestore(
     store: WindowBoundsStore,
 ): RestoredBounds? {
     if (characterId == null) return null
-    if (placement.sizeFromCommandLine && placement.positionFromCommandLine) return null
     val bounds = store.getCharacterBounds(characterId)?.takeIf { it.isUsable() } ?: return null
-    return RestoredBounds(
-        size = DpSize(bounds.width.dp, bounds.height.dp).takeUnless { placement.sizeFromCommandLine },
-        position = WindowPosition(bounds.x.dp, bounds.y.dp).takeUnless { placement.positionFromCommandLine },
-    )
+    val size =
+        if (placement.widthFromCommandLine && placement.heightFromCommandLine) {
+            null
+        } else {
+            DpSize(
+                width = if (placement.widthFromCommandLine) placement.size.width else bounds.width.dp,
+                height = if (placement.heightFromCommandLine) placement.size.height else bounds.height.dp,
+            )
+        }
+    val x = bounds.x
+    val y = bounds.y
+    val position =
+        if (placement.positionFromCommandLine || x == null || y == null) null else WindowPosition(x.dp, y.dp)
+    return if (size == null && position == null) null else RestoredBounds(size, position)
 }
 
 private fun MainWindowBounds.isUsable() = width >= MIN_WINDOW_DIMENSION && height >= MIN_WINDOW_DIMENSION
@@ -174,24 +207,9 @@ internal fun WindowBoundsPersistence(
     val currentCharacterId by rememberUpdatedState(characterId)
     LaunchedEffect(windowState, store) {
         saveWindowBounds(
-            snapshots =
-                snapshotFlow {
-                    val position = windowState.position
-                    val size = windowState.size
-                    WindowSnapshot(
-                        characterId = currentCharacterId,
-                        // Until then, x and y are Dp.Unspecified (NaN), which would save as 0.
-                        positioned = position is WindowPosition.Absolute,
-                        bounds =
-                            MainWindowBounds(
-                                x = position.x.value.toInt(),
-                                y = position.y.value.toInt(),
-                                width = size.width.value.toInt(),
-                                height = size.height.value.toInt(),
-                            ),
-                    )
-                },
+            snapshots = snapshotFlow { windowState.snapshot(currentCharacterId) },
             store = store,
+            openingSize = placement.size,
         )
     }
 }

@@ -49,17 +49,24 @@ class WindowBoundsTest {
     private fun bounds(
         width: Int,
         height: Int,
-        x: Int = 0,
-        y: Int = 0,
+        x: Int? = 0,
+        y: Int? = 0,
     ) = MainWindowBounds(x = x, y = y, width = width, height = height)
+
+    private fun snapshot(
+        characterId: String?,
+        bounds: MainWindowBounds,
+        placement: WindowPlacement = WindowPlacement.Floating,
+    ) = WindowSnapshot(characterId, bounds, placement)
 
     /** Runs [saveWindowBounds] over [snapshots] for the duration of [block]. */
     private fun TestScope.saving(
         snapshots: MutableStateFlow<WindowSnapshot>,
         store: WindowBoundsStore,
+        openingSize: DpSize = DpSize(640.dp, 480.dp),
         block: suspend TestScope.() -> Unit,
     ) {
-        val job = launch { saveWindowBounds(snapshots, store) }
+        val job = launch { saveWindowBounds(snapshots, store, openingSize) }
         runCurrent()
         launch {
             block()
@@ -74,10 +81,10 @@ class WindowBoundsTest {
     fun `saves the size once the window holds still`() =
         runTest {
             val store = FakeStore()
-            val snapshots = MutableStateFlow(WindowSnapshot(null, bounds(800, 600)))
+            val snapshots = MutableStateFlow(snapshot(null, bounds(800, 600)))
             saving(snapshots, store) {
                 advanceTimeBy(justUnderDelay)
-                snapshots.value = WindowSnapshot(null, bounds(900, 700))
+                snapshots.value = snapshot(null, bounds(900, 700))
                 advanceTimeBy(justUnderDelay)
                 assertEquals(emptyList(), store.widths)
 
@@ -91,7 +98,7 @@ class WindowBoundsTest {
     fun `never saves a dimension below the minimum`() =
         runTest {
             val store = FakeStore()
-            val snapshots = MutableStateFlow(WindowSnapshot("a", bounds(800, MIN_WINDOW_DIMENSION - 1)))
+            val snapshots = MutableStateFlow(snapshot("a", bounds(800, MIN_WINDOW_DIMENSION - 1)))
             saving(snapshots, store) {
                 advanceTimeBy(pastDelay)
                 assertEquals(listOf(800), store.widths)
@@ -101,17 +108,59 @@ class WindowBoundsTest {
         }
 
     @Test
+    fun `does not save the size the window opened at until it changes`() =
+        runTest {
+            val store = FakeStore()
+            val snapshots = MutableStateFlow(snapshot(null, bounds(300, 300)))
+            saving(snapshots, store, openingSize = DpSize(300.dp, 300.dp)) {
+                advanceTimeBy(pastDelay)
+                assertEquals(emptyList(), store.widths)
+
+                snapshots.value = snapshot(null, bounds(310, 300))
+                advanceTimeBy(pastDelay)
+                assertEquals(listOf(310), store.widths)
+            }
+        }
+
+    @Test
+    fun `saves nothing while maximized or fullscreen`() =
+        runTest {
+            val store = FakeStore()
+            val snapshots = MutableStateFlow(snapshot("a", bounds(800, 600)))
+            saving(snapshots, store) {
+                advanceTimeBy(pastDelay)
+                for (placement in listOf(WindowPlacement.Maximized, WindowPlacement.Fullscreen)) {
+                    snapshots.value = snapshot("a", bounds(2560, 1440), placement)
+                    advanceTimeBy(pastDelay)
+                }
+                assertEquals(listOf(800), store.widths)
+                assertEquals(listOf("a" to bounds(800, 600)), store.characterSaves)
+            }
+        }
+
+    @Test
     fun `saves bounds only for a connected character`() =
         runTest {
             val store = FakeStore()
-            val snapshots = MutableStateFlow(WindowSnapshot(null, bounds(800, 600)))
+            val snapshots = MutableStateFlow(snapshot(null, bounds(800, 600)))
             saving(snapshots, store) {
                 advanceTimeBy(pastDelay)
                 assertEquals(emptyList(), store.characterSaves)
 
-                snapshots.value = WindowSnapshot("a", bounds(800, 600, x = 10, y = 20))
+                snapshots.value = snapshot("a", bounds(800, 600, x = 10, y = 20))
                 advanceTimeBy(pastDelay)
                 assertEquals(listOf("a" to bounds(800, 600, x = 10, y = 20)), store.characterSaves)
+            }
+        }
+
+    @Test
+    fun `saves a character's size while the window has no position`() =
+        runTest {
+            val store = FakeStore()
+            val snapshots = MutableStateFlow(snapshot("a", bounds(800, 600, x = null, y = null)))
+            saving(snapshots, store) {
+                advanceTimeBy(pastDelay)
+                assertEquals(listOf("a" to bounds(800, 600, x = null, y = null)), store.characterSaves)
             }
         }
 
@@ -119,12 +168,12 @@ class WindowBoundsTest {
     fun `bounds go to the character connected now, not the one before`() =
         runTest {
             val store = FakeStore()
-            val snapshots = MutableStateFlow(WindowSnapshot("a", bounds(800, 600)))
+            val snapshots = MutableStateFlow(snapshot("a", bounds(800, 600)))
             saving(snapshots, store) {
                 advanceTimeBy(pastDelay)
-                snapshots.value = WindowSnapshot("b", bounds(800, 600))
+                snapshots.value = snapshot("b", bounds(800, 600))
                 advanceTimeBy(pastDelay)
-                snapshots.value = WindowSnapshot("b", bounds(1000, 700))
+                snapshots.value = snapshot("b", bounds(1000, 700))
                 advanceTimeBy(pastDelay)
 
                 assertEquals(bounds(800, 600), store.characterBounds["a"])
@@ -133,42 +182,47 @@ class WindowBoundsTest {
         }
 
     @Test
-    fun `saves no character bounds while the window has no position`() =
-        runTest {
-            val store = FakeStore()
-            val snapshots = MutableStateFlow(WindowSnapshot("a", bounds(800, 600), positioned = false))
-            saving(snapshots, store) {
-                advanceTimeBy(pastDelay)
-                assertEquals(listOf(800), store.widths)
-                assertEquals(emptyList(), store.characterSaves)
-
-                snapshots.value = WindowSnapshot("a", bounds(800, 600, x = 10, y = 20))
-                advanceTimeBy(pastDelay)
-                assertEquals(listOf("a" to bounds(800, 600, x = 10, y = 20)), store.characterSaves)
-            }
-        }
-
-    @Test
     fun `a move alone does not save the size again`() =
         runTest {
             val store = FakeStore()
-            val snapshots = MutableStateFlow(WindowSnapshot(null, bounds(800, 600)))
+            val snapshots = MutableStateFlow(snapshot(null, bounds(800, 600)))
             saving(snapshots, store) {
                 advanceTimeBy(pastDelay)
-                snapshots.value = WindowSnapshot(null, bounds(800, 600, x = 50, y = 50))
+                snapshots.value = snapshot(null, bounds(800, 600, x = 50, y = 50))
                 advanceTimeBy(pastDelay)
                 assertEquals(listOf(800), store.widths)
                 assertEquals(listOf(600), store.heights)
             }
         }
 
+    @Test
+    fun `a snapshot has a position only once the window has its own`() {
+        val unplaced = WindowState(size = DpSize(800.dp, 600.dp), position = WindowPosition.PlatformDefault)
+        assertEquals(
+            snapshot("a", bounds(800, 600, x = null, y = null)),
+            unplaced.snapshot("a"),
+        )
+        val placed =
+            WindowState(
+                placement = WindowPlacement.Maximized,
+                size = DpSize(800.dp, 600.dp),
+                position = WindowPosition(10.dp, 20.dp),
+            )
+        assertEquals(
+            snapshot(null, bounds(800, 600, x = 10, y = 20), WindowPlacement.Maximized),
+            placed.snapshot(null),
+        )
+    }
+
     private fun placement(
-        sizeFromCommandLine: Boolean = false,
+        widthFromCommandLine: Boolean = false,
+        heightFromCommandLine: Boolean = false,
         positionFromCommandLine: Boolean = false,
     ) = GameWindowPlacement(
         size = DpSize(640.dp, 480.dp),
         position = WindowPosition.PlatformDefault,
-        sizeFromCommandLine = sizeFromCommandLine,
+        widthFromCommandLine = widthFromCommandLine,
+        heightFromCommandLine = heightFromCommandLine,
         positionFromCommandLine = positionFromCommandLine,
     )
 
@@ -183,12 +237,34 @@ class WindowBoundsTest {
         }
 
     @Test
-    fun `a size or position from the command line wins over the character's`() =
+    fun `restores only the size when no position was saved`() =
+        runTest {
+            val store = FakeStore().apply { characterBounds["a"] = bounds(1000, 700, x = null, y = null) }
+            assertEquals(
+                RestoredBounds(DpSize(1000.dp, 700.dp), position = null),
+                characterBoundsToRestore("a", placement(), store),
+            )
+        }
+
+    @Test
+    fun `a width, height or position from the command line wins over the character's`() =
         runTest {
             val store = FakeStore().apply { characterBounds["a"] = bounds(1000, 700, x = 5, y = 6) }
             assertEquals(
+                RestoredBounds(DpSize(640.dp, 700.dp), WindowPosition(5.dp, 6.dp)),
+                characterBoundsToRestore("a", placement(widthFromCommandLine = true), store),
+            )
+            assertEquals(
+                RestoredBounds(DpSize(1000.dp, 480.dp), WindowPosition(5.dp, 6.dp)),
+                characterBoundsToRestore("a", placement(heightFromCommandLine = true), store),
+            )
+            assertEquals(
                 RestoredBounds(size = null, position = WindowPosition(5.dp, 6.dp)),
-                characterBoundsToRestore("a", placement(sizeFromCommandLine = true), store),
+                characterBoundsToRestore(
+                    "a",
+                    placement(widthFromCommandLine = true, heightFromCommandLine = true),
+                    store,
+                ),
             )
             assertEquals(
                 RestoredBounds(size = DpSize(1000.dp, 700.dp), position = null),
@@ -197,7 +273,7 @@ class WindowBoundsTest {
             assertNull(
                 characterBoundsToRestore(
                     "a",
-                    placement(sizeFromCommandLine = true, positionFromCommandLine = true),
+                    placement(widthFromCommandLine = true, heightFromCommandLine = true, positionFromCommandLine = true),
                     store,
                 ),
             )
@@ -218,7 +294,8 @@ class WindowBoundsTest {
         val placement = newWindowPlacement(opener, defaultSize = DpSize(640.dp, 480.dp))
         assertEquals(DpSize(900.dp, 700.dp), placement.size)
         assertEquals(WindowPosition.PlatformDefault, placement.position)
-        assertFalse(placement.sizeFromCommandLine)
+        assertFalse(placement.widthFromCommandLine)
+        assertFalse(placement.heightFromCommandLine)
         assertFalse(placement.positionFromCommandLine)
     }
 
