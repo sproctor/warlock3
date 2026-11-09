@@ -20,9 +20,14 @@ private const val MAIN_WINDOW_Y_KEY = "mainWindowY"
 private const val MAIN_WINDOW_WIDTH_KEY = "mainWindowWidth"
 private const val MAIN_WINDOW_HEIGHT_KEY = "mainWindowHeight"
 
+/**
+ * A character's main-window bounds. [x] and [y] are null, both together, when the window's position
+ * was unknown (Wayland never tells a client where its window is), and a save then keeps the
+ * position saved before.
+ */
 data class MainWindowBounds(
-    val x: Int,
-    val y: Int,
+    val x: Int?,
+    val y: Int?,
     val width: Int,
     val height: Int,
 )
@@ -146,21 +151,23 @@ class CharacterSettingsRepository(
         characterId: String,
         bounds: MainWindowBounds,
     ) {
-        save(characterId, MAIN_WINDOW_X_KEY, bounds.x.toString())
-        save(characterId, MAIN_WINDOW_Y_KEY, bounds.y.toString())
+        if (bounds.x != null && bounds.y != null) {
+            save(characterId, MAIN_WINDOW_X_KEY, bounds.x.toString())
+            save(characterId, MAIN_WINDOW_Y_KEY, bounds.y.toString())
+        }
         save(characterId, MAIN_WINDOW_WIDTH_KEY, bounds.width.toString())
         save(characterId, MAIN_WINDOW_HEIGHT_KEY, bounds.height.toString())
     }
 
     suspend fun getMainWindowBounds(characterId: String): MainWindowBounds? {
-        val x = get(characterId, MAIN_WINDOW_X_KEY)?.toIntOrNull() ?: return null
-        val y = get(characterId, MAIN_WINDOW_Y_KEY)?.toIntOrNull() ?: return null
+        val x = get(characterId, MAIN_WINDOW_X_KEY)?.toIntOrNull()
+        val y = get(characterId, MAIN_WINDOW_Y_KEY)?.toIntOrNull()
         val width = get(characterId, MAIN_WINDOW_WIDTH_KEY)?.toIntOrNull() ?: return null
         val height = get(characterId, MAIN_WINDOW_HEIGHT_KEY)?.toIntOrNull() ?: return null
 
         return MainWindowBounds(
-            x = x,
-            y = y,
+            x = x?.takeIf { y != null },
+            y = y?.takeIf { x != null },
             width = width,
             height = height,
         )

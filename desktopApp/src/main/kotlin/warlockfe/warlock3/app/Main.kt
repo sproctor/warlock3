@@ -2,19 +2,7 @@ package warlockfe.warlock3.app
 
 import androidx.compose.foundation.ComposeFoundationFlags
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -23,23 +11,10 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalClipboard
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.WindowPosition
-import androidx.compose.ui.window.WindowState
-import androidx.compose.ui.window.rememberWindowState
-import androidx.lifecycle.ViewModelStore
-import androidx.lifecycle.ViewModelStoreOwner
-import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
-import androidx.room3.Room
-import androidx.room3.RoomDatabase
 import ca.gosyer.appdirs.AppDirs
 import co.touchlab.kermit.Logger
 import co.touchlab.kermit.Severity
@@ -55,82 +30,42 @@ import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.versionOption
 import com.github.ajalt.clikt.parameters.types.boolean
 import com.github.ajalt.clikt.parameters.types.int
-import dev.nucleusframework.application.DecoratedWindow
 import dev.nucleusframework.application.nucleusApplication
-import dev.nucleusframework.core.runtime.AppImageIntegration
-import dev.nucleusframework.core.runtime.AppImageIntegrationResult
-import dev.nucleusframework.core.runtime.AppImageIntegrationStatus
 import dev.nucleusframework.core.runtime.NucleusApp
-import dev.nucleusframework.updater.NucleusUpdater
-import dev.nucleusframework.updater.UpdateInfo
-import dev.nucleusframework.updater.UpdateResult
-import dev.nucleusframework.updater.provider.GitHubProvider
 import io.github.vinceglb.filekit.FileKit
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.ensureActive
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.debounce
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withContext
 import kotlinx.io.files.SystemFileSystem
 import org.jetbrains.compose.resources.painterResource
-import org.jetbrains.jewel.foundation.theme.JewelTheme
-import org.jetbrains.jewel.ui.component.HorizontalProgressBar
-import org.jetbrains.jewel.ui.component.Text
-import warlockfe.warlock3.app.updater.ChannelUpdater
-import warlockfe.warlock3.app.updater.channelsToCheck
+import warlockfe.warlock3.app.updater.UpdatePrompt
+import warlockfe.warlock3.app.updater.buildUpdater
 import warlockfe.warlock3.compose.AppContainer
-import warlockfe.warlock3.compose.AppPlatform
 import warlockfe.warlock3.compose.crash.CrashReporting
 import warlockfe.warlock3.compose.desktop.shim.WarlockAlertDialog
 import warlockfe.warlock3.compose.desktop.shim.WarlockButton
-import warlockfe.warlock3.compose.desktop.shim.WarlockDialog
-import warlockfe.warlock3.compose.desktop.shim.WarlockOutlinedButton
 import warlockfe.warlock3.compose.desktop.theme.WarlockDesktopTheme
-import warlockfe.warlock3.compose.desktop.theme.WarlockTitleBar
-import warlockfe.warlock3.compose.desktop.ui.game.DesktopDockHost
-import warlockfe.warlock3.compose.desktop.ui.game.DetachedGameWindows
-import warlockfe.warlock3.compose.desktop.ui.game.LocalDesktopDockHost
-import warlockfe.warlock3.compose.desktop.ui.settings.DesktopCrashReportingNotice
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.app_icon
-import warlockfe.warlock3.compose.model.GameScreen
 import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.compose.model.StartupConnection
 import warlockfe.warlock3.compose.observeSkin
-import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.compose.util.SentryCrashReporter
-import warlockfe.warlock3.compose.util.rememberSafeClipboard
-import warlockfe.warlock3.core.client.JavaProxy
-import warlockfe.warlock3.core.prefs.PrefsDatabase
-import warlockfe.warlock3.core.prefs.SettingsProblem
 import warlockfe.warlock3.core.prefs.SettingsUnreadableException
 import warlockfe.warlock3.core.prefs.ThemeSetting
 import warlockfe.warlock3.core.prefs.repositories.ClientSettingRepository
-import warlockfe.warlock3.core.prefs.repositories.MainWindowBounds
 import warlockfe.warlock3.core.sge.SgeSettings
 import warlockfe.warlock3.core.sge.SimuGameCredentials
 import warlockfe.warlock3.core.sge.parseSalCredentials
-import warlockfe.warlock3.core.util.DesktopSoundPlayer
-import warlockfe.warlock3.core.util.WarlockDirs
 import java.io.File
 import kotlin.system.exitProcess
-import kotlin.time.Duration.Companion.seconds
 import kotlin.time.TimeSource
 
-private val version = NucleusApp.version?.takeIf { it.isNotBlank() }
-
 // Nucleus bakes the version into the app's generated properties, including for `./gradlew run`,
-// where it is "0.0.0-dev". Treat any 0.0.0.x (or absent) version as a dev build with no real
-// release behind it.
-private val isDev = version?.startsWith("0.0.0") ?: true
+// where it is "0.0.0-dev". An absent one is treated the same way, so the window, --version, crash
+// reports and the updater all name the same version.
+private val appVersion = NucleusApp.version?.takeIf { it.isNotBlank() } ?: "0.0.0-dev"
+
+// Any 0.0.0.x version is a dev build with no real release behind it.
+private val isDev = appVersion.startsWith("0.0.0")
 
 private class WarlockCommand : CliktCommand() {
     val port: Int? by option("-p", "--port", help = "Port to connect to").int()
@@ -168,7 +103,7 @@ private class WarlockCommand : CliktCommand() {
      * settings loaded (or the "Warlock cannot start" window and an exit, when they can't be read),
      * then a window for each game the command line or the last session asks for.
      */
-    @OptIn(FlowPreview::class, ExperimentalFoundationApi::class)
+    @OptIn(ExperimentalFoundationApi::class)
     override fun run() {
         val started = TimeSource.Monotonic.markNow()
         Logger.setLogWriters(platformLogWriter())
@@ -191,7 +126,7 @@ private class WarlockCommand : CliktCommand() {
             try {
                 // Loads the config files, runs the DB->TOML migration and seeds default macros before
                 // any startup reads below (window size, release channel, auto-connect) touch them.
-                buildAppContainer(logger, crashReporting).also { container ->
+                openDesktopAppContainer(appDirs, crashReporting, logger).also { container ->
                     container.observeSkin(logger) { path ->
                         File(path).takeIf { it.exists() }?.readBytes()
                     }
@@ -199,39 +134,37 @@ private class WarlockCommand : CliktCommand() {
             } catch (e: SettingsUnreadableException) {
                 reportUnreadableSettingsAndExit(e.problem, logger)
             }
-        val simuCert = runBlocking { Res.readBytes("files/simu.pem") }
-
         val clientSettings = appContainer.clientSettings
-        val initialWidth = width ?: runBlocking { clientSettings.getWidth() }?.takeIf { it >= 240 } ?: 640
-        val initialHeight = height ?: runBlocking { clientSettings.getHeight() }?.takeIf { it >= 240 } ?: 480
-        val position =
-            if (positionX != null && positionY != null) {
-                WindowPosition(positionX?.dp ?: Dp.Unspecified, positionY?.dp ?: Dp.Unspecified)
-            } else {
-                WindowPosition.PlatformDefault
-            }
 
         val sgeSettings =
             SgeSettings(
                 host = sgeHost,
                 port = sgePort,
-                certificate = simuCert,
+                certificate = runBlocking { Res.readBytes("files/simu.pem") },
                 secure = sgeSecure,
             )
+        val startupPlacement = windowPlacement(clientSettings)
+        // Windows opened from the menu (see [newWindowPlacement]). Startup windows aren't here: they
+        // take [startupPlacement].
+        val openedPlacements = mutableMapOf<GameState, GameWindowPlacement>()
 
         val games =
             mutableStateListOf<GameState>().apply {
                 addAll(createInitialGameStates(appContainer, credentials, logger))
             }
 
-        val updater = buildUpdater(clientSettings)
+        val updater = buildUpdater(appVersion = appVersion, clientSettings = clientSettings)
         val updateSupported = updater.isUpdateSupported()
+
+        // Not in the scripted modes (replays, benchmarks), where nobody is there to answer and a
+        // modal dialog would cover the window being watched.
+        val scripted = stdin || inputFiles.isNotEmpty() || exitOnDisconnect
 
         // Tao windows: the native event loop owns the main thread and there is no AWT in the process.
         // Multiple Warlock processes are allowed, as before, rather than forwarding a second
         // launch to the first.
         nucleusApplication(enableSingleInstance = false) {
-            val themeSetting by appContainer.clientSettings.observeTheme().collectAsState(ThemeSetting.AUTO)
+            val themeSetting by clientSettings.observeTheme().collectAsState(ThemeSetting.AUTO)
             val darkMode =
                 when (themeSetting) {
                     ThemeSetting.AUTO -> isSystemInDarkTheme()
@@ -245,48 +178,17 @@ private class WarlockCommand : CliktCommand() {
             val appIcon = painterResource(Res.drawable.app_icon)
             WarlockDesktopTheme(isDark = darkMode) {
                 var showUpdateDialog by remember { mutableStateOf(false) }
-                var availableUpdate: UpdateInfo? by remember { mutableStateOf(null) }
-                val scope = rememberCoroutineScope()
-
-                suspend fun checkUpdate() {
-                    when (val result = updater.checkForUpdates()) {
-                        is UpdateResult.Available -> {
-                            availableUpdate = result.info
-                            if (updateSupported && !clientSettings.getIgnoreUpdates()) {
-                                showUpdateDialog = true
-                            }
-                        }
-
-                        is UpdateResult.NotAvailable -> {
-                            availableUpdate = null
-                        }
-
-                        is UpdateResult.Error -> {
-                            logger.e(result.exception) { "Update check failed" }
-                        }
-                    }
-                }
-
-                // Dev builds (version "0.0.0-dev", injected by Nucleus for `./gradlew run`) have no
-                // real release to update to, so skip the network update check.
-                if (!isDev) {
-                    LaunchedEffect(Unit) {
-                        withContext(Dispatchers.IO) {
-                            checkUpdate()
-                        }
-                    }
-                }
-
-                if (showUpdateDialog) {
-                    UpdateDialog(
-                        updater = updater,
-                        updateSupported = updateSupported,
-                        availableUpdate = availableUpdate,
-                        clientSettings = clientSettings,
-                        logger = logger,
-                        onDismiss = { showUpdateDialog = false },
-                    )
-                }
+                UpdatePrompt(
+                    updater = updater,
+                    updateSupported = updateSupported,
+                    // Dev builds (version "0.0.0-dev", injected by Nucleus for `./gradlew run`) have
+                    // no real release to update to, so skip the network update check.
+                    checkOnLaunch = !isDev,
+                    clientSettings = clientSettings,
+                    logger = logger,
+                    showDialog = showUpdateDialog,
+                    onShowDialogChange = { showUpdateDialog = it },
+                )
 
                 // App-wide, and rendered once out here rather than per game window: the failure is
                 // the whole app's (every window shares one database), so a user with three windows
@@ -307,206 +209,72 @@ private class WarlockCommand : CliktCommand() {
                     )
                 }
 
+                AppImageIntegrationPrompt(clientSettings = clientSettings, logger = logger)
+
                 // Asked once, and until it is answered nothing is sent. Closing it without choosing
                 // leaves the question for next launch. Shown from inside the first game window
-                // below rather than out here: a dialog opened at the application level has no owner,
-                // so the main window, opened after it, comes up on top and hides it.
+                // rather than out here: a dialog opened at the application level has no owner, so
+                // the main window, opened after it, comes up on top and hides it.
                 val crashReportingConsent by appContainer.crashReporting.consent.collectAsState()
-                // Not in the scripted modes (replays, benchmarks), where nobody is there to answer
-                // and a modal dialog would cover the window being watched.
-                var crashNoticeClosed by remember { mutableStateOf(stdin || inputFiles.isNotEmpty() || exitOnDisconnect) }
-
-                // When running as an AppImage, offer to install its menu entry and icon: GNOME
-                // resolves an app's icon only through installed .desktop entries (it ignores the
-                // icon a window sets on itself), so without this the dock shows a generic icon.
-                // Offered once; a stale entry (the image moved or was updated) is already broken,
-                // so it is refreshed without asking again.
-                val appImageIntegration = remember { AppImageIntegration() }
-                var showIntegrationDialog by remember { mutableStateOf(false) }
-                LaunchedEffect(Unit) {
-                    withContext(Dispatchers.IO) {
-                        when (appImageIntegration.status()) {
-                            AppImageIntegrationStatus.NotIntegrated -> {
-                                if (!clientSettings.getIgnoreAppImageIntegration()) {
-                                    showIntegrationDialog = true
-                                }
-                            }
-
-                            is AppImageIntegrationStatus.Stale -> {
-                                val result = appImageIntegration.integrate()
-                                if (result is AppImageIntegrationResult.Failed) {
-                                    logger.e(result.cause) { "AppImage integration refresh failed: ${result.reason}" }
-                                }
-                            }
-
-                            else -> {}
-                        }
-                    }
-                }
-                if (showIntegrationDialog) {
-                    AppImageIntegrationDialog(
-                        integration = appImageIntegration,
-                        clientSettings = clientSettings,
-                        logger = logger,
-                        onDismiss = { showIntegrationDialog = false },
-                    )
-                }
+                var crashNoticeClosed by remember { mutableStateOf(scripted) }
 
                 games.forEach { gameState ->
                     key(gameState) {
-                        val windowState =
-                            remember {
-                                WindowState(
-                                    width = initialWidth.dp,
-                                    height = initialHeight.dp,
-                                    position = position,
-                                )
-                            }
-                        // Where this window's game screen publishes its dock state.
-                        val dockHost = remember { DesktopDockHost() }
-                        // This window's own view-model store, cleared when the game closes. A Tao
-                        // window, unlike an AWT one, gives its scene no store of its own: every
-                        // window falls back to one process-wide store, where a second window's
-                        // dashboard got the first window's view model, bound to the first window's
-                        // game, and connecting from it took that window over.
-                        val viewModelStoreOwner = remember { GameWindowViewModelStoreOwner() }
-                        DisposableEffect(viewModelStoreOwner) {
-                            onDispose { viewModelStoreOwner.viewModelStore.clear() }
+                        DisposableEffect(gameState) {
+                            onDispose { openedPlacements.remove(gameState) }
                         }
-                        val subtitle by gameState.getTitle().collectAsState("loading")
-                        val title = "Warlock - $subtitle"
-                        val connectedScreen = gameState.screen as? GameScreen.ConnectedGameState
-                        val characterFlow = connectedScreen?.viewModel?.character ?: flowOf(null)
-                        val connectedCharacter by characterFlow.collectAsState(null)
-
-                        // Close just this window; tear the whole app down only once the last one is gone.
-                        fun closeGame() {
-                            scope.launch {
-                                val screen = gameState.screen
-                                if (screen is GameScreen.ConnectedGameState) {
-                                    try {
-                                        screen.viewModel.close()
-                                    } catch (_: Throwable) {
-                                        // Ignore failures
-                                    }
-                                }
-                                games.remove(gameState)
-                                if (games.isEmpty()) {
-                                    exitApplication()
-                                }
-                            }
-                        }
-                        if (exitOnDisconnect) {
-                            // Close the window as soon as its connection drops (e.g. an input file
-                            // replayed to EOF) instead of showing the reconnect banner.
-                            val disconnectedFlow = connectedScreen?.viewModel?.disconnected ?: flowOf(false)
-                            val disconnected by disconnectedFlow.collectAsState(false)
-                            LaunchedEffect(disconnected) {
-                                if (disconnected) {
-                                    println("App ran for ${started.elapsedNow()}")
-                                    closeGame()
-                                }
-                            }
-                        }
-                        DecoratedWindow(
-                            title = title,
-                            state = windowState,
+                        GameWindow(
+                            gameState = gameState,
+                            games = games,
+                            appContainer = appContainer,
+                            sgeSettings = sgeSettings,
+                            placement = openedPlacements[gameState] ?: startupPlacement,
                             icon = appIcon,
-                            onCloseRequest = { closeGame() },
-                            minimumSize = DpSize(240.dp, 240.dp),
-                            onPreviewKeyEvent = dockHost::cancelDragOnEscape,
-                        ) {
-                            CompositionLocalProvider(
-                                LocalViewModelStoreOwner provides viewModelStoreOwner,
-                                LocalSkin provides skin,
-                                LocalDesktopDockHost provides dockHost,
-                                // A copy that cannot open the system clipboard must not take the
-                                // app down with it; see [SafeClipboard].
-                                LocalClipboard provides rememberSafeClipboard(),
-                            ) {
-                                if (crashReportingConsent == null && !crashNoticeClosed && gameState == games.first()) {
-                                    DesktopCrashReportingNotice(
-                                        crashReporting = appContainer.crashReporting,
-                                        onDismiss = { crashNoticeClosed = true },
-                                    )
-                                }
-                                WarlockApp(
-                                    title = title,
-                                    warlockVersion = version ?: "Development",
-                                    appContainer = appContainer,
-                                    gameState = gameState,
-                                    games = games,
-                                    openNewWindow = {
-                                        // A manually opened window shows the dashboard; never auto-connect into it.
-                                        games.add(GameState(startupConnection = null))
-                                    },
-                                    showUpdateDialog = { showUpdateDialog = true },
-                                    sgeSettings = sgeSettings,
-                                )
-                                LaunchedEffect(windowState, connectedCharacter?.id) {
-                                    // A window size passed on the command line should win, so don't clobber it
-                                    // with the saved per-character size when a character connects.
-                                    if (width != null || height != null) return@LaunchedEffect
-                                    val characterId = connectedCharacter?.id ?: return@LaunchedEffect
-                                    val bounds =
-                                        appContainer.characterSettingsRepository
-                                            .getMainWindowBounds(characterId)
-                                            ?: return@LaunchedEffect
-                                    if (bounds.width >= 240 && bounds.height >= 240) {
-                                        windowState.size = DpSize(bounds.width.dp, bounds.height.dp)
-                                        windowState.position = WindowPosition(bounds.x.dp, bounds.y.dp)
-                                    }
-                                }
-                                LaunchedEffect(windowState) {
-                                    snapshotFlow { windowState.size }
-                                        .debounce(2.seconds)
-                                        .onEach { size ->
-                                            val width = size.width.value.toInt()
-                                            if (width >= 240) {
-                                                clientSettings.putWidth(width)
-                                            }
-                                            val height = size.height.value.toInt()
-                                            if (height >= 240) {
-                                                clientSettings.putHeight(height)
-                                            }
-                                        }.launchIn(this)
-
-                                    snapshotFlow {
-                                        val characterId = connectedCharacter?.id
-                                        val position = windowState.position
-                                        val size = windowState.size
-                                        if (characterId != null) {
-                                            characterId to
-                                                MainWindowBounds(
-                                                    x = position.x.value.toInt(),
-                                                    y = position.y.value.toInt(),
-                                                    width = size.width.value.toInt(),
-                                                    height = size.height.value.toInt(),
-                                                )
-                                        } else {
-                                            null
-                                        }
-                                    }.debounce(2.seconds)
-                                        .onEach { characterBounds ->
-                                            val (characterId, bounds) = characterBounds ?: return@onEach
-                                            if (bounds.width >= 240 && bounds.height >= 240) {
-                                                appContainer.characterSettingsRepository.saveMainWindowBounds(characterId, bounds)
-                                            }
-                                        }.launchIn(this)
-                                }
-                            }
-                        }
-                        // The windows torn off this window's dock, alongside it rather than inside
-                        // it. Draws nothing until the user detaches something.
-                        DetachedGameWindows(
-                            dockHost = dockHost,
-                            viewModel = connectedScreen?.viewModel,
                             skin = skin,
+                            warlockVersion = appVersion,
+                            showCrashReportingNotice =
+                                crashReportingConsent == null && !crashNoticeClosed && gameState == games.first(),
+                            onCrashReportingNoticeDismiss = { crashNoticeClosed = true },
+                            onDisconnect =
+                                if (exitOnDisconnect) {
+                                    { println("App ran for ${started.elapsedNow()}") }
+                                } else {
+                                    null
+                                },
+                            onOpenNewWindow = { opener ->
+                                // A manually opened window shows the dashboard; never auto-connect into it.
+                                val newGame = GameState(startupConnection = null)
+                                openedPlacements[newGame] = newWindowPlacement(opener, startupPlacement.size)
+                                games.add(newGame)
+                            },
+                            showUpdateDialog = { showUpdateDialog = true },
                         )
                     }
                 }
             }
         }
+    }
+
+    /**
+     * Where the startup windows open and how big: the command line's size and position when it gives
+     * them, otherwise the size the last session saved.
+     */
+    private fun windowPlacement(clientSettings: ClientSettingRepository): GameWindowPlacement {
+        val openWidth = width ?: runBlocking { clientSettings.getWidth() }?.takeIf { it >= MIN_WINDOW_DIMENSION }
+        val openHeight = height ?: runBlocking { clientSettings.getHeight() }?.takeIf { it >= MIN_WINDOW_DIMENSION }
+        val position =
+            if (positionX != null && positionY != null) {
+                WindowPosition(positionX!!.dp, positionY!!.dp)
+            } else {
+                WindowPosition.PlatformDefault
+            }
+        return GameWindowPlacement(
+            size = DpSize((openWidth ?: 640).dp, (openHeight ?: 480).dp),
+            position = position,
+            widthFromCommandLine = width != null,
+            heightFromCommandLine = height != null,
+            positionFromCommandLine = positionX != null && positionY != null,
+        )
     }
 
     /** Fail fast if more than one mutually-exclusive login method was supplied on the command line. */
@@ -533,56 +301,6 @@ private class WarlockCommand : CliktCommand() {
         }
     }
 
-    /**
-     * Show the user why Warlock will not start, then stop.
-     *
-     * A window rather than only a line on stderr, because someone who launched Warlock from a
-     * desktop icon or a `.sal` file association never sees stderr, and this is the one failure where
-     * there is nothing else to show them -- DESKTOP-3Y was exactly that, an app that vanished on
-     * launch and reported the reason only to a service the user cannot read.
-     */
-    private fun reportUnreadableSettingsAndExit(
-        problem: SettingsProblem,
-        logger: Logger,
-    ): Nothing {
-        logger.e { problem.message }
-        System.err.println(problem.message)
-        nucleusApplication(enableSingleInstance = false) {
-            WarlockDesktopTheme(isDark = isSystemInDarkTheme()) {
-                // A top-level window rather than the WarlockAlertDialog used everywhere else: that
-                // one is a dialog, owned by an application window, and here there is no such window.
-                DecoratedWindow(
-                    onCloseRequest = ::exitApplication,
-                    title = "Warlock cannot start",
-                    state = rememberWindowState(size = DpSize(520.dp, 280.dp)),
-                    resizable = false,
-                    icon = painterResource(Res.drawable.app_icon),
-                ) {
-                    WarlockTitleBar { Text("Warlock cannot start") }
-                    Column(
-                        modifier =
-                            Modifier
-                                .fillMaxSize()
-                                .background(JewelTheme.globalColors.panelBackground)
-                                .padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp),
-                    ) {
-                        Text(
-                            text = problem.message,
-                            modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()),
-                        )
-                        WarlockButton(
-                            onClick = ::exitApplication,
-                            text = "Quit",
-                            modifier = Modifier.align(Alignment.End),
-                        )
-                    }
-                }
-            }
-        }
-        exitProcess(1)
-    }
-
     private val appDirs =
         AppDirs {
             appName = "warlock"
@@ -602,7 +320,7 @@ private class WarlockCommand : CliktCommand() {
             reporter =
                 SentryCrashReporter(
                     platform = "desktop",
-                    version = version ?: "unknown",
+                    version = appVersion,
                     isRelease = !isDev,
                 ),
         ).also { it.startIfConsented() }
@@ -642,40 +360,6 @@ private class WarlockCommand : CliktCommand() {
         } else {
             null
         }
-
-    private fun buildAppContainer(
-        logger: Logger,
-        crashReporting: CrashReporting,
-    ): AppContainer {
-        val configDir = appDirs.getUserConfigDir()
-        File(configDir).mkdirs()
-        val databaseDirectory = kotlinx.io.files.Path(configDir)
-        migrateLegacyWindowsPrefsDb(configDir, logger)
-
-        val warlockDirs =
-            WarlockDirs(
-                homeDir = System.getProperty("user.home"),
-                configDir = appDirs.getUserConfigDir(),
-                dataDir = appDirs.getUserDataDir(),
-                logDir = appDirs.getUserLogDir(),
-            )
-
-        println("Loading preferences from $configDir")
-        return runBlocking {
-            AppContainer.open(
-                platform =
-                    AppPlatform(
-                        warlockDirs = warlockDirs,
-                        fileSystem = SystemFileSystem,
-                        soundPlayer = DesktopSoundPlayer(warlockDirs),
-                        warlockProxyFactory = { JavaProxy(it) },
-                        crashReporting = crashReporting,
-                    ),
-                databaseDirectory = databaseDirectory,
-                databaseBuilder = ::getPrefsDatabaseBuilder,
-            )
-        }
-    }
 
     /**
      * Build the [GameState]s to open on startup. Each one only says what to connect to: the window's
@@ -724,281 +408,13 @@ private class WarlockCommand : CliktCommand() {
                 listOf(GameState())
             }
         }
-
-    private fun buildUpdater(clientSettings: ClientSettingRepository): ChannelUpdater {
-        val resolvedVersion = version ?: "0.0.0"
-        val channelSetting = runBlocking { clientSettings.getReleaseChannel() }
-        return ChannelUpdater(
-            channelSetting.channelsToCheck(resolvedVersion).map { channelName ->
-                NucleusUpdater {
-                    provider = GitHubProvider(owner = "sproctor", repo = "warlock3")
-                    channel = channelName
-                    currentVersion = resolvedVersion
-                }
-            },
-        )
-    }
 }
 
 fun main(args: Array<String>) =
     WarlockCommand()
-        .versionOption(version ?: "Development")
+        .versionOption(appVersion)
         // Nucleus packs the Linux AppImage via electron-builder, whose AppRun injects --no-sandbox
         // when the kernel blocks unprivileged user namespaces (Ubuntu 24.04+ default), assuming an
         // Electron binary. We're a JVM app with no sandbox to disable, so drop the flag rather than
         // abort startup on an unknown option.
         .main(args.filterNot { it == "--no-sandbox" })
-
-@Composable
-private fun AppImageIntegrationDialog(
-    integration: AppImageIntegration,
-    clientSettings: ClientSettingRepository,
-    logger: Logger,
-    onDismiss: () -> Unit,
-) {
-    var error: String? by remember { mutableStateOf(null) }
-    val scope = rememberCoroutineScope()
-
-    WarlockDialog(
-        onCloseRequest = onDismiss,
-        title = "Add Warlock to your applications?",
-        width = 440.dp,
-        height = 280.dp,
-    ) {
-        Column(Modifier.fillMaxSize()) {
-            Text(
-                "Warlock is running from an AppImage, which the desktop cannot show in menus " +
-                    "or the dock with the right icon until a launcher entry is installed.",
-            )
-            Spacer(Modifier.padding(top = 8.dp))
-            Text(
-                "Add a menu entry and icon for this AppImage? If the file moves or is " +
-                    "updated later, the entry is repaired automatically.",
-            )
-            error?.let {
-                Spacer(Modifier.padding(top = 8.dp))
-                Text("Adding the entry failed: $it")
-            }
-            Spacer(Modifier.weight(1f))
-            Row(Modifier.fillMaxWidth()) {
-                Spacer(Modifier.weight(1f))
-                WarlockOutlinedButton(
-                    onClick = {
-                        scope.launch {
-                            clientSettings.putIgnoreAppImageIntegration(true)
-                            onDismiss()
-                        }
-                    },
-                    text = "Don't ask again",
-                )
-                Spacer(Modifier.padding(horizontal = 4.dp))
-                WarlockOutlinedButton(
-                    onClick = onDismiss,
-                    text = "Not now",
-                )
-                Spacer(Modifier.padding(horizontal = 4.dp))
-                WarlockButton(
-                    onClick = {
-                        scope.launch {
-                            val result = withContext(Dispatchers.IO) { integration.integrate() }
-                            when (result) {
-                                is AppImageIntegrationResult.Integrated -> {
-                                    onDismiss()
-                                }
-
-                                is AppImageIntegrationResult.Failed -> {
-                                    logger.e(result.cause) { "AppImage integration failed: ${result.reason}" }
-                                    error = result.reason
-                                }
-                            }
-                        }
-                    },
-                    text = "Add",
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun UpdateDialog(
-    updater: ChannelUpdater,
-    updateSupported: Boolean,
-    availableUpdate: UpdateInfo?,
-    clientSettings: ClientSettingRepository,
-    logger: Logger,
-    onDismiss: () -> Unit,
-) {
-    var downloadProgress: Double? by remember { mutableStateOf(null) }
-    var downloadedFile: File? by remember { mutableStateOf(null) }
-    val scope = rememberCoroutineScope()
-
-    WarlockDialog(
-        onCloseRequest = onDismiss,
-        title = "Warlock update available",
-        width = 400.dp,
-        height = 340.dp,
-    ) {
-        Column(Modifier.fillMaxSize()) {
-            Text("Current version: ${updater.currentVersion}")
-            if (updateSupported) {
-                Text("Update version: ${availableUpdate?.version ?: "No update available"}")
-            } else {
-                Text("Automated updates are not supported for your installation")
-            }
-            downloadProgress?.let { percent ->
-                Spacer(Modifier.padding(top = 8.dp))
-                Text("Downloading: ${percent.toInt()}%")
-                HorizontalProgressBar(
-                    progress = (percent / 100.0).toFloat(),
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-            Spacer(Modifier.weight(1f))
-            Row(Modifier.fillMaxWidth()) {
-                Spacer(Modifier.weight(1f))
-                val ignoreUpdates by clientSettings
-                    .observeIgnoreUpdates()
-                    .collectAsState(false)
-                if (!ignoreUpdates) {
-                    WarlockOutlinedButton(
-                        onClick = {
-                            scope.launch {
-                                clientSettings.putIgnoreUpdates(true)
-                                onDismiss()
-                            }
-                        },
-                        text = "Ignore updates",
-                    )
-                } else {
-                    WarlockOutlinedButton(
-                        onClick = {
-                            scope.launch {
-                                clientSettings.putIgnoreUpdates(false)
-                            }
-                        },
-                        text = "Stop ignoring updates",
-                    )
-                }
-                Spacer(Modifier.padding(horizontal = 4.dp))
-                WarlockOutlinedButton(
-                    onClick = onDismiss,
-                    text = "Close",
-                )
-                Spacer(Modifier.padding(horizontal = 4.dp))
-                WarlockButton(
-                    onClick = {
-                        val info = availableUpdate ?: return@WarlockButton
-                        val file = downloadedFile
-                        if (file != null) {
-                            updater.installAndRestart(file)
-                            return@WarlockButton
-                        }
-                        scope.launch {
-                            clientSettings.putIgnoreUpdates(false)
-                            try {
-                                updater.downloadUpdate(info).collect { progress ->
-                                    downloadProgress = progress.percent
-                                    progress.file?.let { downloadedFile = it }
-                                }
-                                downloadedFile?.let { updater.installAndRestart(it) }
-                            } catch (e: Exception) {
-                                ensureActive()
-                                logger.e(e) { "Update download failed" }
-                                downloadProgress = null
-                            }
-                        }
-                    },
-                    enabled = availableUpdate != null && updateSupported && downloadProgress == null,
-                    text = if (downloadedFile != null) "Install & restart" else "Update",
-                )
-            }
-        }
-    }
-}
-
-internal fun GameState.getTitle(): Flow<String> =
-    when (val screen = this.screen) {
-        GameScreen.Dashboard -> {
-            flow { emit("Dashboard") }
-        }
-
-        is GameScreen.ConnectedGameState -> {
-            combine(
-                screen.viewModel.windowTitle,
-                screen.viewModel.character,
-            ) { windowTitle, character ->
-                windowTitle ?: character?.name ?: "Loading..."
-            }
-        }
-
-        is GameScreen.NewGameState -> {
-            flow { emit("New game") }
-        }
-
-        is GameScreen.ErrorState -> {
-            flow { emit("Error") }
-        }
-    }
-
-private fun getPrefsDatabaseBuilder(filename: String): RoomDatabase.Builder<PrefsDatabase> =
-    Room.databaseBuilder<PrefsDatabase>(
-        name = filename,
-    )
-
-private fun migrateLegacyWindowsPrefsDb(
-    configDir: String,
-    logger: Logger,
-) {
-    if (!System.getProperty("os.name").orEmpty().startsWith("Windows", ignoreCase = true)) {
-        return
-    }
-    val configDirFile = File(configDir)
-    val configDbFile = File(configDirFile, "prefs.db")
-    if (configDbFile.exists()) {
-        return
-    }
-    val snapshotPattern = Regex("""^warlock-v(\d+)\.db$""")
-    val hasVersionedSnapshot =
-        configDirFile.listFiles()?.any { it.isFile && snapshotPattern.matches(it.name) } ?: false
-    if (hasVersionedSnapshot) {
-        return
-    }
-    val localAppData =
-        System.getenv("LOCALAPPDATA")
-            ?: File(System.getProperty("user.home"), "AppData/Local").absolutePath
-    // Conveyor shipped Warlock as an MSIX package, so the app ran sandboxed and its writes to
-    // %LOCALAPPDATA%\WarlockFE\warlock were virtualized into the package's per-user LocalCache mirror at
-    // %LOCALAPPDATA%\Packages\<PackageFamilyName>\LocalCache\Local\WarlockFE\warlock. The publisher-hash
-    // suffix of the family name depends on the signing identity, so match any Warlock_* package directory;
-    // if several exist (e.g. re-signed under a new identity), migrate the most recently written database.
-    val legacyDb =
-        File(localAppData, "Packages")
-            .listFiles { file -> file.isDirectory && file.name.startsWith("Warlock_", ignoreCase = true) }
-            ?.map { File(it, "LocalCache/Local/WarlockFE/warlock/prefs.db") }
-            ?.filter { it.exists() }
-            ?.maxByOrNull { it.lastModified() }
-            ?: return
-    val legacyDir = legacyDb.parentFile
-    logger.i { "Migrating legacy prefs database from ${legacyDb.absolutePath} to ${configDbFile.absolutePath}" }
-    try {
-        legacyDb.copyTo(configDbFile, overwrite = false)
-        listOf("prefs.db-wal", "prefs.db-shm").forEach { name ->
-            val source = File(legacyDir, name)
-            if (source.exists()) {
-                source.copyTo(File(configDirFile, name), overwrite = false)
-            }
-        }
-    } catch (e: Exception) {
-        logger.e(e) { "Failed to migrate legacy prefs database" }
-    }
-}
-
-/**
- * One game window's view-model store. Held by the application composition, outside the window,
- * which has no host to take a store from, so it is a plain store rather than one remembered from a
- * parent.
- */
-private class GameWindowViewModelStoreOwner : ViewModelStoreOwner {
-    override val viewModelStore = ViewModelStore()
-}
