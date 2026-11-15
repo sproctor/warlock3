@@ -64,6 +64,11 @@ internal class CommandHistory(
     }
 
     // Load each character's saved command history when it connects.
+    //
+    // The load replaces the history rather than merging into it, so any command sent before the
+    // game named the character is dropped and never saved. That is deliberate: the name arrives
+    // within the first few lines of a session, so at most a command or two is lost, and merging
+    // is not worth the complexity.
     private fun loadOnConnect() {
         characterId
             .filterNotNull()
