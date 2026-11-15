@@ -3,29 +3,15 @@ package warlockfe.warlock3.compose.ui.game
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.clearText
 import androidx.compose.foundation.text.input.delete
-import androidx.compose.foundation.text.input.insert
 import androidx.compose.foundation.text.input.selectAll
-import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.snapshotFlow
-import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEvent
-import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.isAltPressed
-import androidx.compose.ui.input.key.isCtrlPressed
-import androidx.compose.ui.input.key.isMetaPressed
-import androidx.compose.ui.input.key.isShiftPressed
-import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.TextRange
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import co.touchlab.kermit.Logger
 import kotlinx.collections.immutable.PersistentList
 import kotlinx.collections.immutable.persistentListOf
-import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -33,7 +19,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.channels.BufferOverflow
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -46,8 +31,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.filterNotNull
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
@@ -58,21 +41,13 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.io.files.Path
 import warlockfe.warlock3.compose.components.DEFAULT_PANEL_SCALE
 import warlockfe.warlock3.compose.ui.window.ComposePanelState
-import warlockfe.warlock3.compose.ui.window.ComposeTextStream
-import warlockfe.warlock3.compose.ui.window.PanelWindowData
-import warlockfe.warlock3.compose.ui.window.StreamTextLine
 import warlockfe.warlock3.compose.ui.window.StreamWindowData
-import warlockfe.warlock3.compose.ui.window.WindowData
 import warlockfe.warlock3.compose.ui.window.WindowFindController
-import warlockfe.warlock3.compose.ui.window.WindowFindUiState
 import warlockfe.warlock3.compose.ui.window.WindowSelectionController
 import warlockfe.warlock3.compose.ui.window.WindowUiState
-import warlockfe.warlock3.compose.ui.window.getStyle
-import warlockfe.warlock3.compose.util.LatestValueWriter
 import warlockfe.warlock3.compose.util.SafeClipboard
 import warlockfe.warlock3.compose.util.clipEntryOf
 import warlockfe.warlock3.compose.util.insertReplacingSelection
@@ -88,16 +63,11 @@ import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.client.HandBlock
 import warlockfe.warlock3.core.client.PanelObject
 import warlockfe.warlock3.core.client.ScriptableClient
-import warlockfe.warlock3.core.client.SendCommandType
 import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.compass.Direction
-import warlockfe.warlock3.core.macro.MacroCommands
 import warlockfe.warlock3.core.macro.MacroHandler
-import warlockfe.warlock3.core.macro.MacroKeyCombo
-import warlockfe.warlock3.core.macro.MacroToken
 import warlockfe.warlock3.core.macro.ScrollEvent
-import warlockfe.warlock3.core.macro.parseMacro
 import warlockfe.warlock3.core.prefs.CompassStyle
 import warlockfe.warlock3.core.prefs.models.Action
 import warlockfe.warlock3.core.prefs.models.ActionBar
@@ -115,41 +85,21 @@ import warlockfe.warlock3.core.prefs.repositories.ProgressBarSettingRepository
 import warlockfe.warlock3.core.prefs.repositories.SCRIPT_COMMAND_PREFIX_KEY
 import warlockfe.warlock3.core.prefs.repositories.VariableRepository
 import warlockfe.warlock3.core.prefs.repositories.WindowSettingsRepository
-import warlockfe.warlock3.core.script.MudScriptLoad
 import warlockfe.warlock3.core.script.MudScriptStore
 import warlockfe.warlock3.core.script.ScriptManager
-import warlockfe.warlock3.core.script.ScriptStatus
 import warlockfe.warlock3.core.text.Alias
 import warlockfe.warlock3.core.text.FontConfig
 import warlockfe.warlock3.core.text.StyleDefinition
-import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.text.WarlockColor
-import warlockfe.warlock3.core.text.WarlockStyle
-import warlockfe.warlock3.core.util.splitFirstWord
 import warlockfe.warlock3.core.window.WindowLocation
 import warlockfe.warlock3.core.window.WindowRegistry
-import warlockfe.warlock3.core.window.WindowType
-import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 
-const val CLIENT_COMMAND_PREFIX = '/'
-
-/** The name the MUD's script runs under, so a new version replaces the last and `/kill` can find it. */
-const val MUD_SCRIPT_NAME = "mud-script"
-
-// The compose-docking layout JSON for this character, one blob per character. Written debounced on
-// every layout change; a window it does not know yet docks at its game-announced location.
-const val DOCK_LAYOUT_KEY = "dockLayout"
-
-// Where windows were when they were closed. Separate from the arrangement rather than folded
-// into it, so an unreadable one costs only the memory and every layout already saved still reads.
-const val DOCK_SPOTS_KEY = "dockSpots"
-
-// The phone tab strip's own ordered window list, one blob per character. Deliberately separate from
-// the WindowSettings "open" flag that feeds the docking layout: the phone picks its own tabs, and
-// adding one must not rearrange a dock the user is not looking at.
-const val PHONE_TAB_ORDER_KEY = "phoneTabOrder"
-
+/**
+ * One connected game's screen. The parts with state of their own live in their own classes, which
+ * this one owns and wires together: [CommandHistory], [WindowFinder], [MacroRunner],
+ * [CommandHandler], [GameScripts], [GameWindows], [PhoneTabs] and [DockLayoutStore].
+ */
 @OptIn(ExperimentalCoroutinesApi::class)
 class GameViewModel(
     private val windowSettingsRepository: WindowSettingsRepository,
@@ -164,9 +114,9 @@ class GameViewModel(
     private val windowRegistry: WindowRegistry,
     private val progressBarSettingRepository: ProgressBarSettingRepository,
     private val clientSettingRepository: ClientSettingRepository,
-    private val commandHistoryRepository: CommandHistoryRepository,
+    commandHistoryRepository: CommandHistoryRepository,
     private val connectionRepository: ConnectionRepository,
-    private val mudScriptStore: MudScriptStore,
+    mudScriptStore: MudScriptStore,
     private val ioDispatcher: CoroutineDispatcher,
     private val reconnectAction: (suspend () -> Unit)? = null,
     // Told the names of the scripts a reconnect stopped, once the game that replaced this one is up.
@@ -232,41 +182,6 @@ class GameViewModel(
 
     /** The blocks of the hands row, in order: a MUD's script may hide, add to and rearrange them. */
     val handBlocks: StateFlow<List<HandBlock>> = (client as? ScriptableClient)?.handBlocks ?: MutableStateFlow(HandBlock.HANDS)
-
-    private val _macroError = MutableStateFlow<String?>(null)
-    val macroError = _macroError.asStateFlow()
-
-    // Find-in-window ("Ctrl+F") state. Non-null while the find overlay is open. findMatches is ordered
-    // newest-first (the bottom-most occurrence is index 0), so stepping "next" moves further up the
-    // buffer. findWindowName is the window captured when find opened; the overlay renders only there.
-    private val findStateFlow = MutableStateFlow<WindowFindUiState?>(null)
-    private val findFocusedFlow = MutableStateFlow(false)
-    private var findMatches: List<FindMatch> = emptyList()
-    private var findIndex = 0
-    private var findQueryText = ""
-    private var findWindowName = "main"
-
-    val windowFindController: WindowFindController =
-        object : WindowFindController {
-            override val state: StateFlow<WindowFindUiState?> = findStateFlow.asStateFlow()
-
-            override val focused: StateFlow<Boolean> = findFocusedFlow.asStateFlow()
-
-            override fun setQuery(query: String) = updateFindQuery(query)
-
-            override fun next() = findStep(1)
-
-            override fun previous() = findStep(-1)
-
-            override fun close() = closeFind()
-
-            override fun setFocused(focused: Boolean) {
-                findFocusedFlow.value = focused
-            }
-        }
-
-    // Saved by macros
-    private var storedText: String = ""
 
     val character =
         combine(
@@ -343,21 +258,12 @@ class GameViewModel(
                 initialValue = emptyList(),
             )
 
-    private val savedPhoneTabOrder = MutableStateFlow<PhoneTabOrder>(PhoneTabOrder.Loading)
+    private val phoneTabStrip = PhoneTabs(client.characterId, characterSettingsRepository, tabbableWindows, viewModelScope)
 
-    /**
-     * The phone tab strip's window names, in order. Always holds the main window.
-     *
-     * Eagerly started because the mutators below read its value: an add or a drag in the first
-     * frames of a session has to see the real list, not the initial one.
-     */
-    val phoneTabs =
-        combine(savedPhoneTabOrder, tabbableWindows, ::reconcilePhoneTabs)
-            .stateIn(
-                scope = viewModelScope,
-                started = SharingStarted.Eagerly,
-                initialValue = listOf(MAIN_WINDOW_NAME),
-            )
+    /** The phone tab strip's window names, in order. Always holds the main window. */
+    val phoneTabs: StateFlow<List<String>> = phoneTabStrip.tabs
+
+    private val dockLayoutStore = DockLayoutStore(client.characterId, characterSettingsRepository)
 
     // The connected character's id, used by the settings dialog to decide whether its live window
     // info (titles, hidden-window list) applies to the character being edited.
@@ -385,22 +291,6 @@ class GameViewModel(
             initialValue = ".",
         )
 
-    private val macros =
-        client.characterId
-            .flatMapLatest { characterId ->
-                if (characterId != null) {
-                    macroRepository.observeCharacterMacros(characterId)
-                } else {
-                    macroRepository.observeGlobalMacros()
-                }.map { macroCommands ->
-                    macroCommands.associate { it.keyCombo to it.action }
-                }
-            }.stateIn(
-                scope = viewModelScope,
-                started = SharingStarted.Eagerly,
-                initialValue = emptyMap(),
-            )
-
     private val aliases: StateFlow<List<Alias>> =
         observePerCharacter { characterId ->
             aliasRepository.observeForCharacter(characterId)
@@ -427,10 +317,6 @@ class GameViewModel(
     // skin -> global -> character. Feeds the window base style + font and the input/status chrome.
     val baseStyle = windowRegistry.baseStyle
 
-    // The skin's named-color palette, so a window's skin-referenced text/background color resolves
-    // (see WindowSettings.getStyle) instead of staying stuck at its last-saved literal.
-    private val colorPalette = windowRegistry.colorPalette
-
     /** The character's panel font; used by panel widgets without a per-window override. */
     val panelFont: StateFlow<FontConfig?> =
         observePerCharacter { characterSettingsRepository.observePanelFont(it) }
@@ -441,9 +327,6 @@ class GameViewModel(
         observePerCharacter { characterSettingsRepository.observePanelScale(it) }
             .map { it ?: DEFAULT_PANEL_SCALE }
             .stateIn(scope = viewModelScope, started = SharingStarted.Eagerly, initialValue = DEFAULT_PANEL_SCALE)
-
-    private val runningScripts =
-        scriptManager.runningScripts.stateIn(viewModelScope, SharingStarted.Eagerly, persistentMapOf())
 
     /** The background flashes scripts have asked of windows; the windows' views play them. */
     val backgroundFlashes = windowRegistry.backgroundFlashes
@@ -462,84 +345,45 @@ class GameViewModel(
                 castTime?.let { Instant.fromEpochSeconds(it, now.nanosecondsOfSecond) }
             }.stateIn(scope = viewModelScope, started = SharingStarted.Eagerly, initialValue = null)
 
-    private var historyPosition = 0
-    private val sendHistory = mutableListOf("")
+    private val gameWindows =
+        GameWindows(client, windowRegistry, windowSettingsRepository, windowSettings, viewModelScope)
 
-    // Reverse history search (readline-style ctrl+r, via the {HistorySearch} macro). Non-null while
-    // the entry is in "searching" mode; it holds the live query (which mirrors the entry text the
-    // user types) and the history command currently matched. historySearchIndex selects which match,
-    // counting back from the most recent (0). The entry prompt renders `searching "<query>": <match>`
-    // while this is set.
-    private val _historySearch = MutableStateFlow<HistorySearchState?>(null)
-    val historySearch: StateFlow<HistorySearchState?> = _historySearch.asStateFlow()
-    private var historySearchIndex = 0
+    /** Every open non-main window, in restore/open order; see [GameWindows]. */
+    val windowUiStates: StateFlow<List<WindowUiState>> = gameWindows.windowUiStates
 
-    // Every open non-main window, in restore/open order. The docking bridge reconciles the dock
-    // tree from this; where each window docks is the layout JSON's business (with the
-    // game-announced location as the seed for windows the JSON does not know).
-    private val _windowUiStates = MutableStateFlow<List<WindowUiState>>(emptyList())
-    val windowUiStates: StateFlow<List<WindowUiState>> = _windowUiStates.asStateFlow()
+    val mainWindowUiState: StateFlow<WindowUiState> = gameWindows.mainWindowUiState
 
-    // Completed once the saved window layout has been restored into the dock lists (also on a
-    // failed restore - see restoreWindowLayoutOnConnect). A Deferred rather than a resettable
-    // flag: the dock lists are never cleared, so "restored" can never become false again.
-    // Game-announced opens and closes wait on it so they land after the saved layout instead of
-    // racing it into the docks.
-    private val layoutRestored = CompletableDeferred<Unit>()
-
-    /**
-     * Suspends until the character's saved open windows have been loaded into [windowUiStates].
-     *
-     * The docking bridge waits on this before it reconciles a restored arrangement, for the same
-     * reason [openWindowFromGame] does. Both it and [restoreWindowLayoutOnConnect] wake on the same
-     * [connectedCharacterId] emission with nothing ordering them, and a reconcile against a window
-     * list that is still empty undocks every window the arrangement just restored.
-     */
-    suspend fun awaitWindowsRestored() {
-        layoutRestored.await()
-    }
-
-    // Stamp of the game's latest open/close instruction per window, taken while the event
-    // collector is still synchronous. The handlers suspend (on the character id and the layout
-    // restore) before acting, so each re-checks that it still holds the newest instruction and
-    // drops itself otherwise - without this, an open parked on the restore could land after the
-    // close that superseded it.
-    private var gameWindowEventCounter = 0L
-    private val latestGameWindowEvent = mutableMapOf<String, Long>()
-
-    private fun stampGameWindowEvent(name: String): Long {
-        val stamp = ++gameWindowEventCounter
-        latestGameWindowEvent[name] = stamp
-        return stamp
-    }
-
-    // On-demand window ui states for the mobile phone/tablet stream tabs, keyed by window name, so
-    // switching tabs reuses the same stream and scroll state instead of rebuilding each time.
-    private val tabWindowUiStates = mutableMapOf<String, WindowUiState>()
-
-    private val _mainWindowUiState =
-        MutableStateFlow(
-            WindowUiState(
-                name = "main",
-                windowInfo = mutableStateOf(windows.value.firstOrNull { it.name == "main" }),
-                // Unspecified, not a concrete style: a window with nothing saved has to inherit the
-                // base style, and mergeWith keeps whatever this one specifies.
-                style = StyleDefinition(),
-                data =
-                    StreamWindowData(
-                        stream = windowRegistry.getOrCreateStream("main") as ComposeTextStream,
-                    ),
-            ),
-        )
-    val mainWindowUiState: StateFlow<WindowUiState> = _mainWindowUiState.asStateFlow()
-
-    private val _selectedWindow: MutableStateFlow<String> = MutableStateFlow("main")
+    private val _selectedWindow: MutableStateFlow<String> = MutableStateFlow(MAIN_WINDOW_NAME)
     val selectedWindow: StateFlow<String> = _selectedWindow
 
-    // Commands shorter than this are not saved to history; history is capped at historySize entries.
-    // Both are seeded from client settings (see init); the defaults apply until the flows emit.
-    private var minHistoryLen = ClientSettingRepository.DEFAULT_MIN_COMMAND_LENGTH
-    private var historySize = ClientSettingRepository.DEFAULT_HISTORY_SIZE
+    private val commands = CommandHandler(client, scriptManager, aliases, scriptCommandPrefix)
+
+    private val scripts = GameScripts(client, scriptManager, mudScriptStore, commands, viewModelScope, ioDispatcher)
+
+    private val history =
+        CommandHistory(entryTextState, client.characterId, commandHistoryRepository, clientSettingRepository, viewModelScope)
+
+    /** The reverse history search in progress, or null when the entry is not searching. */
+    val historySearch: StateFlow<HistorySearchState?> = history.search
+
+    private val finder = WindowFinder { name -> (gameWindows.streamWindowUiState(name).data as? StreamWindowData)?.stream }
+
+    val windowFindController: WindowFindController = finder
+
+    private val macroRunner =
+        MacroRunner(
+            client = client,
+            macroRepository = macroRepository,
+            variableRepository = variableRepository,
+            entry = entryTextState,
+            handler = this,
+            history = history,
+            commands = commands,
+            submit = ::submit,
+            scope = viewModelScope,
+        )
+
+    val macroError: StateFlow<String?> = macroRunner.error
 
     val disconnected = client.disconnected
 
@@ -564,196 +408,17 @@ class GameViewModel(
             if (characterId != null) block(characterId) else flow {}
         }
 
-    /** Build the [WindowData] for a window of the given [windowType], or null if it carries none. */
-    private fun createWindowData(
-        windowType: WindowType?,
-        name: String,
-    ): WindowData? =
-        when (windowType) {
-            WindowType.STREAM -> StreamWindowData(windowRegistry.getOrCreateStream(name) as ComposeTextStream)
-            WindowType.PANEL -> PanelWindowData(windowRegistry.getOrCreatePanel(name) as ComposePanelState)
-            else -> null
-        }
-
     init {
-        trackMinCommandLength()
-        trackHistorySize()
-        loadCommandHistoryOnConnect()
-        restoreWindowLayoutOnConnect()
-        loadPhoneTabOrderOnConnect()
-        applyWindowSettingsChanges()
         handleClientEvents()
         trackMaxTypeAhead()
-        publishRunningScripts()
-        trackHistorySearchQuery()
-        runTheMudsScript()
     }
 
     /**
-     * Runs the script a MUD offers over GMCP, when the connection is one that can be offered one
-     * (see [ScriptableClient]) and the user has not declined. The offer is a state, not an event,
-     * so one made while the connection was still being set up is not missed; a new version
-     * offered mid-session replaces the running script, which goes by a fixed name for that.
+     * Suspends until the character's saved open windows have been loaded into [windowUiStates].
+     * See [GameWindows.awaitRestored].
      */
-    private fun runTheMudsScript() {
-        val scriptable = client as? ScriptableClient ?: return
-        viewModelScope.launch(ioDispatcher) {
-            scriptable.mudScript.filterNotNull().collect { offer ->
-                val characterId = client.characterId.value ?: return@collect
-                when (val load = mudScriptStore.load(characterId, offer)) {
-                    is MudScriptLoad.Loaded -> {
-                        client.print(StyledString("The MUD sent a script (version ${offer.version}).", WarlockStyle.Echo))
-                        scriptManager.startScript(client, MUD_SCRIPT_NAME, load.script, ::commandHandler, extension = "lua")
-                    }
-
-                    is MudScriptLoad.Failed -> {
-                        client.print(StyledString(load.message, WarlockStyle.Error))
-                    }
-
-                    is MudScriptLoad.Skipped -> {
-                        client.debug(load.reason)
-                    }
-                }
-            }
-        }
-    }
-
-    private fun trackHistorySearchQuery() {
-        viewModelScope.launch {
-            // While searching, the entry text is the live query; whenever it changes, re-run the
-            // search from the most recent match. Ignored when not in search mode.
-            snapshotFlow { entryTextState.text.toString() }
-                .collect {
-                    if (_historySearch.value != null) {
-                        updateHistorySearch(resetIndex = true)
-                    }
-                }
-        }
-    }
-
-    private fun trackMinCommandLength() {
-        clientSettingRepository
-            .observeMinCommandLength()
-            .onEach { minHistoryLen = it }
-            .launchIn(viewModelScope)
-    }
-
-    private fun trackHistorySize() {
-        clientSettingRepository
-            .observeHistorySize()
-            .onEach {
-                historySize = it
-                trimHistory()
-            }.launchIn(viewModelScope)
-    }
-
-    // Load each character's saved command history when it connects.
-    private fun loadCommandHistoryOnConnect() {
-        client.characterId
-            .filterNotNull()
-            .distinctUntilChanged()
-            .onEach { characterId ->
-                val saved = commandHistoryRepository.load(characterId)
-                // sendHistory[0] is the in-progress entry buffer; commands follow it newest-first,
-                // while the file stores them oldest-first, so reverse on load.
-                sendHistory.clear()
-                sendHistory.add("")
-                saved.asReversed().forEach { sendHistory.add(it) }
-                trimHistory()
-                historyPosition = 0
-            }.launchIn(viewModelScope)
-    }
-
-    // Restore the saved window layout for a character when it connects.
-    private fun restoreWindowLayoutOnConnect() {
-        client.characterId
-            .onEach { characterId ->
-                if (characterId != null) {
-                    try {
-                        val settings = windowSettingsRepository.observeWindowSettings(characterId).first()
-                        settings.filter { it.open }.forEach { entity ->
-                            // A user open, or a game open that gave up waiting on this restore,
-                            // can land first - never add a second copy.
-                            if (_windowUiStates.value.any { it.name == entity.name }) {
-                                return@forEach
-                            }
-                            logger.d { "Loading entity: $entity" }
-                            val window = windows.value.firstOrNull { it.name == entity.name }
-                            val uiState =
-                                WindowUiState(
-                                    name = entity.name,
-                                    windowInfo = mutableStateOf(window),
-                                    style = entity.getStyle(colorPalette.value),
-                                    font = entity.font,
-                                    monoFont = entity.monoFont,
-                                    scale = entity.scale,
-                                    nameFilter = entity.nameFilter,
-                                    data = createWindowData(window?.windowType, entity.name),
-                                )
-                            (uiState.data as? StreamWindowData)?.stream?.setNameFilter(entity.nameFilter)
-                            if (entity.name == "main") {
-                                _mainWindowUiState.value = uiState
-                            } else {
-                                _windowUiStates.update { it + uiState }
-                            }
-                        }
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (e: Exception) {
-                        // Swallowing keeps the collector alive for the next connection and off
-                        // viewModelScope's unhandled path (a crash on Android).
-                        logger.w(e) { "Failed to restore the window layout" }
-                    } finally {
-                        // Released even when the restore failed: parked opens append after the
-                        // dock's saved positions (computed in the DB), so proceeding against a
-                        // half-populated layout cannot corrupt it, while holding the gate would
-                        // stall every panel on its timeout.
-                        layoutRestored.complete(Unit)
-                    }
-                }
-            }.launchIn(viewModelScope)
-    }
-
-    // Re-apply window styling and name filters whenever the saved window settings change.
-    private fun applyWindowSettingsChanges() {
-        windowSettings
-            .onEach { currentWindowSettings ->
-                currentWindowSettings.forEach { singleWindowSettings ->
-                    if (singleWindowSettings.name == "main") {
-                        _mainWindowUiState.update {
-                            (it.data as? StreamWindowData)?.stream?.setNameFilter(singleWindowSettings.nameFilter)
-                            it.copy(
-                                style = singleWindowSettings.getStyle(colorPalette.value),
-                                font = singleWindowSettings.font,
-                                monoFont = singleWindowSettings.monoFont,
-                                scale = singleWindowSettings.scale,
-                                nameFilter = singleWindowSettings.nameFilter,
-                            )
-                        }
-                    } else {
-                        _windowUiStates.update { states ->
-                            val index = states.indexOfFirst { it.name == singleWindowSettings.name }
-                            if (index != -1) {
-                                val mutableStates = states.toMutableList()
-                                (states[index].data as? StreamWindowData)
-                                    ?.stream
-                                    ?.setNameFilter(singleWindowSettings.nameFilter)
-                                mutableStates[index] =
-                                    states[index].copy(
-                                        style = singleWindowSettings.getStyle(colorPalette.value),
-                                        font = singleWindowSettings.font,
-                                        monoFont = singleWindowSettings.monoFont,
-                                        scale = singleWindowSettings.scale,
-                                        nameFilter = singleWindowSettings.nameFilter,
-                                    )
-                                mutableStates
-                            } else {
-                                states
-                            }
-                        }
-                    }
-                }
-            }.launchIn(viewModelScope)
+    suspend fun awaitWindowsRestored() {
+        gameWindows.awaitRestored()
     }
 
     // Subscribes before the constructor returns, on whatever thread builds this view model. The
@@ -785,63 +450,12 @@ class GameViewModel(
 
     private fun handleClientEvent(event: ClientEvent) {
         when (event) {
-            is ClientCompassEvent -> {
-                _compassState.value = event.directions.toSet()
-            }
-
-            is ClientOpenUrlEvent -> {
-                openUrl(event.url)
-            }
-
-            is ClientOpenWindowEvent -> {
-                openWindowFromGame(name = event.name)
-            }
-
-            is ClientCloseWindowEvent -> {
-                closeWindowFromGame(event.name)
-            }
-
-            is ClientWindowInfoEvent -> {
-                if (event.info.name == "main") {
-                    _mainWindowUiState.value.windowInfo.value = event.info
-                } else {
-                    // A non-resident panel persists nothing, but one announced late can
-                    // have picked up a saved row before its info arrived (canSaveWindow
-                    // is true for unknown windows). Clear it, or the restore and every
-                    // reorder keep tracking a window that saves nothing.
-                    if (!event.info.resident) {
-                        viewModelScope.launch {
-                            client.characterId.value?.let { characterId ->
-                                windowSettingsRepository.removeWindowFromLayout(characterId, event.info.name)
-                            }
-                        }
-                    }
-                    _windowUiStates.value
-                        .indexOfFirst { it.name == event.info.name }
-                        .takeIf { it != -1 }
-                        ?.let { index ->
-                            val uiState = _windowUiStates.value[index]
-                            uiState.windowInfo.value = event.info
-                            if (uiState.data == null) {
-                                _windowUiStates.update { states ->
-                                    val mutableStates = states.toMutableList()
-                                    mutableStates[index] =
-                                        uiState.copy(
-                                            data = createWindowData(event.info.windowType, event.info.name),
-                                        )
-                                    (mutableStates[index].data as? StreamWindowData)
-                                        ?.stream
-                                        ?.setNameFilter(uiState.nameFilter)
-                                    mutableStates
-                                }
-                            }
-                        }
-                }
-            }
-
-            else -> {
-                // don't care
-            }
+            is ClientCompassEvent -> _compassState.value = event.directions.toSet()
+            is ClientOpenUrlEvent -> openUrl(event.url)
+            is ClientOpenWindowEvent -> gameWindows.openFromGame(name = event.name)
+            is ClientCloseWindowEvent -> gameWindows.closeFromGame(event.name)
+            is ClientWindowInfoEvent -> gameWindows.onWindowInfo(event.info)
+            else -> Unit
         }
     }
 
@@ -856,56 +470,10 @@ class GameViewModel(
             }.launchIn(viewModelScope)
     }
 
-    // Render the running-scripts status lines (with pause/resume/stop links) into the scripts window.
-    private fun publishRunningScripts() {
-        runningScripts
-            .onEach { scripts ->
-                val scriptStream = client.getStream("warlockscripts")
-                scriptStream.clear()
-                scripts.forEach { entry ->
-                    val instance = entry.value.instance
-                    var text = StyledString("${instance.name}: ${instance.status} ")
-                    when (instance.status) {
-                        ScriptStatus.Running -> {
-                            text +=
-                                StyledString(
-                                    "pause",
-                                    WarlockStyle.Link(WarlockAction.SendCommand("/pause ${entry.key}")),
-                                )
-                        }
-
-                        ScriptStatus.Suspended -> {
-                            text +=
-                                StyledString(
-                                    "resume",
-                                    WarlockStyle.Link(WarlockAction.SendCommand("/resume ${entry.key}")),
-                                )
-                        }
-
-                        else -> {
-                            // do nothing
-                        }
-                    }
-                    text += StyledString(" ") +
-                        StyledString("stop", WarlockStyle.Link(WarlockAction.SendCommand("/kill ${entry.key}")))
-                    scriptStream.appendLine(text, false)
-                }
-            }.launchIn(viewModelScope)
-    }
-
     override fun submit() {
-        val search = _historySearch.value
-        if (search != null) {
+        if (history.searching) {
             // Accept the current match: leave search mode and run it (if anything matched).
-            _historySearch.value = null
-            historySearchIndex = 0
-            val match = search.match
-            entryTextState.clearText()
-            if (match != null) {
-                updateHistory(match)
-                historyPosition = 0
-                sendCommand(match)
-            }
+            history.acceptSearch()?.let { sendCommand(it) }
             return
         }
         val line = entryTextState.text.toString()
@@ -914,42 +482,13 @@ class GameViewModel(
             return
         }
         entryTextState.clearText()
-        updateHistory(line)
-        historyPosition = 0
+        history.record(line)
         sendCommand(line)
-    }
-
-    private fun applyAliases(line: String): String = aliases.value.fold(line) { acc, alias -> alias.replace(acc) }
-
-    private fun updateHistory(line: String) {
-        if (line.length >= minHistoryLen && sendHistory.getOrNull(1) != line) {
-            sendHistory[0] = line
-            sendHistory.add(0, "")
-            trimHistory()
-            persistHistory()
-        }
-    }
-
-    // Persist the current command history (commands only, oldest first) for the connected character.
-    private fun persistHistory() {
-        val characterId = client.characterId.value ?: return
-        val commands = sendHistory.drop(1).filter { it.isNotEmpty() }.asReversed()
-        viewModelScope.launch {
-            commandHistoryRepository.save(characterId, commands)
-        }
-    }
-
-    // sendHistory[0] is the in-progress entry buffer; indices 1..n are the stored commands, so the
-    // list holds at most historySize + 1 elements.
-    private fun trimHistory() {
-        while (sendHistory.size > historySize + 1) {
-            sendHistory.removeAt(sendHistory.size - 1)
-        }
     }
 
     fun sendCommand(command: String) {
         viewModelScope.launch {
-            commandHandler(command)
+            commands.handle(command)
         }
     }
 
@@ -969,181 +508,37 @@ class GameViewModel(
 
     fun sendCommand(command: suspend () -> String) {
         viewModelScope.launch {
-            commandHandler(command())
+            commands.handle(command())
         }
     }
 
     override suspend fun stopScripts() {
-        val scripts = scriptManager.runningScripts.value.values
-        val count = scripts.size
-        if (count > 0) {
-            scripts.forEach { script ->
-                script.instance.stop()
-            }
-            client.print(StyledString("Stopped $count script(s)"))
-        }
+        scripts.stopAll()
     }
 
     /** Tell the user which scripts the reconnect that opened this game stopped on the old one. */
     suspend fun reportScriptsStoppedByReconnect(names: List<String>) {
-        client.print(
-            StyledString("Reconnecting stopped ${names.size} script(s): ${names.joinToString()}", WarlockStyle.Echo),
-        )
+        scripts.reportStoppedByReconnect(names)
     }
 
     override suspend fun pauseScripts() {
-        val scriptInstances =
-            scriptManager.runningScripts.value.values
-                .map { it.instance }
-        if (scriptInstances.isNotEmpty()) {
-            val paused = !scriptInstances.any { it.status == ScriptStatus.Running }
-            if (paused) {
-                client.print(StyledString("Resumed script(s)"))
-            } else {
-                client.print(StyledString("Paused script(s)"))
-            }
-            for (instance in scriptInstances) {
-                if (paused) {
-                    instance.resume()
-                } else {
-                    instance.suspend()
-                }
-            }
-        } else {
-            client.print(StyledString("No scripts running"))
-        }
+        scripts.togglePauseAll()
     }
 
     override suspend fun repeatCommand(index: Int) {
-        val command = sendHistory.getOrNull(index)
-        if (command != null) {
-            commandHandler(command)
-        }
+        history.commandAt(index)?.let { commands.handle(it) }
     }
 
     fun runScript(file: Path) {
-        viewModelScope.launch(ioDispatcher) {
-            scriptManager.startScript(client, file, ::commandHandler)
-        }
+        scripts.runFile(file)
     }
 
     /** Run a leaf action button's inline WSL script. No-op for a group (which has no script). */
     fun runActionScript(action: Action) {
-        val script = action.script ?: return
-        viewModelScope.launch(ioDispatcher) {
-            scriptManager.startScript(client, action.name, script, ::commandHandler)
-        }
+        scripts.runAction(action)
     }
 
-    fun handleKeyPress(event: KeyEvent): Boolean {
-        if (event.type != KeyEventType.KeyDown || event.key == Key.Unknown) {
-            return false
-        }
-
-        val keyCombo = translateKeyPress(event)
-        val macroString = macros.value[keyCombo]
-
-        if (macroString != null) {
-            val tokens = parseMacro(macroString)
-
-            if (tokens == null) {
-                viewModelScope.launch {
-                    client.print(StyledString("Invalid macro: $macroString"))
-                }
-                return false
-            }
-
-            executeMacro(tokens)
-
-            return true
-        }
-
-        if (event.key.keyCode == Key.Enter.keyCode) {
-            submit()
-            return true
-        }
-
-        return false
-    }
-
-    private fun executeMacro(tokens: List<MacroToken>) {
-        viewModelScope.launch {
-            var moveCursor: Int? = null
-            tokens.forEach { token ->
-                when (token) {
-                    is MacroToken.Entity -> {
-                        handleEntity(
-                            entity = token.char,
-                            onEntryCleared = {
-                                // TODO: report this as an error
-                                moveCursor = null
-                            },
-                        )
-                    }
-
-                    MacroToken.At -> {
-                        moveCursor = entryTextState.selection.min
-                    }
-
-                    is MacroToken.Text -> {
-                        entryInsert(token.text)
-                    }
-
-                    is MacroToken.Variable -> {
-                        client.characterId.value?.lowercase()?.let { characterId ->
-                            variableRepository.getVariable(characterId, token.name)?.let { value ->
-                                entryInsert(value)
-                            }
-                        }
-                    }
-
-                    is MacroToken.Command -> {
-                        if (!MacroCommands.execute(token.name, this@GameViewModel)) {
-                            _macroError.value = "Macro command not found: ${token.name}"
-                        }
-                    }
-                }
-            }
-            if (moveCursor != null) {
-                entryTextState.edit {
-                    selection = TextRange(moveCursor!!)
-                }
-            }
-        }
-    }
-
-    private suspend fun handleEntity(
-        entity: Char,
-        onEntryCleared: () -> Unit,
-    ) {
-        when (entity) {
-            'x' -> {
-                storedText = entryTextState.text.toString()
-                entryTextState.clearText()
-                onEntryCleared()
-            }
-
-            'r' -> {
-                val line = entryTextState.text.toString()
-                entryTextState.clearText()
-                updateHistory(line)
-                historyPosition = 0
-                val aliasedLine = applyAliases(line)
-                commandHandler(aliasedLine)
-                onEntryCleared()
-            }
-
-            'p' -> {
-                delay(1.seconds)
-            }
-
-            '?' -> {
-                entryTextState.edit {
-                    append(storedText)
-                }
-            }
-        }
-    }
+    fun handleKeyPress(event: KeyEvent): Boolean = macroRunner.handleKeyPress(event)
 
     // Must be called from main thread
     private fun entryDelete(
@@ -1155,92 +550,32 @@ class GameViewModel(
         }
     }
 
-    // Must be called from main thread
-    private fun entrySetSelection(selection: TextRange) {
-        entryTextState.edit {
-            this.selection = selection
-        }
-    }
-
     fun entryInsert(text: String) {
         entryTextState.insertReplacingSelection(text)
     }
 
     override fun historyPrev() {
-        val history = sendHistory
-        if (historyPosition < history.size - 1) {
-            sendHistory[historyPosition] = entryTextState.text.toString()
-            historyPosition++
-            entryTextState.setTextAndPlaceCursorAtEnd(history[historyPosition])
-        }
+        history.previous()
     }
 
     override fun historyNext() {
-        if (historyPosition > 0) {
-            sendHistory[historyPosition] = entryTextState.text.toString()
-            historyPosition--
-            entryTextState.setTextAndPlaceCursorAtEnd(sendHistory[historyPosition])
-        }
+        history.next()
     }
 
     override fun historySearch() {
-        if (_historySearch.value == null) {
-            // Enter search mode with a fresh, empty query (the entry text becomes the query).
-            historySearchIndex = 0
-            historyPosition = 0
-            entryTextState.clearText()
-            updateHistorySearch(resetIndex = true)
-        } else {
-            // Already searching: step further back to the next older match.
-            historySearchIndex++
-            updateHistorySearch(resetIndex = false)
-        }
+        history.searchBack()
     }
 
     override fun historySearchExit() {
-        val current = _historySearch.value ?: return
-        // Leave search mode, keeping the matched command in the entry for editing or sending.
-        _historySearch.value = null
-        historySearchIndex = 0
-        entryTextState.setTextAndPlaceCursorAtEnd(current.match ?: "")
-    }
-
-    // Recompute the current match for the active history search from the live query (the entry text).
-    // A blank query matches nothing; a blank or otherwise non-matching query keeps the previously
-    // matched entry selected rather than clearing it. sendHistory is newest-first, with index 0
-    // reserved for the in-progress buffer.
-    private fun updateHistorySearch(resetIndex: Boolean) {
-        val query = entryTextState.text.toString()
-        val matches =
-            if (query.isBlank()) {
-                emptyList()
-            } else {
-                sendHistory.drop(1).filter { it.isNotEmpty() && it.contains(query, ignoreCase = true) }
-            }
-        val match =
-            if (matches.isEmpty()) {
-                // Keep the previously matched entry selected.
-                _historySearch.value?.match
-            } else {
-                if (resetIndex) {
-                    historySearchIndex = 0
-                }
-                historySearchIndex = historySearchIndex.coerceIn(0, matches.size - 1)
-                matches[historySearchIndex]
-            }
-        _historySearch.value =
-            HistorySearchState(
-                query = query,
-                match = match,
-            )
+        history.exitSearch()
     }
 
     override fun findNext() {
-        if (findStateFlow.value == null) openFind() else findStep(1)
+        finder.nextOrOpen(selectedWindow.value)
     }
 
     override fun findPrev() {
-        if (findStateFlow.value == null) openFind() else findStep(-1)
+        finder.previousOrOpen(selectedWindow.value)
     }
 
     /**
@@ -1326,266 +661,14 @@ class GameViewModel(
         entryInsert(text)
     }
 
-    // Open the find overlay over the currently selected window. No-op if that window has no text
-    // stream (e.g. a panel window). Starts with an empty query, so nothing matches until the user
-    // types.
-    private fun openFind() {
-        val target = selectedWindow.value
-        if ((streamWindowUiState(target).data as? StreamWindowData)?.stream == null) return
-        findWindowName = target
-        findQueryText = ""
-        findIndex = 0
-        recomputeFindMatches()
-    }
-
-    private fun updateFindQuery(query: String) {
-        if (findStateFlow.value == null) return
-        findQueryText = query
-        findIndex = 0
-        recomputeFindMatches()
-    }
-
-    // Step to another match, wrapping around. +1 is "next" (further up/older), -1 is "previous".
-    private fun findStep(delta: Int) {
-        if (findStateFlow.value == null) return
-        val size = findMatches.size
-        if (size == 0) return
-        findIndex = ((findIndex + delta) % size + size) % size
-        publishFindState()
-    }
-
-    private fun closeFind() {
-        findStateFlow.value = null
-        findFocusedFlow.value = false
-        findMatches = emptyList()
-        findIndex = 0
-        findQueryText = ""
-    }
-
-    // Re-scan the target window's lines for the current query, ordering matches newest-first so the
-    // bottom-most occurrence is selected first.
-    private fun recomputeFindMatches() {
-        val stream = (streamWindowUiState(findWindowName).data as? StreamWindowData)?.stream
-        val docOrder = mutableListOf<FindMatch>()
-        if (findQueryText.isNotEmpty() && stream != null) {
-            stream.lines.value.forEach { line ->
-                val text = (line as? StreamTextLine)?.text?.text
-                if (text != null) {
-                    var i = text.indexOf(findQueryText, ignoreCase = true)
-                    while (i >= 0) {
-                        docOrder.add(FindMatch(line.serialNumber, i until (i + findQueryText.length)))
-                        i = text.indexOf(findQueryText, startIndex = i + findQueryText.length, ignoreCase = true)
-                    }
-                }
-            }
-        }
-        findMatches = docOrder.asReversed()
-        findIndex = findIndex.coerceIn(0, maxOf(0, findMatches.size - 1))
-        publishFindState()
-    }
-
-    private fun publishFindState() {
-        val current = findMatches.getOrNull(findIndex)
-        findStateFlow.value =
-            WindowFindUiState(
-                windowName = findWindowName,
-                query = findQueryText,
-                totalMatches = findMatches.size,
-                currentNumber = if (findMatches.isEmpty()) 0 else findIndex + 1,
-                matchRangesBySerial =
-                    findMatches
-                        .groupBy { it.serialNumber }
-                        .mapValues { (_, matches) -> matches.map { it.range }.sortedBy { it.first } },
-                currentSerial = current?.serialNumber,
-                currentRange = current?.range,
-            )
-    }
-
-    // TODO: convert this into a simpler representation
-    private fun translateKeyPress(event: KeyEvent): MacroKeyCombo =
-        MacroKeyCombo(
-            keyCode = event.key.keyCode,
-            ctrl = event.isCtrlPressed,
-            alt = event.isAltPressed,
-            shift = event.isShiftPressed,
-            meta = event.isMetaPressed,
-        )
-
-    /**
-     * The user opening a window. Its dock comes from the docking layout JSON when it is in there,
-     * else from the game-announced location (see the bridge in GameDocking.kt); this only puts the
-     * window in the layout. The list updates before anything suspends - normally in the same frame
-     * as the click - so a close arriving afterwards always finds it there, and the screen and the
-     * saved state cannot disagree about whether it is open.
-     */
+    /** The user opening a window; see [GameWindows.open]. */
     fun openWindow(name: String) {
-        if (!placeWindowUi(name)) return
-        persistWindowOpen(name)
+        gameWindows.open(name)
     }
 
-    private fun persistWindowOpen(name: String) {
-        if (!canSaveWindow(name)) return
-        viewModelScope.launch {
-            client.characterId.value?.let { characterId ->
-                windowSettingsRepository.openWindow(characterId = characterId, name = name)
-            }
-        }
-    }
-
-    /**
-     * Opens a window because the game asked for it with an `openDialog` tag. Where it lands is the
-     * docking bridge's business; a panel the game did not place goes to the same spot the real
-     * client floats an unplaced one, and one bound for the client's own chrome never gets here (see
-     * ClientOpenWindowEvent).
-     *
-     * A window the user closed is left closed. The game announces its panels on every login, so
-     * without that a panel the user does not want would come back every time they connect.
-     */
-    private fun openWindowFromGame(name: String) {
-        if (name == _mainWindowUiState.value.name) return
-        val stamp = stampGameWindowEvent(name)
-        viewModelScope.launch {
-            // The game announces most of its windows before naming the character (GS4 sends the
-            // whole panel list ahead of the <app> tag), and the hidden check below is meaningless
-            // without the character's saved state - sampling a still-null id here is what used to
-            // reopen hidden panels on every GS4 login. Wait for the id; the timeout only covers a
-            // server that never identifies the character at all.
-            val characterId =
-                withTimeoutOrNull(10.seconds) { client.characterId.filterNotNull().first() }
-            if (characterId != null) {
-                // The layout restore wakes on this same characterId emission; let it finish so
-                // this window lands after the saved layout instead of racing it into the dock.
-                if (withTimeoutOrNull(10.seconds) { layoutRestored.await() } == null) {
-                    logger.w { "Layout restore still running after 10s; opening $name against it" }
-                }
-                // A window the user closed stays closed until they ask for it back.
-                if (windowSettingsRepository.isHidden(characterId, name)) return@launch
-            }
-            // Superseded by a later open or close for this window while suspended above.
-            if (latestGameWindowEvent[name] != stamp) return@launch
-            if (!placeWindowUi(name)) return@launch
-            persistWindowOpen(name)
-        }
-    }
-
-    /**
-     * Adds a window to the open list and returns whether it was added. Persists nothing: callers
-     * own the saved open flag. Where the window docks is the bridge's business.
-     */
-    private fun placeWindowUi(name: String): Boolean {
-        // A window lives in the list exactly once: an open for one already there is a no-op
-        // (the visibility toggles route those to closeWindow).
-        if (_windowUiStates.value.any { it.name == name }) return false
-        var newState: WindowUiState? = null
-        _windowUiStates.update { states ->
-            // Reset on entry: update{} may retry, and a retry can take the other branch.
-            newState = null
-            if (states.any { it.name == name }) {
-                states
-            } else {
-                val added = buildWindowUiState(name)
-                newState = added
-                states + added
-            }
-        }
-        val state = newState ?: return false
-        (state.data as? StreamWindowData)?.stream?.setNameFilter(state.nameFilter)
-        return true
-    }
-
-    private fun buildWindowUiState(name: String): WindowUiState {
-        val entity = windowSettings.value.firstOrNull { it.name == name }
-        val windowInfo = windows.value.firstOrNull { it.name == name }
-        return WindowUiState(
-            name = name,
-            windowInfo = mutableStateOf(windowInfo),
-            style = entity?.getStyle(colorPalette.value) ?: StyleDefinition(),
-            font = entity?.font,
-            monoFont = entity?.monoFont,
-            scale = entity?.scale,
-            nameFilter = entity?.nameFilter ?: false,
-            data = createWindowData(windowInfo?.windowType, name),
-        )
-    }
-
-    /**
-     * Whether a window's layout may be written to the character's settings. A transient panel is
-     * still moved, resized and closed in the running layout, it just leaves nothing behind. Windows
-     * the game has not told us about are treated as savable, so a stream window still restores where
-     * the user put it if its info has not arrived yet.
-     */
-    private fun canSaveWindow(name: String): Boolean = windows.value.firstOrNull { it.name == name }?.resident != false
-
-    /**
-     * The user closing a window. It is remembered as hidden, so the game cannot bring it back with an
-     * `openDialog` - the user has to ask for it again.
-     */
+    /** The user closing a window, which is then remembered as hidden; see [GameWindows.close]. */
     fun closeWindow(name: String) {
-        removeWindow(name = name, hide = true)
-    }
-
-    /**
-     * A panel's own `closeButton`. The button's command and the dismissal are one operation rather
-     * than two actions, because whether the panel closes depends on what the command found: the
-     * command always runs, and the close only follows for a non-resident panel.
-     *
-     * A resident panel is a permanent fixture of the character's layout, and the real client refuses
-     * to close one rather than hiding it (it answers `_error Cannot close a resident dialog (<id>)`
-     * upstream). The button's command still runs either way.
-     */
-    private fun closePanelFromButton(action: WarlockAction.ClosePanel) {
-        val resident = windows.value.firstOrNull { it.name == action.id }?.resident == true
-        viewModelScope.launch {
-            action.command?.let { client.sendWidgetCommand(it, action.echo) }
-            if (resident) {
-                client.debug("Cannot close a resident dialog (${action.id})")
-                return@launch
-            }
-            // Same path as the window's own close button, so the panel is remembered hidden and the
-            // game cannot reopen it unasked.
-            closeWindow(action.id)
-        }
-    }
-
-    /**
-     * The game closing a panel with a `closeDialog` tag. It leaves the layout but is not hidden: the
-     * game is free to open it again later.
-     *
-     * Closes wait on the same gate as game opens: one that ran mid-restore would remove nothing
-     * from the not-yet-populated dock while nulling the saved row underneath it, and a close
-     * running ahead of a parked open for the same window would invert the protocol's order (the
-     * stamp check settles who acts).
-     */
-    private fun closeWindowFromGame(name: String) {
-        val stamp = stampGameWindowEvent(name)
-        viewModelScope.launch {
-            // No character means no restore is pending (it only runs for an identified
-            // character), and the gate would never complete - act immediately.
-            if (client.characterId.value != null) {
-                if (withTimeoutOrNull(10.seconds) { layoutRestored.await() } == null) {
-                    logger.w { "Layout restore still running after 10s; closing $name against it" }
-                }
-            }
-            if (latestGameWindowEvent[name] != stamp) return@launch
-            removeWindow(name = name, hide = false)
-        }
-    }
-
-    private fun removeWindow(
-        name: String,
-        hide: Boolean,
-    ) {
-        _windowUiStates.update { states -> states.filter { it.name != name } }
-        if (!canSaveWindow(name)) return
-        viewModelScope.launch {
-            client.characterId.value?.let { characterId ->
-                if (hide) {
-                    windowSettingsRepository.closeWindow(characterId = characterId, name = name)
-                } else {
-                    windowSettingsRepository.removeWindowFromLayout(characterId = characterId, name = name)
-                }
-            }
-        }
+        gameWindows.close(name)
     }
 
     fun clearStream(name: String) {
@@ -1596,133 +679,41 @@ class GameViewModel(
     }
 
     /**
-     * A [WindowUiState] for any window by [name], built on demand from the window registry and the
-     * saved per-window settings. Lets the mobile phone/tablet tab layouts render a stream without
-     * "opening" it into a dock. The main window returns its canonical, event-updated ui state.
+     * A [WindowUiState] for any window by [name], so the mobile tab layouts can render a stream
+     * without opening it into a dock; see [GameWindows.streamWindowUiState].
      */
-    fun streamWindowUiState(name: String): WindowUiState {
-        if (name == "main") return _mainWindowUiState.value
-        return tabWindowUiStates.getOrPut(name) {
-            val entity = windowSettings.value.firstOrNull { it.name == name }
-            val windowInfo = windows.value.firstOrNull { it.name == name }
-            WindowUiState(
-                name = name,
-                windowInfo = mutableStateOf(windowInfo),
-                style = entity?.getStyle(colorPalette.value) ?: StyleDefinition(),
-                font = entity?.font,
-                monoFont = entity?.monoFont,
-                scale = entity?.scale,
-                nameFilter = entity?.nameFilter ?: false,
-                data = createWindowData(windowInfo?.windowType, name),
-            )
-        }
-    }
+    fun streamWindowUiState(name: String): WindowUiState = gameWindows.streamWindowUiState(name)
 
     /** The character's saved docking-layout JSON, or null when none has been saved yet. */
-    suspend fun loadDockLayout(): String? =
-        client.characterId.value?.let { characterId ->
-            characterSettingsRepository.get(characterId, DOCK_LAYOUT_KEY)
-        }
+    suspend fun loadDockLayout(): String? = dockLayoutStore.loadLayout()
 
     /** The character's saved closed-window spots, or null when none have been saved yet. */
-    suspend fun loadDockSpots(): String? =
-        client.characterId.value?.let { characterId ->
-            characterSettingsRepository.get(characterId, DOCK_SPOTS_KEY)
-        }
+    suspend fun loadDockSpots(): String? = dockLayoutStore.loadSpots()
 
-    private fun loadPhoneTabOrderOnConnect() {
-        observePerCharacter { characterId ->
-            characterSettingsRepository.observe(characterId, PHONE_TAB_ORDER_KEY)
-        }.onEach { raw -> savedPhoneTabOrder.value = decodePhoneTabOrder(raw) }
-            .launchIn(viewModelScope)
+    /**
+     * Saves the docking-layout JSON. Layout churn is debounced by the caller, which collects
+     * sequentially and awaits this, so saves never pile up behind one another.
+     */
+    suspend fun saveDockLayout(layout: String) {
+        dockLayoutStore.saveLayout(layout)
+    }
+
+    /** Saves where closed windows were, so reopening puts them back in a later session too. */
+    suspend fun saveDockSpots(spots: String) {
+        dockLayoutStore.saveSpots(spots)
     }
 
     /** Puts [name] in the phone tab strip. Does nothing if it is already there. */
-    fun addPhoneTab(name: String) = editPhoneTabs { if (name in it) it else it + name }
+    fun addPhoneTab(name: String) = phoneTabStrip.add(name)
 
     /** Takes [name] out of the phone tab strip. The main window cannot be removed. */
-    fun removePhoneTab(name: String) {
-        if (name == MAIN_WINDOW_NAME) return
-        editPhoneTabs { it - name }
-    }
+    fun removePhoneTab(name: String) = phoneTabStrip.remove(name)
 
     /** Moves a phone tab, with [from] and [to] as positions in the strip the user can see. */
     fun movePhoneTab(
         from: Int,
         to: Int,
-    ) {
-        val shown = phoneTabs.value
-        if (from == to || from !in shown.indices || to !in shown.indices) return
-        editPhoneTabs { saved ->
-            moveInSavedOrder(saved, moved = shown[from], anchor = shown[to], forward = to > from)
-        }
-    }
-
-    /**
-     * The one way the tab list changes, and where an [PhoneTabOrder.Auto] list becomes the user's
-     * own: the first edit freezes what is on screen, so nothing they could see silently drops out.
-     *
-     * [transform] is handed the *saved* order, not the displayed one. A window the game has not
-     * announced this session is missing from the strip but must survive the edit.
-     */
-    private fun editPhoneTabs(transform: (List<String>) -> List<String>) {
-        val order = savedPhoneTabOrder.value
-        // Settings have not answered yet, so the strip is showing a placeholder. Editing against it
-        // would write [main] over the order this character already has saved.
-        if (order is PhoneTabOrder.Loading) return
-        val current = (order as? PhoneTabOrder.Explicit)?.names ?: phoneTabs.value
-        val next = transform(current)
-        if (next == current) return
-        savedPhoneTabOrder.value = PhoneTabOrder.Explicit(next)
-        viewModelScope.launch { phoneTabOrderWriter.write(encodePhoneTabOrder(next)) }
-    }
-
-    // Reordering fires on every step of a drag, so the same out-of-order hazard applies here as to
-    // the dock layout below.
-    private val phoneTabOrderWriter = LatestValueWriter(::writePhoneTabOrder)
-
-    private suspend fun writePhoneTabOrder(order: String) {
-        client.characterId.value?.let { characterId ->
-            characterSettingsRepository.save(characterId, PHONE_TAB_ORDER_KEY, order)
-        }
-    }
-
-    // The dock layout is auto-saved, so two writes that finished out of order would leave the older
-    // arrangement stored with nothing to correct it. Both writers - the bridge's debounced save and
-    // the flush in [close] - go through one [LatestValueWriter], which keeps the newest layout the
-    // last one written. It lives here rather than in the composition so [close] can flush a layout
-    // the debounce has not gotten to: an arrangement changed within a second of quitting would
-    // otherwise never reach the database, the composition being torn down first.
-    private val dockLayoutWriter = LatestValueWriter(::writeDockLayout)
-
-    private suspend fun writeDockLayout(layout: String) {
-        client.characterId.value?.let { characterId ->
-            characterSettingsRepository.save(characterId, DOCK_LAYOUT_KEY, layout)
-        }
-    }
-
-    // Saved on the same beat as the arrangement, and for the same reason: out-of-order writes would
-    // leave the older set stored with nothing to correct it.
-    private val dockSpotsWriter = LatestValueWriter(::writeDockSpots)
-
-    private suspend fun writeDockSpots(spots: String) {
-        client.characterId.value?.let { characterId ->
-            characterSettingsRepository.save(characterId, DOCK_SPOTS_KEY, spots)
-        }
-    }
-
-    /**
-     * Persists the docking-layout JSON. Layout churn is debounced by the caller, which collects
-     * sequentially and awaits this, so saves never pile up behind one another.
-     */
-    suspend fun saveDockLayout(layout: String) {
-        dockLayoutWriter.write(layout)
-    }
-
-    /** Persists where closed windows were, so reopening puts them back in a later session too. */
-    suspend fun saveDockSpots(spots: String) {
-        dockSpotsWriter.write(spots)
-    }
+    ) = phoneTabStrip.move(from, to)
 
     /** Shared handling for a clickable game-text action (command link or menu). */
     fun onWindowAction(action: WarlockAction): Int? =
@@ -1751,7 +742,7 @@ class GameViewModel(
             }
 
             is WarlockAction.ClosePanel -> {
-                closePanelFromButton(action)
+                gameWindows.closeFromPanelButton(action)
                 null
             }
 
@@ -1862,9 +853,8 @@ class GameViewModel(
         // Write any arrangement the bridge's debounce has not saved yet. This runs here rather than
         // from the composition because callers await close() before tearing the window down (and,
         // on the last window, before exiting the process), so the write is ordered ahead of both.
-        dockLayoutWriter.flush()
-        dockSpotsWriter.flush()
-        phoneTabOrderWriter.flush()
+        dockLayoutStore.flush()
+        phoneTabStrip.flush()
         // If a reconnect is still in flight (e.g. the user returned to the dashboard while it was
         // running), cancel it first so the in-progress attempt is unwound: cancellation runs the
         // connect use case's finally blocks, which close any half-opened client/socket so nothing leaks.
@@ -1892,8 +882,7 @@ class GameViewModel(
     private suspend fun closeClient() {
         // Scripts run on the app's scope, not this view model's, so they would carry on against a
         // closed client - a waitfor that can never match, or a loop sending into nothing.
-        scriptManager.runningScripts.value.values
-            .forEach { it.instance.stop() }
+        scripts.stopForTeardown()
         // The quit is a goodbye to the server, not part of the teardown: whether it lands or not,
         // the client and the registry still have to go, and the caller still has somewhere to be
         // afterwards - the dashboard, or a window that wants to close. Only cancellation carries on
@@ -1939,9 +928,7 @@ class GameViewModel(
                 // The reconnect installed a fresh game screen (or an error); release this (old)
                 // client, and stop this view model's work, since nothing shows it any more. The
                 // client's scripts go with it, which the user should hear about on the new screen.
-                val stoppedScripts =
-                    scriptManager.runningScripts.value.values
-                        .map { it.instance.name }
+                val stoppedScripts = scripts.runningNames()
                 try {
                     closeClient()
                     if (stoppedScripts.isNotEmpty()) onReconnectStoppedScripts(stoppedScripts)
@@ -1953,91 +940,6 @@ class GameViewModel(
 
     fun getCurrentTime(): Instant = client.getCurrentTime()
 
-    /*
-     * returns true when the command triggers type ahead
-     */
-    private suspend fun commandHandler(line: String): SendCommandType {
-        val aliasedLine = applyAliases(line)
-        return if (aliasedLine.startsWith(scriptCommandPrefix.value)) {
-            val scriptCommand = aliasedLine.drop(scriptCommandPrefix.value.length)
-            client.print(StyledString(aliasedLine, WarlockStyle.Command))
-            scriptManager.startScript(client, scriptCommand, ::commandHandler)
-            SendCommandType.SCRIPT
-        } else if (aliasedLine.startsWith(CLIENT_COMMAND_PREFIX)) {
-            client.print(StyledString(aliasedLine, WarlockStyle.Command))
-            val clientCommand = aliasedLine.drop(1)
-            val (command, args) = clientCommand.splitFirstWord()
-            when (command) {
-                "kill" -> {
-                    // TODO: verify arguments
-                    args?.split(' ')?.forEach { name ->
-                        val script = scriptManager.findScriptInstance(name)
-                        if (script != null) {
-                            script.stop()
-                            client.print(StyledString("Script $name stopped.", WarlockStyle.Echo))
-                        } else {
-                            client.print(StyledString("Script $name not found.", WarlockStyle.Error))
-                        }
-                    }
-                }
-
-                "pause" -> {
-                    // TODO: verify arguments
-                    args?.split(' ')?.forEach { name ->
-                        val script = scriptManager.findScriptInstance(name)
-                        if (script != null) {
-                            script.suspend()
-                            client.print(StyledString("Script $name paused.", WarlockStyle.Echo))
-                        } else {
-                            client.print(StyledString("Script $name not found.", WarlockStyle.Error))
-                        }
-                    }
-                }
-
-                "resume" -> {
-                    // TODO: verify arguments
-                    args?.split(' ')?.forEach { name ->
-                        val script = scriptManager.findScriptInstance(name)
-                        if (script != null) {
-                            script.resume()
-                            client.print(StyledString("Script $name resumed.", WarlockStyle.Echo))
-                        } else {
-                            client.print(StyledString("Script $name not found.", WarlockStyle.Error))
-                        }
-                    }
-                }
-
-                "list" -> {
-                    val scripts = scriptManager.runningScripts.value
-                    if (scripts.isEmpty()) {
-                        client.print(StyledString("No scripts are running", WarlockStyle.Echo))
-                    } else {
-                        client.print(StyledString("Running scripts:", WarlockStyle.Echo))
-                        scripts.forEach {
-                            client.print(StyledString("${it.value.instance.name} - ${it.key}", WarlockStyle.Echo))
-                        }
-                    }
-                }
-
-                "disconnect", "dc" -> {
-                    client.disconnect()
-                }
-
-                "send" -> {
-                    client.sendCommandDirect(args ?: "")
-                }
-
-                else -> {
-                    client.print(StyledString("Invalid command.", WarlockStyle.Error))
-                }
-            }
-            SendCommandType.ACTION
-        } else {
-            client.sendCommand(aliasedLine)
-            SendCommandType.COMMAND
-        }
-    }
-
     fun saveEntryStyle(style: StyleDefinition) {
         viewModelScope.launch {
             client.characterId.value?.let { characterId ->
@@ -2047,7 +949,7 @@ class GameViewModel(
     }
 
     fun handledMacroError() {
-        _macroError.value = null
+        macroRunner.errorShown()
     }
 
     override fun entryClearToEnd() {
@@ -2066,22 +968,8 @@ class GameViewModel(
     }
 
     override fun entrySetCursorPosition(pos: Int) {
-        entrySetSelection(TextRange(pos))
+        entryTextState.edit {
+            selection = TextRange(pos)
+        }
     }
 }
-
-/**
- * UI state for readline-style reverse history search. [query] is what the user has typed so far and
- * [match] is the history command currently matched (or null if nothing matches). While this is
- * non-null the entry prompt shows `searching "<query>": <match>`.
- */
-data class HistorySearchState(
-    val query: String,
-    val match: String?,
-)
-
-/** A single find-in-window match: the line's serial number and the matched character range in it. */
-private data class FindMatch(
-    val serialNumber: Long,
-    val range: IntRange,
-)

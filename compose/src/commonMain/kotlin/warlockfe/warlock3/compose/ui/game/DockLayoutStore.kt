@@ -1,0 +1,73 @@
+package warlockfe.warlock3.compose.ui.game
+
+import kotlinx.coroutines.flow.StateFlow
+import warlockfe.warlock3.compose.util.LatestValueWriter
+import warlockfe.warlock3.core.prefs.repositories.CharacterSettingsRepository
+
+// The compose-docking layout JSON for this character, one blob per character. Written debounced on
+// every layout change; a window it does not know yet docks at its game-announced location.
+const val DOCK_LAYOUT_KEY = "dockLayout"
+
+// Where windows were when they were closed. Separate from the arrangement rather than folded
+// into it, so an unreadable one costs only the memory and every layout already saved still reads.
+const val DOCK_SPOTS_KEY = "dockSpots"
+
+/**
+ * Saves and loads the connected character's docking layout: the arrangement of its windows, and
+ * where each closed window was.
+ *
+ * The layout is auto-saved, so two writes that finished out of order would leave the older
+ * arrangement stored with nothing to correct it. Both writers - the bridge's debounced save and
+ * [flush] when the game closes - go through one [LatestValueWriter], which keeps the newest layout
+ * the last one written. It lives outside the composition so [flush] can write a layout the debounce
+ * has not gotten to: an arrangement changed within a second of quitting would otherwise never reach
+ * the database, the composition being torn down first.
+ */
+internal class DockLayoutStore(
+    private val characterId: StateFlow<String?>,
+    private val characterSettingsRepository: CharacterSettingsRepository,
+) {
+    private val layoutWriter = LatestValueWriter<String> { save(DOCK_LAYOUT_KEY, it) }
+
+    // Saved on the same beat as the arrangement, and for the same reason.
+    private val spotsWriter = LatestValueWriter<String> { save(DOCK_SPOTS_KEY, it) }
+
+    /** The saved docking-layout JSON, or null when none has been saved yet. */
+    suspend fun loadLayout(): String? = load(DOCK_LAYOUT_KEY)
+
+    /** The saved closed-window spots, or null when none have been saved yet. */
+    suspend fun loadSpots(): String? = load(DOCK_SPOTS_KEY)
+
+    /**
+     * Saves the docking-layout JSON. Layout churn is debounced by the caller, which collects
+     * sequentially and awaits this, so saves never pile up behind one another.
+     */
+    suspend fun saveLayout(layout: String) {
+        layoutWriter.write(layout)
+    }
+
+    /** Saves where closed windows were, so reopening puts them back in a later session too. */
+    suspend fun saveSpots(spots: String) {
+        spotsWriter.write(spots)
+    }
+
+    /** Writes any layout or spots a debounced save has not gotten to yet. */
+    suspend fun flush() {
+        layoutWriter.flush()
+        spotsWriter.flush()
+    }
+
+    private suspend fun load(key: String): String? =
+        characterId.value?.let { characterId ->
+            characterSettingsRepository.get(characterId, key)
+        }
+
+    private suspend fun save(
+        key: String,
+        value: String,
+    ) {
+        characterId.value?.let { characterId ->
+            characterSettingsRepository.save(characterId, key, value)
+        }
+    }
+}
