@@ -26,6 +26,17 @@ open class FakeWarlockClient(
 
     var closed = false
 
+    /** The game commands sent, in order. */
+    val sentCommands = mutableListOf<String>()
+
+    /** The commands sent straight to the server, bypassing type-ahead, in order. */
+    val directCommands = mutableListOf<String>()
+
+    /** The text of each line printed, in order. */
+    val printed = mutableListOf<String>()
+
+    var disconnectRequested = false
+
     /** The widget commands sent, in order. */
     val widgetCommands = mutableListOf<String>()
 
@@ -58,11 +69,18 @@ open class FakeWarlockClient(
 
     override fun getCurrentTime(): Instant = Clock.System.now()
 
-    override fun disconnect() = Unit
+    override fun disconnect() {
+        disconnectRequested = true
+    }
 
-    override suspend fun sendCommand(line: String) = SendCommandType.COMMAND
+    override suspend fun sendCommand(line: String): SendCommandType {
+        sentCommands += line
+        return SendCommandType.COMMAND
+    }
 
-    override suspend fun sendCommandDirect(command: String) = Unit
+    override suspend fun sendCommandDirect(command: String) {
+        directCommands += command
+    }
 
     override suspend fun sendWidgetCommand(
         command: String,
@@ -76,7 +94,9 @@ open class FakeWarlockClient(
         noun: String?,
     ) = 0
 
-    override suspend fun print(message: StyledString) = Unit
+    override suspend fun print(message: StyledString) {
+        printed += message.toText()
+    }
 
     override suspend fun debug(message: String) {
         debugLines += message

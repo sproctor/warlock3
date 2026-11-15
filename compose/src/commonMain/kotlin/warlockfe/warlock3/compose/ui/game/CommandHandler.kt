@@ -3,6 +3,7 @@ package warlockfe.warlock3.compose.ui.game
 import kotlinx.coroutines.flow.StateFlow
 import warlockfe.warlock3.core.client.SendCommandType
 import warlockfe.warlock3.core.client.WarlockClient
+import warlockfe.warlock3.core.script.ScriptManager
 import warlockfe.warlock3.core.text.Alias
 import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.text.WarlockStyle
@@ -18,7 +19,8 @@ const val CLIENT_COMMAND_PREFIX = '/'
  */
 internal class CommandHandler(
     private val client: WarlockClient,
-    private val scripts: GameScripts,
+    private val scriptManager: ScriptManager,
+    private val scripts: ScriptControl,
     private val aliases: StateFlow<List<Alias>>,
     private val scriptCommandPrefix: StateFlow<String>,
 ) {
@@ -30,7 +32,7 @@ internal class CommandHandler(
         val prefix = scriptCommandPrefix.value
         return if (aliasedLine.startsWith(prefix)) {
             client.print(StyledString(aliasedLine, WarlockStyle.Command))
-            scripts.runNamed(aliasedLine.drop(prefix.length))
+            scriptManager.startScript(client, aliasedLine.drop(prefix.length), ::handle)
             SendCommandType.SCRIPT
         } else if (aliasedLine.startsWith(CLIENT_COMMAND_PREFIX)) {
             client.print(StyledString(aliasedLine, WarlockStyle.Command))
@@ -46,15 +48,15 @@ internal class CommandHandler(
         val (command, args) = clientCommand.splitFirstWord()
         when (command) {
             "kill" -> {
-                scripts.stop(args)
+                scripts.stop(scriptNames(args))
             }
 
             "pause" -> {
-                scripts.pause(args)
+                scripts.pause(scriptNames(args))
             }
 
             "resume" -> {
-                scripts.resume(args)
+                scripts.resume(scriptNames(args))
             }
 
             "list" -> {
@@ -74,4 +76,7 @@ internal class CommandHandler(
             }
         }
     }
+
+    // The names or ids after a script command, one per space. TODO: verify arguments
+    private fun scriptNames(args: String?): List<String> = args?.split(' ').orEmpty()
 }

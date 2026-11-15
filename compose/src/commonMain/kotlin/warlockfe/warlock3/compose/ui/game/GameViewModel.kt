@@ -97,7 +97,7 @@ import kotlin.time.Instant
 /**
  * One connected game's screen. The parts with state of their own live in their own classes, which
  * this one owns and wires together: [CommandHistory], [WindowFinder], [MacroRunner],
- * [CommandHandler], [GameScripts], [GameWindows], [PhoneTabs] and [DockLayoutStore].
+ * [CommandHandler], [ScriptControl], [ScriptLauncher], [GameWindows], [PhoneTabs] and [DockLayoutStore].
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class GameViewModel(
@@ -362,9 +362,11 @@ class GameViewModel(
     private val _selectedWindow: MutableStateFlow<String> = MutableStateFlow(MAIN_WINDOW_NAME)
     val selectedWindow: StateFlow<String> = _selectedWindow
 
-    private val scripts = GameScripts(client, scriptManager, mudScriptStore, viewModelScope, ioDispatcher)
+    private val scripts = ScriptControl(client, scriptManager, viewModelScope)
 
-    private val commands = CommandHandler(client, scripts, aliases, scriptCommandPrefix).also { scripts.start(it) }
+    private val commands = CommandHandler(client, scriptManager, scripts, aliases, scriptCommandPrefix)
+
+    private val launcher = ScriptLauncher(client, scriptManager, mudScriptStore, commands, viewModelScope, ioDispatcher)
 
     private val history =
         CommandHistory(
@@ -533,12 +535,12 @@ class GameViewModel(
     }
 
     fun runScript(file: Path) {
-        scripts.runFile(file)
+        launcher.runFile(file)
     }
 
     /** Run a leaf action button's inline WSL script. No-op for a group (which has no script). */
     fun runActionScript(action: Action) {
-        scripts.runAction(action)
+        launcher.runAction(action)
     }
 
     fun handleKeyPress(event: KeyEvent): Boolean = macroRunner.handleKeyPress(event)
