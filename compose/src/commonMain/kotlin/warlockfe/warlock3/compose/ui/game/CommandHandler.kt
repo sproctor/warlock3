@@ -24,7 +24,7 @@ internal class CommandHandler(
     private val aliases: StateFlow<List<Alias>>,
     private val scriptCommandPrefix: StateFlow<String>,
 ) {
-    fun applyAliases(line: String): String = aliases.value.fold(line) { acc, alias -> alias.replace(acc) }
+    private fun applyAliases(line: String): String = aliases.value.fold(line) { acc, alias -> alias.replace(acc) }
 
     /** Runs [line], returning what kind of command it turned out to be. */
     suspend fun handle(line: String): SendCommandType {

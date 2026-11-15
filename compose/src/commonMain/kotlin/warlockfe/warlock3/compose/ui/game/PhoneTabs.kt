@@ -1,14 +1,11 @@
 package warlockfe.warlock3.compose.ui.game
 
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
@@ -23,7 +20,6 @@ import warlockfe.warlock3.core.window.WindowInfo
 const val PHONE_TAB_ORDER_KEY = "phoneTabOrder"
 
 /** The phone tab strip: which windows have a tab, in what order, saved per character. */
-@OptIn(ExperimentalCoroutinesApi::class)
 internal class PhoneTabs(
     private val characterId: StateFlow<String?>,
     private val characterSettingsRepository: CharacterSettingsRepository,
@@ -52,13 +48,8 @@ internal class PhoneTabs(
 
     init {
         characterId
-            .flatMapLatest { characterId ->
-                if (characterId != null) {
-                    characterSettingsRepository.observe(characterId, PHONE_TAB_ORDER_KEY)
-                } else {
-                    flow {}
-                }
-            }.onEach { raw -> savedOrder.value = decodePhoneTabOrder(raw) }
+            .observePerCharacter { characterSettingsRepository.observe(it, PHONE_TAB_ORDER_KEY) }
+            .onEach { raw -> savedOrder.value = decodePhoneTabOrder(raw) }
             .launchIn(scope)
     }
 

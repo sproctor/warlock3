@@ -368,18 +368,18 @@ fun rememberGameDockState(
                 if (withTimeoutOrNull(CHARACTER_WAIT) { viewModel.awaitWindowsRestored() } == null) {
                     Logger.w { "Window restore still running after $CHARACTER_WAIT; docking against it" }
                 }
-                val saved = runCatching { viewModel.loadDockLayout() }.getOrNull()
+                val saved = runCatching { viewModel.dockLayout.loadLayout() }.getOrNull()
                 // Before the restore, so the reconcile inside it can already put a window the
                 // character closed in an earlier session back where they left it.
-                spots.restore(runCatching { viewModel.loadDockSpots() }.getOrNull())
+                spots.restore(runCatching { viewModel.dockLayout.loadSpots() }.getOrNull())
                 applyRestoredLayout(state, saved, liveOpenWindows(), ::registerWindow, spots)
                 restoreFinished.complete(Unit)
                 snapshotFlow { state.layout }
                     .drop(1)
                     .debounce(1.seconds)
                     .collect {
-                        viewModel.saveDockLayout(DockingPersistence.encode(state.captureLayout()))
-                        dockSpotsToSave(spots)?.let { viewModel.saveDockSpots(it) }
+                        viewModel.dockLayout.saveLayout(DockingPersistence.encode(state.captureLayout()))
+                        dockSpotsToSave(spots)?.let { viewModel.dockLayout.saveSpots(it) }
                     }
             }
             // Hold the first layout pass for the restore, so early windows do not flash into

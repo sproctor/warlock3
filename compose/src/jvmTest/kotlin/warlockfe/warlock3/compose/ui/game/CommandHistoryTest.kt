@@ -7,13 +7,16 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
-import warlockfe.warlock3.compose.AppContainer
+import kotlinx.io.files.SystemFileSystem
 import warlockfe.warlock3.compose.deleteTestDir
-import warlockfe.warlock3.compose.testAppContainer
+import warlockfe.warlock3.core.prefs.config.CharacterConfigStore
+import warlockfe.warlock3.core.prefs.repositories.ClientSettingRepository
+import warlockfe.warlock3.core.prefs.repositories.CommandHistoryRepository
 import java.nio.file.Files
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
@@ -44,24 +47,28 @@ class CommandHistoryTest {
     // The histories' own coroutines, cancelled after each test: they collect settings forever.
     private val historyJob = Job()
 
-    private fun TestScope.settle() = advanceUntilIdle()
-
-    private suspend fun TestScope.container(): AppContainer = testAppContainer(dir, StandardTestDispatcher(testScheduler))
-
-    private fun TestScope.history(container: AppContainer) =
+    // No app container: each one starts a config-file watcher, and enough of them exhaust the
+    // user's inotify instances for every later test in the JVM.
+    private fun TestScope.history() =
         CommandHistory(
-            entry,
-            characterId,
-            container.commandHistoryRepository,
-            container.clientSettings,
-            CoroutineScope(StandardTestDispatcher(testScheduler) + historyJob),
+            entry = entry,
+            characterId = characterId,
+            commandHistoryRepository =
+                CommandHistoryRepository(
+                    CharacterConfigStore(dir.toString(), SystemFileSystem),
+                    SystemFileSystem,
+                    StandardTestDispatcher(testScheduler),
+                ),
+            minCommandLength = flowOf(ClientSettingRepository.DEFAULT_MIN_COMMAND_LENGTH),
+            historySize = flowOf(ClientSettingRepository.DEFAULT_HISTORY_SIZE),
+            scope = CoroutineScope(StandardTestDispatcher(testScheduler) + historyJob),
         )
 
     @Test
     fun stepsBackAndForwardThroughSentCommands() =
         runTest {
-            val history = history(container())
-            settle()
+            val history = history()
+            advanceUntilIdle()
             history.record("look")
             history.record("north")
             entry.setTextAndPlaceCursorAtEnd("half typed")
@@ -83,8 +90,8 @@ class CommandHistoryTest {
     @Test
     fun keepsNeitherShortCommandsNorARepeatOfTheLast() =
         runTest {
-            val history = history(container())
-            settle()
+            val history = history()
+            advanceUntilIdle()
             history.record("look")
             history.record("n")
             history.record("look")
@@ -96,16 +103,15 @@ class CommandHistoryTest {
     @Test
     fun savesEachCharactersHistoryAndLoadsItOnConnect() =
         runTest {
-            val container = container()
             characterId.value = "char"
-            val first = history(container)
-            settle()
+            val first = history()
+            advanceUntilIdle()
             first.record("look")
             first.record("north")
-            settle()
+            advanceUntilIdle()
 
-            val second = history(container)
-            settle()
+            val second = history()
+            advanceUntilIdle()
 
             assertEquals("north", second.commandAt(1))
             assertEquals("look", second.commandAt(2))
@@ -114,8 +120,8 @@ class CommandHistoryTest {
     @Test
     fun searchesBackForTheTypedQueryAndSendsTheMatch() =
         runTest {
-            val history = history(container())
-            settle()
+            val history = history()
+            advanceUntilIdle()
             history.record("attack orc")
             history.record("look")
             history.record("attack troll")
@@ -124,7 +130,7 @@ class CommandHistoryTest {
             assertTrue(history.searching)
             entry.setTextAndPlaceCursorAtEnd("att")
             Snapshot.sendApplyNotifications()
-            settle()
+            advanceUntilIdle()
             assertEquals("attack troll", history.search.value?.match)
 
             // Again steps to the next older match.
@@ -141,14 +147,14 @@ class CommandHistoryTest {
     @Test
     fun leavingASearchKeepsTheMatchForEditing() =
         runTest {
-            val history = history(container())
-            settle()
+            val history = history()
+            advanceUntilIdle()
             history.record("attack orc")
 
             history.searchBack()
             entry.setTextAndPlaceCursorAtEnd("orc")
             Snapshot.sendApplyNotifications()
-            settle()
+            advanceUntilIdle()
             history.exitSearch()
 
             assertNull(history.search.value)

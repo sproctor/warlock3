@@ -172,7 +172,7 @@ internal class MacroRunner(
                 val line = entry.text.toString()
                 entry.clearText()
                 history.record(line)
-                commands.handle(commands.applyAliases(line))
+                commands.handle(line)
                 onEntryCleared()
             }
 

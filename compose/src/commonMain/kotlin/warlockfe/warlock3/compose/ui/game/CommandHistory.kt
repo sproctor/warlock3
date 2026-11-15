@@ -5,6 +5,7 @@ import androidx.compose.foundation.text.input.clearText
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.runtime.snapshotFlow
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -24,18 +25,19 @@ internal class CommandHistory(
     private val entry: TextFieldState,
     private val characterId: StateFlow<String?>,
     private val commandHistoryRepository: CommandHistoryRepository,
-    clientSettingRepository: ClientSettingRepository,
+    minCommandLength: Flow<Int>,
+    historySize: Flow<Int>,
     private val scope: CoroutineScope,
 ) {
     // sendHistory[0] is the in-progress entry buffer; indices 1..n are the stored commands,
-    // newest first, so the list holds at most historySize + 1 elements.
+    // newest first, so the list holds at most maxHistorySize + 1 elements.
     private val sendHistory = mutableListOf("")
     private var historyPosition = 0
 
-    // Commands shorter than this are not saved to history; history is capped at historySize entries.
-    // Both are seeded from client settings; the defaults apply until the flows emit.
+    // Commands shorter than this are not saved to history; history is capped at maxHistorySize entries.
+    // Both follow the client settings; the defaults apply until the flows emit.
     private var minHistoryLen = ClientSettingRepository.DEFAULT_MIN_COMMAND_LENGTH
-    private var historySize = ClientSettingRepository.DEFAULT_HISTORY_SIZE
+    private var maxHistorySize = ClientSettingRepository.DEFAULT_HISTORY_SIZE
 
     // Reverse history search (readline-style ctrl+r). Non-null while the entry is in "searching"
     // mode; it holds the live query (which mirrors the entry text the user types) and the history
@@ -49,14 +51,12 @@ internal class CommandHistory(
         get() = _search.value != null
 
     init {
-        clientSettingRepository
-            .observeMinCommandLength()
+        minCommandLength
             .onEach { minHistoryLen = it }
             .launchIn(scope)
-        clientSettingRepository
-            .observeHistorySize()
+        historySize
             .onEach {
-                historySize = it
+                maxHistorySize = it
                 trim()
             }.launchIn(scope)
         loadOnConnect()
@@ -116,7 +116,7 @@ internal class CommandHistory(
     }
 
     private fun trim() {
-        while (sendHistory.size > historySize + 1) {
+        while (sendHistory.size > maxHistorySize + 1) {
             sendHistory.removeAt(sendHistory.size - 1)
         }
     }

@@ -52,7 +52,7 @@ fun PhoneGameView(
 ) {
     val character by viewModel.character.collectAsState(null)
     val tabbableWindows by viewModel.tabbableWindows.collectAsState()
-    val tabs by viewModel.phoneTabs.collectAsState()
+    val tabs by viewModel.phoneTabs.tabs.collectAsState()
     val defaultStyle = LocalBaseStyle.current.toStyleDefinition()
     val openWindows by viewModel.openWindows.collectAsState(emptyList())
     val menuData by viewModel.menuData.collectAsState()
@@ -93,7 +93,7 @@ fun PhoneGameView(
             selected = currentTab,
             drag = tabDrag,
             onSelect = viewModel::selectWindow,
-            onMove = viewModel::movePhoneTab,
+            onMove = viewModel.phoneTabs::move,
             onClose = { name -> closePhoneTab(viewModel, name, tabs, currentTab) },
             onOpenWindowSettings = viewModel::requestEditWindowSettings,
             onClearWindow = viewModel::clearStream,
@@ -146,7 +146,7 @@ fun PhoneGameView(
         state = railState,
         windows = tabbableWindows,
         tabs = tabs,
-        onAdd = viewModel::addPhoneTab,
+        onAdd = viewModel.phoneTabs::add,
         onSelect = viewModel::selectWindow,
     )
 }
@@ -163,7 +163,7 @@ private fun closePhoneTab(
         val next = tabs.getOrNull(index + 1) ?: tabs.getOrNull(index - 1) ?: MAIN_WINDOW_NAME
         viewModel.selectWindow(next)
     }
-    viewModel.removePhoneTab(name)
+    viewModel.phoneTabs.remove(name)
 }
 
 @Suppress("ktlint:compose:vm-forwarding-check")

@@ -32,7 +32,6 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
@@ -258,12 +257,11 @@ class GameViewModel(
                 initialValue = emptyList(),
             )
 
-    private val phoneTabStrip = PhoneTabs(client.characterId, characterSettingsRepository, tabbableWindows, viewModelScope)
+    /** The phone tab strip: which windows have a tab, in what order. */
+    internal val phoneTabs = PhoneTabs(client.characterId, characterSettingsRepository, tabbableWindows, viewModelScope)
 
-    /** The phone tab strip's window names, in order. Always holds the main window. */
-    val phoneTabs: StateFlow<List<String>> = phoneTabStrip.tabs
-
-    private val dockLayoutStore = DockLayoutStore(client.characterId, characterSettingsRepository)
+    /** Where the docking bridge saves and loads the character's window arrangement. */
+    internal val dockLayout = DockLayoutStore(client.characterId, characterSettingsRepository)
 
     // The connected character's id, used by the settings dialog to decide whether its live window
     // info (titles, hidden-window list) applies to the character being edited.
@@ -361,7 +359,14 @@ class GameViewModel(
     private val scripts = GameScripts(client, scriptManager, mudScriptStore, commands, viewModelScope, ioDispatcher)
 
     private val history =
-        CommandHistory(entryTextState, client.characterId, commandHistoryRepository, clientSettingRepository, viewModelScope)
+        CommandHistory(
+            entry = entryTextState,
+            characterId = client.characterId,
+            commandHistoryRepository = commandHistoryRepository,
+            minCommandLength = clientSettingRepository.observeMinCommandLength(),
+            historySize = clientSettingRepository.observeHistorySize(),
+            scope = viewModelScope,
+        )
 
     /** The reverse history search in progress, or null when the entry is not searching. */
     val historySearch: StateFlow<HistorySearchState?> = history.search
@@ -403,10 +408,7 @@ class GameViewModel(
      * Observe a per-character flow, switching whenever the connected character changes and emitting
      * nothing until a character is connected. Backs the many per-character settings flows above.
      */
-    private fun <T> observePerCharacter(block: (characterId: String) -> Flow<T>): Flow<T> =
-        client.characterId.flatMapLatest { characterId ->
-            if (characterId != null) block(characterId) else flow {}
-        }
+    private fun <T> observePerCharacter(block: (characterId: String) -> Flow<T>): Flow<T> = client.characterId.observePerCharacter(block)
 
     init {
         handleClientEvents()
@@ -684,37 +686,6 @@ class GameViewModel(
      */
     fun streamWindowUiState(name: String): WindowUiState = gameWindows.streamWindowUiState(name)
 
-    /** The character's saved docking-layout JSON, or null when none has been saved yet. */
-    suspend fun loadDockLayout(): String? = dockLayoutStore.loadLayout()
-
-    /** The character's saved closed-window spots, or null when none have been saved yet. */
-    suspend fun loadDockSpots(): String? = dockLayoutStore.loadSpots()
-
-    /**
-     * Saves the docking-layout JSON. Layout churn is debounced by the caller, which collects
-     * sequentially and awaits this, so saves never pile up behind one another.
-     */
-    suspend fun saveDockLayout(layout: String) {
-        dockLayoutStore.saveLayout(layout)
-    }
-
-    /** Saves where closed windows were, so reopening puts them back in a later session too. */
-    suspend fun saveDockSpots(spots: String) {
-        dockLayoutStore.saveSpots(spots)
-    }
-
-    /** Puts [name] in the phone tab strip. Does nothing if it is already there. */
-    fun addPhoneTab(name: String) = phoneTabStrip.add(name)
-
-    /** Takes [name] out of the phone tab strip. The main window cannot be removed. */
-    fun removePhoneTab(name: String) = phoneTabStrip.remove(name)
-
-    /** Moves a phone tab, with [from] and [to] as positions in the strip the user can see. */
-    fun movePhoneTab(
-        from: Int,
-        to: Int,
-    ) = phoneTabStrip.move(from, to)
-
     /** Shared handling for a clickable game-text action (command link or menu). */
     fun onWindowAction(action: WarlockAction): Int? =
         when (action) {
@@ -853,8 +824,8 @@ class GameViewModel(
         // Write any arrangement the bridge's debounce has not saved yet. This runs here rather than
         // from the composition because callers await close() before tearing the window down (and,
         // on the last window, before exiting the process), so the write is ordered ahead of both.
-        dockLayoutStore.flush()
-        phoneTabStrip.flush()
+        dockLayout.flush()
+        phoneTabs.flush()
         // If a reconnect is still in flight (e.g. the user returned to the dashboard while it was
         // running), cancel it first so the in-progress attempt is unwound: cancellation runs the
         // connect use case's finally blocks, which close any half-opened client/socket so nothing leaks.
