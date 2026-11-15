@@ -24,15 +24,22 @@ internal class LatestValueWriter<T : Any>(
 
     /** Records [value] as the latest and writes it, waiting for any write already in flight. */
     suspend fun write(value: T) {
-        pending = value
+        record(value)
         flush()
     }
 
-    /** Writes the latest value, if one has been recorded. */
+    /** Records [value] as the latest without writing it, for a later [write] or [flush] to write. */
+    fun record(value: T) {
+        pending = value
+    }
+
+    /** Writes the latest value, if one has been recorded since the last write. */
     suspend fun flush() {
         mutex.withLock {
             val value = pending ?: return
             save(value)
+            // Unless a newer value arrived while this one was being written.
+            if (pending === value) pending = null
         }
     }
 }

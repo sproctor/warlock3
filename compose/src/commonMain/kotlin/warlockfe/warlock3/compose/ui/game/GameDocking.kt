@@ -57,6 +57,7 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.merge
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.Serializable
@@ -374,13 +375,15 @@ fun rememberGameDockState(
                 spots.restore(runCatching { viewModel.dockLayout.loadSpots() }.getOrNull())
                 applyRestoredLayout(state, saved, liveOpenWindows(), ::registerWindow, spots)
                 restoreFinished.complete(Unit)
+                // Record every change right away and save on a debounce: the view model saves what is
+                // recorded when the game closes, so a change made just before is not lost.
                 snapshotFlow { state.layout }
                     .drop(1)
-                    .debounce(1.seconds)
-                    .collect {
-                        viewModel.dockLayout.saveLayout(DockingPersistence.encode(state.captureLayout()))
-                        dockSpotsToSave(spots)?.let { viewModel.dockLayout.saveSpots(it) }
-                    }
+                    .onEach {
+                        viewModel.dockLayout.recordLayout(DockingPersistence.encode(state.captureLayout()))
+                        dockSpotsToSave(spots)?.let { viewModel.dockLayout.recordSpots(it) }
+                    }.debounce(1.seconds)
+                    .collect { viewModel.dockLayout.flush() }
             }
             // Hold the first layout pass for the restore, so early windows do not flash into
             // default spots only to be replaced - but only for a bounded moment, so a session

@@ -39,19 +39,20 @@ internal class DockLayoutStore(
     suspend fun loadSpots(): String? = load(DOCK_SPOTS_KEY)
 
     /**
-     * Saves the docking-layout JSON. Layout churn is debounced by the caller, which collects
-     * sequentially and awaits this, so saves never pile up behind one another.
+     * Records the latest docking-layout JSON, for the next [flush] to save. The caller records
+     * every change and flushes on a debounce, so a change the debounce has not reached yet is
+     * still saved when the game closes.
      */
-    suspend fun saveLayout(layout: String) {
-        layoutWriter.write(layout)
+    fun recordLayout(layout: String) {
+        layoutWriter.record(layout)
     }
 
-    /** Saves where closed windows were, so reopening puts them back in a later session too. */
-    suspend fun saveSpots(spots: String) {
-        spotsWriter.write(spots)
+    /** Records where closed windows were, so reopening puts them back in a later session too. */
+    fun recordSpots(spots: String) {
+        spotsWriter.record(spots)
     }
 
-    /** Writes any layout or spots a debounced save has not gotten to yet. */
+    /** Saves the layout and spots recorded since they were last saved. */
     suspend fun flush() {
         layoutWriter.flush()
         spotsWriter.flush()

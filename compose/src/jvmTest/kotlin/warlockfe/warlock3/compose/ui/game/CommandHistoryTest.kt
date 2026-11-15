@@ -6,6 +6,7 @@ import androidx.compose.runtime.snapshots.Snapshot
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -47,7 +48,7 @@ class CommandHistoryTest {
     // The histories' own coroutines, cancelled after each test: they collect settings forever.
     private val historyJob = Job()
 
-    private fun TestScope.history() =
+    private fun TestScope.history(historySize: Flow<Int> = flowOf(ClientSettingRepository.DEFAULT_HISTORY_SIZE)) =
         CommandHistory(
             entry = entry,
             characterId = characterId,
@@ -58,7 +59,7 @@ class CommandHistoryTest {
                     StandardTestDispatcher(testScheduler),
                 ),
             minCommandLength = flowOf(ClientSettingRepository.DEFAULT_MIN_COMMAND_LENGTH),
-            historySize = flowOf(ClientSettingRepository.DEFAULT_HISTORY_SIZE),
+            historySize = historySize,
             scope = CoroutineScope(StandardTestDispatcher(testScheduler) + historyJob),
         )
 
@@ -157,5 +158,30 @@ class CommandHistoryTest {
 
             assertNull(history.search.value)
             assertEquals("attack orc", entry.text.toString())
+        }
+
+    @Test
+    fun shrinkingTheHistoryPastTheShownCommandKeepsItAsTheEntry() =
+        runTest {
+            val historySize = MutableStateFlow(ClientSettingRepository.DEFAULT_HISTORY_SIZE)
+            val history = history(historySize)
+            advanceUntilIdle()
+            history.record("look")
+            history.record("north")
+            history.record("south")
+            history.previous()
+            history.previous()
+            history.previous()
+            assertEquals("look", entry.text.toString())
+
+            historySize.value = 1
+            advanceUntilIdle()
+
+            // What was shown stays in the entry, and stepping back again starts from the newest.
+            assertEquals("look", entry.text.toString())
+            history.previous()
+            assertEquals("south", entry.text.toString())
+            history.next()
+            assertEquals("look", entry.text.toString())
         }
 }

@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import warlockfe.warlock3.compose.util.LatestValueWriter
 import warlockfe.warlock3.core.prefs.repositories.ClientSettingRepository
 import warlockfe.warlock3.core.prefs.repositories.CommandHistoryRepository
 
@@ -46,6 +47,12 @@ internal class CommandHistory(
     private val _search = MutableStateFlow<HistorySearchState?>(null)
     val search: StateFlow<HistorySearchState?> = _search.asStateFlow()
     private var searchIndex = 0
+
+    // Saves run one at a time, newest last, so an older list never lands on top of a newer one.
+    private val writer =
+        LatestValueWriter<Pair<String, List<String>>> { (characterId, commands) ->
+            commandHistoryRepository.save(characterId, commands)
+        }
 
     val searching: Boolean
         get() = _search.value != null
@@ -116,13 +123,18 @@ internal class CommandHistory(
         val characterId = characterId.value ?: return
         val commands = sendHistory.drop(1).filter { it.isNotEmpty() }.asReversed()
         scope.launch {
-            commandHistoryRepository.save(characterId, commands)
+            writer.write(characterId to commands)
         }
     }
 
     private fun trim() {
         while (sendHistory.size > maxHistorySize + 1) {
             sendHistory.removeAt(sendHistory.size - 1)
+        }
+        // A smaller history size can drop the command being shown. The entry keeps its text, which
+        // becomes the in-progress buffer, as an edit to an older command does.
+        if (historyPosition > sendHistory.lastIndex) {
+            historyPosition = 0
         }
     }
 

@@ -72,4 +72,19 @@ class LatestValueWriterTest {
             LatestValueWriter<String> { stored += it }.flush()
             assertEquals(emptyList(), stored)
         }
+
+    @Test
+    fun aRecordedValueIsWrittenByTheNextFlushAndOnlyOnce() =
+        runTest {
+            val stored = mutableListOf<String>()
+            val writer = LatestValueWriter<String> { stored += it }
+
+            writer.record("first")
+            writer.record("second")
+            assertEquals(emptyList(), stored, "recording alone writes nothing")
+
+            writer.flush()
+            writer.flush()
+            assertEquals(listOf("second"), stored)
+        }
 }
