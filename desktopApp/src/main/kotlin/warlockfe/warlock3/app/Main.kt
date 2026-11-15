@@ -257,7 +257,7 @@ private class WarlockCommand : CliktCommand() {
 
     /**
      * Where the startup windows open and how big: the command line's size and position when it gives
-     * them, otherwise the size the last session saved.
+     * them, otherwise the size and maximized state the last session saved.
      */
     private fun windowPlacement(clientSettings: ClientSettingRepository): GameWindowPlacement {
         val openWidth = width ?: runBlocking { clientSettings.getWidth() }?.takeIf { it >= MIN_WINDOW_DIMENSION }
@@ -271,6 +271,8 @@ private class WarlockCommand : CliktCommand() {
         return GameWindowPlacement(
             size = DpSize((openWidth ?: 640).dp, (openHeight ?: 480).dp),
             position = position,
+            // A size from the command line asks for a window of that size, not a maximized one.
+            maximized = width == null && height == null && runBlocking { clientSettings.getMaximized() },
             widthFromCommandLine = width != null,
             heightFromCommandLine = height != null,
             positionFromCommandLine = positionX != null && positionY != null,

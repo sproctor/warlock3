@@ -19,6 +19,7 @@ private const val MAIN_WINDOW_X_KEY = "mainWindowX"
 private const val MAIN_WINDOW_Y_KEY = "mainWindowY"
 private const val MAIN_WINDOW_WIDTH_KEY = "mainWindowWidth"
 private const val MAIN_WINDOW_HEIGHT_KEY = "mainWindowHeight"
+private const val MAIN_WINDOW_MAXIMIZED_KEY = "mainWindowMaximized"
 
 /**
  * A character's main-window bounds. [x] and [y] are null, both together, when the window's position
@@ -157,6 +158,16 @@ class CharacterSettingsRepository(
         }
         save(characterId, MAIN_WINDOW_WIDTH_KEY, bounds.width.toString())
         save(characterId, MAIN_WINDOW_HEIGHT_KEY, bounds.height.toString())
+    }
+
+    /** Whether the character's main window was last left maximized; its bounds are the unmaximized ones. */
+    suspend fun getMainWindowMaximized(characterId: String): Boolean = get(characterId, MAIN_WINDOW_MAXIMIZED_KEY)?.toBoolean() ?: false
+
+    suspend fun saveMainWindowMaximized(
+        characterId: String,
+        maximized: Boolean,
+    ) {
+        save(characterId, MAIN_WINDOW_MAXIMIZED_KEY, maximized.toString())
     }
 
     suspend fun getMainWindowBounds(characterId: String): MainWindowBounds? {

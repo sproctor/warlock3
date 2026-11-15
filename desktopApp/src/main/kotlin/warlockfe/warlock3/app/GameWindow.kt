@@ -14,6 +14,7 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.WindowPlacement
 import androidx.compose.ui.window.WindowState
 import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.ViewModelStoreOwner
@@ -67,6 +68,7 @@ internal fun NucleusApplicationScope.GameWindow(
     val windowState =
         remember {
             WindowState(
+                placement = if (placement.maximized) WindowPlacement.Maximized else WindowPlacement.Floating,
                 width = placement.size.width,
                 height = placement.size.height,
                 position = placement.position,
