@@ -3,8 +3,6 @@ package warlockfe.warlock3.compose.ui.game
 import kotlinx.coroutines.flow.StateFlow
 import warlockfe.warlock3.core.client.SendCommandType
 import warlockfe.warlock3.core.client.WarlockClient
-import warlockfe.warlock3.core.script.ScriptInstance
-import warlockfe.warlock3.core.script.ScriptManager
 import warlockfe.warlock3.core.text.Alias
 import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.text.WarlockStyle
@@ -20,7 +18,7 @@ const val CLIENT_COMMAND_PREFIX = '/'
  */
 internal class CommandHandler(
     private val client: WarlockClient,
-    private val scriptManager: ScriptManager,
+    private val scripts: GameScripts,
     private val aliases: StateFlow<List<Alias>>,
     private val scriptCommandPrefix: StateFlow<String>,
 ) {
@@ -32,7 +30,7 @@ internal class CommandHandler(
         val prefix = scriptCommandPrefix.value
         return if (aliasedLine.startsWith(prefix)) {
             client.print(StyledString(aliasedLine, WarlockStyle.Command))
-            scriptManager.startScript(client, aliasedLine.drop(prefix.length), ::handle)
+            scripts.runNamed(aliasedLine.drop(prefix.length))
             SendCommandType.SCRIPT
         } else if (aliasedLine.startsWith(CLIENT_COMMAND_PREFIX)) {
             client.print(StyledString(aliasedLine, WarlockStyle.Command))
@@ -48,36 +46,19 @@ internal class CommandHandler(
         val (command, args) = clientCommand.splitFirstWord()
         when (command) {
             "kill" -> {
-                forEachNamedScript(args) { name, script ->
-                    script.stop()
-                    client.print(StyledString("Script $name stopped.", WarlockStyle.Echo))
-                }
+                scripts.stop(args)
             }
 
             "pause" -> {
-                forEachNamedScript(args) { name, script ->
-                    script.suspend()
-                    client.print(StyledString("Script $name paused.", WarlockStyle.Echo))
-                }
+                scripts.pause(args)
             }
 
             "resume" -> {
-                forEachNamedScript(args) { name, script ->
-                    script.resume()
-                    client.print(StyledString("Script $name resumed.", WarlockStyle.Echo))
-                }
+                scripts.resume(args)
             }
 
             "list" -> {
-                val scripts = scriptManager.runningScripts.value
-                if (scripts.isEmpty()) {
-                    client.print(StyledString("No scripts are running", WarlockStyle.Echo))
-                } else {
-                    client.print(StyledString("Running scripts:", WarlockStyle.Echo))
-                    scripts.forEach {
-                        client.print(StyledString("${it.value.instance.name} - ${it.key}", WarlockStyle.Echo))
-                    }
-                }
+                scripts.printRunning()
             }
 
             "disconnect", "dc" -> {
@@ -90,21 +71,6 @@ internal class CommandHandler(
 
             else -> {
                 client.print(StyledString("Invalid command.", WarlockStyle.Error))
-            }
-        }
-    }
-
-    // TODO: verify arguments
-    private suspend fun forEachNamedScript(
-        args: String?,
-        action: suspend (name: String, script: ScriptInstance) -> Unit,
-    ) {
-        args?.split(' ')?.forEach { name ->
-            val script = scriptManager.findScriptInstance(name)
-            if (script != null) {
-                action(name, script)
-            } else {
-                client.print(StyledString("Script $name not found.", WarlockStyle.Error))
             }
         }
     }

@@ -49,7 +49,6 @@ internal class MacroRunner(
     private val handler: MacroHandler,
     private val history: CommandHistory,
     private val commands: CommandHandler,
-    private val submit: () -> Unit,
     private val scope: CoroutineScope,
 ) {
     private val macros =
@@ -104,7 +103,7 @@ internal class MacroRunner(
         }
 
         if (event.key.keyCode == Key.Enter.keyCode) {
-            submit()
+            handler.submit()
             return true
         }
 

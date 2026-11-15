@@ -13,6 +13,7 @@ import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.prefs.models.Action
 import warlockfe.warlock3.core.script.MudScriptLoad
 import warlockfe.warlock3.core.script.MudScriptStore
+import warlockfe.warlock3.core.script.ScriptInstance
 import warlockfe.warlock3.core.script.ScriptManager
 import warlockfe.warlock3.core.script.ScriptStatus
 import warlockfe.warlock3.core.text.StyledString
@@ -22,18 +23,25 @@ import warlockfe.warlock3.core.text.WarlockStyle
 const val MUD_SCRIPT_NAME = "mud-script"
 
 /**
- * The scripts running against one game: starting them, pausing and stopping them all, and listing
- * them in the scripts window. Every script sends its commands through [commands].
+ * The scripts running against one game: starting them, pausing, resuming and stopping them, and
+ * listing them, in the scripts window and in answer to the client's `/` commands.
+ *
+ * Every script sends its commands through a [CommandHandler], and the command handler runs the
+ * client's script commands through this, so neither can be built with the other. Nothing runs
+ * until [start] hands this its command handler.
  */
 internal class GameScripts(
     private val client: WarlockClient,
     private val scriptManager: ScriptManager,
     private val mudScriptStore: MudScriptStore,
-    private val commands: CommandHandler,
     private val scope: CoroutineScope,
     private val ioDispatcher: CoroutineDispatcher,
 ) {
-    init {
+    private lateinit var commands: CommandHandler
+
+    /** Starts listing scripts and running the MUD's, with scripts sending their commands to [commands]. */
+    fun start(commands: CommandHandler) {
+        this.commands = commands
         listRunningScripts()
         runTheMudsScript()
     }
@@ -54,6 +62,63 @@ internal class GameScripts(
         val script = action.script ?: return
         scope.launch(ioDispatcher) {
             scriptManager.startScript(client, action.name, script, commands::handle)
+        }
+    }
+
+    /** Starts the script named [name], as typed after the script prefix. */
+    suspend fun runNamed(name: String) {
+        scriptManager.startScript(client, name, commands::handle)
+    }
+
+    /** Stops each script in [names], a space-separated list, telling the user what became of each. */
+    suspend fun stop(names: String?) {
+        forEachNamed(names) { name, script ->
+            script.stop()
+            client.print(StyledString("Script $name stopped.", WarlockStyle.Echo))
+        }
+    }
+
+    /** Pauses each script in [names], a space-separated list. */
+    suspend fun pause(names: String?) {
+        forEachNamed(names) { name, script ->
+            script.suspend()
+            client.print(StyledString("Script $name paused.", WarlockStyle.Echo))
+        }
+    }
+
+    /** Resumes each script in [names], a space-separated list. */
+    suspend fun resume(names: String?) {
+        forEachNamed(names) { name, script ->
+            script.resume()
+            client.print(StyledString("Script $name resumed.", WarlockStyle.Echo))
+        }
+    }
+
+    /** Prints the running scripts, each with the id the other commands accept. */
+    suspend fun printRunning() {
+        val scripts = scriptManager.runningScripts.value
+        if (scripts.isEmpty()) {
+            client.print(StyledString("No scripts are running", WarlockStyle.Echo))
+        } else {
+            client.print(StyledString("Running scripts:", WarlockStyle.Echo))
+            scripts.forEach {
+                client.print(StyledString("${it.value.instance.name} - ${it.key}", WarlockStyle.Echo))
+            }
+        }
+    }
+
+    // TODO: verify arguments
+    private suspend fun forEachNamed(
+        names: String?,
+        action: suspend (name: String, script: ScriptInstance) -> Unit,
+    ) {
+        names?.split(' ')?.forEach { name ->
+            val script = scriptManager.findScriptInstance(name)
+            if (script != null) {
+                action(name, script)
+            } else {
+                client.print(StyledString("Script $name not found.", WarlockStyle.Error))
+            }
         }
     }
 

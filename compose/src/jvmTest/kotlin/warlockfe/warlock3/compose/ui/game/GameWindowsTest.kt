@@ -106,10 +106,8 @@ class GameWindowsTest {
     private lateinit var repository: WindowSettingsRepository
 
     private suspend fun TestScope.windows(): GameWindows {
-        // Only for its window registry. Its background work, a config-file watcher among it, runs
-        // on real threads under [job], so cancelling that releases the watcher: left open, enough
-        // of them exhaust the user's inotify instances for every later test in the JVM.
-        val registry = testAppContainer(dir.resolve("app"), Dispatchers.IO, parentJob = job).windowRegistryFactory.create()
+        // Only for its window registry.
+        val registry = testAppContainer(dir.resolve("app"), Dispatchers.IO).windowRegistryFactory.create()
         client = FakeWarlockClient(registry)
         val store = CharacterConfigStore(dir.resolve("config").toString(), SystemFileSystem)
         repository = WindowSettingsRepository(dao, store, SettingsProblems(dir.toString()))

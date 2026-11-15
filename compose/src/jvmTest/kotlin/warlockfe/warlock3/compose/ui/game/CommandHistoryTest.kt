@@ -47,8 +47,6 @@ class CommandHistoryTest {
     // The histories' own coroutines, cancelled after each test: they collect settings forever.
     private val historyJob = Job()
 
-    // No app container: each one starts a config-file watcher, and enough of them exhaust the
-    // user's inotify instances for every later test in the JVM.
     private fun TestScope.history() =
         CommandHistory(
             entry = entry,

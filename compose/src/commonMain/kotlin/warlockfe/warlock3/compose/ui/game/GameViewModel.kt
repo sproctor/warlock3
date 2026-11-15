@@ -198,33 +198,36 @@ class GameViewModel(
     // The connection's custom window title, or null to fall back to the character name. Reactive, so
     // editing the connection while connected updates the title live.
     val windowTitle: StateFlow<String?> =
-        observePerCharacter { characterId ->
-            connectionRepository.observeWindowTitle(characterId)
-        }.stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.Lazily,
-            initialValue = null,
-        )
+        client.characterId
+            .observePerCharacter { characterId ->
+                connectionRepository.observeWindowTitle(characterId)
+            }.stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.Lazily,
+                initialValue = null,
+            )
 
     val windowSettings =
-        observePerCharacter { characterId ->
-            windowSettingsRepository.observeWindowSettings(characterId)
-        }.stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.Lazily,
-            initialValue = emptyList(),
-        )
+        client.characterId
+            .observePerCharacter { characterId ->
+                windowSettingsRepository.observeWindowSettings(characterId)
+            }.stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.Lazily,
+                initialValue = emptyList(),
+            )
 
     val progressBarSettings =
-        observePerCharacter { characterId ->
-            progressBarSettingRepository
-                .observeByCharacter(characterId)
-                .map { settings -> settings.associateBy { it.id } }
-        }.stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.Lazily,
-            initialValue = emptyMap(),
-        )
+        client.characterId
+            .observePerCharacter { characterId ->
+                progressBarSettingRepository
+                    .observeByCharacter(characterId)
+                    .map { settings -> settings.associateBy { it.id } }
+            }.stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.Lazily,
+                initialValue = emptyMap(),
+            )
 
     val openWindows =
         windowSettings.map { currentWindowSettings ->
@@ -279,35 +282,38 @@ class GameViewModel(
     }
 
     val scriptCommandPrefix =
-        observePerCharacter { characterId ->
-            characterSettingsRepository
-                .observe(characterId = characterId, key = SCRIPT_COMMAND_PREFIX_KEY)
-                .map { it ?: "." }
-        }.stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.Eagerly,
-            initialValue = ".",
-        )
+        client.characterId
+            .observePerCharacter { characterId ->
+                characterSettingsRepository
+                    .observe(characterId = characterId, key = SCRIPT_COMMAND_PREFIX_KEY)
+                    .map { it ?: "." }
+            }.stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.Eagerly,
+                initialValue = ".",
+            )
 
     private val aliases: StateFlow<List<Alias>> =
-        observePerCharacter { characterId ->
-            aliasRepository.observeForCharacter(characterId)
-        }.stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.Eagerly,
-            initialValue = emptyList(),
-        )
+        client.characterId
+            .observePerCharacter { characterId ->
+                aliasRepository.observeForCharacter(characterId)
+            }.stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.Eagerly,
+                initialValue = emptyList(),
+            )
 
     // The configured action buttons for the current character (merged with global): the resolved
     // toolbar to draw plus the full pool so a group's children can be looked up by id.
     val actionBar: StateFlow<ActionBar> =
-        observePerCharacter { characterId ->
-            actionRepository.observeForCharacter(characterId)
-        }.stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.Lazily,
-            initialValue = ActionBar.EMPTY,
-        )
+        client.characterId
+            .observePerCharacter { characterId ->
+                actionRepository.observeForCharacter(characterId)
+            }.stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.Lazily,
+                initialValue = ActionBar.EMPTY,
+            )
 
     val presets = windowRegistry.presets
 
@@ -317,12 +323,14 @@ class GameViewModel(
 
     /** The character's panel font; used by panel widgets without a per-window override. */
     val panelFont: StateFlow<FontConfig?> =
-        observePerCharacter { characterSettingsRepository.observePanelFont(it) }
+        client.characterId
+            .observePerCharacter { characterSettingsRepository.observePanelFont(it) }
             .stateIn(scope = viewModelScope, started = SharingStarted.Eagerly, initialValue = null)
 
     /** The character's panel scale; multiplies pixel-sized panel geometry without a per-window override. */
     val panelScale: StateFlow<Float> =
-        observePerCharacter { characterSettingsRepository.observePanelScale(it) }
+        client.characterId
+            .observePerCharacter { characterSettingsRepository.observePanelScale(it) }
             .map { it ?: DEFAULT_PANEL_SCALE }
             .stateIn(scope = viewModelScope, started = SharingStarted.Eagerly, initialValue = DEFAULT_PANEL_SCALE)
 
@@ -354,9 +362,9 @@ class GameViewModel(
     private val _selectedWindow: MutableStateFlow<String> = MutableStateFlow(MAIN_WINDOW_NAME)
     val selectedWindow: StateFlow<String> = _selectedWindow
 
-    private val commands = CommandHandler(client, scriptManager, aliases, scriptCommandPrefix)
+    private val scripts = GameScripts(client, scriptManager, mudScriptStore, viewModelScope, ioDispatcher)
 
-    private val scripts = GameScripts(client, scriptManager, mudScriptStore, commands, viewModelScope, ioDispatcher)
+    private val commands = CommandHandler(client, scripts, aliases, scriptCommandPrefix).also { scripts.start(it) }
 
     private val history =
         CommandHistory(
@@ -384,7 +392,6 @@ class GameViewModel(
             handler = this,
             history = history,
             commands = commands,
-            submit = ::submit,
             scope = viewModelScope,
         )
 
@@ -403,12 +410,6 @@ class GameViewModel(
     private var reconnectJob: Job? = null
 
     val menuData = client.menuData
-
-    /**
-     * Observe a per-character flow, switching whenever the connected character changes and emitting
-     * nothing until a character is connected. Backs the many per-character settings flows above.
-     */
-    private fun <T> observePerCharacter(block: (characterId: String) -> Flow<T>): Flow<T> = client.characterId.observePerCharacter(block)
 
     init {
         handleClientEvents()

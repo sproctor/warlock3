@@ -74,7 +74,7 @@ internal class PhoneTabs(
         }
     }
 
-    /** Writes an order a debounced save has not gotten to yet. */
+    /** Writes the latest order, waiting for any write already in flight, so none is lost on close. */
     suspend fun flush() {
         writer.flush()
     }
