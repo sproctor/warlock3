@@ -33,6 +33,9 @@ class ClientSettingRepository(
 
     suspend fun getHeight(): Int? = getInt("height")
 
+    /** Whether the main window was last left maximized. */
+    suspend fun getMaximized(): Boolean = getBoolean("maximized") ?: false
+
     suspend fun getIgnoreUpdates(): Boolean = getBoolean("ignoreUpdates") ?: false
 
     fun observeIgnoreUpdates(): Flow<Boolean> = observe("ignoreUpdates").map { it?.toBoolean() ?: false }
@@ -52,6 +55,10 @@ class ClientSettingRepository(
 
     suspend fun putHeight(value: Int) {
         putInt("height", value)
+    }
+
+    suspend fun putMaximized(value: Boolean) {
+        putBoolean("maximized", value)
     }
 
     suspend fun putLastUsername(value: String?) {

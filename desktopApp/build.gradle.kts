@@ -45,6 +45,7 @@ dependencies {
     implementation(libs.nucleus.core.runtime)
 
     testImplementation(kotlin("test"))
+    testImplementation(libs.kotlinx.coroutines.test)
 }
 
 kotlin {
