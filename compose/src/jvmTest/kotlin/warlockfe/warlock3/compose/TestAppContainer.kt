@@ -105,11 +105,15 @@ fun deleteTestDir(dir: java.nio.file.Path) {
             .filter { it.startsWith(root) }
             .flatMap { key -> openContainers.remove(key).orEmpty() }
     containers.forEach { it.ownJob?.cancel() }
-    runBlocking {
-        withTimeoutOrNull(5.seconds) {
-            containers.forEach { it.container.windowRegistryFactory.cancelAndJoinAll() }
+    // A registry that never stops would bring that failure back in some unrelated test, so fail
+    // here instead, in the test that left it running.
+    val stopped =
+        runBlocking {
+            withTimeoutOrNull(5.seconds) {
+                containers.forEach { it.container.windowRegistryFactory.cancelAndJoinAll() }
+            }
         }
-    }
+    checkNotNull(stopped) { "A window registry opened under $dir was still running 5s after it was cancelled" }
     repeat(20) {
         try {
             dir.deleteRecursively()

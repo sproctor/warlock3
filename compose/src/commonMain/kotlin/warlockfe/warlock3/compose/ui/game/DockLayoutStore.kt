@@ -27,10 +27,13 @@ internal class DockLayoutStore(
     private val characterId: StateFlow<String?>,
     private val characterSettingsRepository: CharacterSettingsRepository,
 ) {
-    private val layoutWriter = LatestValueWriter<String> { save(DOCK_LAYOUT_KEY, it) }
+    // These hold how to encode the latest layout and spots rather than the JSON itself: the layout
+    // changes every frame of a drag, and only the encoding the debounce or the close gets to is
+    // worth making. The spots encode to null when nothing changed since they were last saved.
+    private val layoutWriter = LatestValueWriter<() -> String> { save(DOCK_LAYOUT_KEY, it()) }
 
     // Saved on the same beat as the arrangement, and for the same reason.
-    private val spotsWriter = LatestValueWriter<String> { save(DOCK_SPOTS_KEY, it) }
+    private val spotsWriter = LatestValueWriter<() -> String?> { encode -> encode()?.let { save(DOCK_SPOTS_KEY, it) } }
 
     /** The saved docking-layout JSON, or null when none has been saved yet. */
     suspend fun loadLayout(): String? = load(DOCK_LAYOUT_KEY)
@@ -39,17 +42,20 @@ internal class DockLayoutStore(
     suspend fun loadSpots(): String? = load(DOCK_SPOTS_KEY)
 
     /**
-     * Records the latest docking-layout JSON, for the next [flush] to save. The caller records
-     * every change and flushes on a debounce, so a change the debounce has not reached yet is
-     * still saved when the game closes.
+     * Records that the docking layout changed, with how to [encode] it as JSON for the next [flush]
+     * to save. The caller records every change and flushes on a debounce, so a change the debounce
+     * has not reached yet is still saved when the game closes.
      */
-    fun recordLayout(layout: String) {
-        layoutWriter.record(layout)
+    fun recordLayout(encode: () -> String) {
+        layoutWriter.record(encode)
     }
 
-    /** Records where closed windows were, so reopening puts them back in a later session too. */
-    fun recordSpots(spots: String) {
-        spotsWriter.record(spots)
+    /**
+     * Records how to [encode] where closed windows were, or null when that has not changed, so
+     * reopening puts them back in a later session too.
+     */
+    fun recordSpots(encode: () -> String?) {
+        spotsWriter.record(encode)
     }
 
     /** Saves the layout and spots recorded since they were last saved. */

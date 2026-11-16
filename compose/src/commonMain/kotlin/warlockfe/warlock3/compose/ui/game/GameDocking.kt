@@ -376,12 +376,13 @@ fun rememberGameDockState(
                 applyRestoredLayout(state, saved, liveOpenWindows(), ::registerWindow, spots)
                 restoreFinished.complete(Unit)
                 // Record every change right away and save on a debounce: the view model saves what is
-                // recorded when the game closes, so a change made just before is not lost.
+                // recorded when the game closes, so a change made just before is not lost. Only the
+                // save encodes the layout, not each change.
                 snapshotFlow { state.layout }
                     .drop(1)
                     .onEach {
-                        viewModel.dockLayout.recordLayout(DockingPersistence.encode(state.captureLayout()))
-                        dockSpotsToSave(spots)?.let { viewModel.dockLayout.recordSpots(it) }
+                        viewModel.dockLayout.recordLayout { DockingPersistence.encode(state.captureLayout()) }
+                        viewModel.dockLayout.recordSpots { dockSpotsToSave(spots) }
                     }.debounce(1.seconds)
                     .collect { viewModel.dockLayout.flush() }
             }

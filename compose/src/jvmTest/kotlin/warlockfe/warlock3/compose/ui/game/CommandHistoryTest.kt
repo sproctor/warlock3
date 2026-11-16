@@ -184,4 +184,35 @@ class CommandHistoryTest {
             history.next()
             assertEquals("look", entry.text.toString())
         }
+
+    @Test
+    fun flushSavesACommandWhoseLaunchedSaveNeverRan() =
+        runTest {
+            characterId.value = "char"
+            val first = history()
+            advanceUntilIdle()
+            first.record("look")
+            // The game closes before the save launched for "look" is dispatched.
+            historyJob.cancel()
+            first.flush()
+
+            val secondJob = Job()
+            val second =
+                CommandHistory(
+                    entry = TextFieldState(),
+                    characterId = characterId,
+                    commandHistoryRepository =
+                        CommandHistoryRepository(
+                            CharacterConfigStore(dir.toString(), SystemFileSystem),
+                            SystemFileSystem,
+                            StandardTestDispatcher(testScheduler),
+                        ),
+                    minCommandLength = flowOf(ClientSettingRepository.DEFAULT_MIN_COMMAND_LENGTH),
+                    historySize = flowOf(ClientSettingRepository.DEFAULT_HISTORY_SIZE),
+                    scope = CoroutineScope(StandardTestDispatcher(testScheduler) + secondJob),
+                )
+            advanceUntilIdle()
+            secondJob.cancel()
+            assertEquals("look", second.commandAt(1))
+        }
 }

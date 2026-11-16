@@ -829,6 +829,8 @@ class GameViewModel(
         // on the last window, before exiting the process), so the write is ordered ahead of both.
         dockLayout.flush()
         phoneTabs.flush()
+        // Likewise the command history, whose save may have been launched but not yet run.
+        history.flush()
         // If a reconnect is still in flight (e.g. the user returned to the dashboard while it was
         // running), cancel it first so the in-progress attempt is unwound: cancellation runs the
         // connect use case's finally blocks, which close any half-opened client/socket so nothing leaks.

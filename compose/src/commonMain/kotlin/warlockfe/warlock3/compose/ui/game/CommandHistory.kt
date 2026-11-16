@@ -122,9 +122,13 @@ internal class CommandHistory(
     private fun persist() {
         val characterId = characterId.value ?: return
         val commands = sendHistory.drop(1).filter { it.isNotEmpty() }.asReversed()
-        scope.launch {
-            writer.write(characterId to commands)
-        }
+        writer.record(characterId to commands)
+        scope.launch { writer.flush() }
+    }
+
+    /** Saves the newest history, if a save launched for it has not gotten to it yet. */
+    suspend fun flush() {
+        writer.flush()
     }
 
     private fun trim() {

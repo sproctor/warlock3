@@ -2,6 +2,8 @@ package warlockfe.warlock3.compose.util
 
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlin.concurrent.atomics.AtomicReference
+import kotlin.concurrent.atomics.ExperimentalAtomicApi
 
 /**
  * Writes the latest value it has been given, one write at a time.
@@ -12,15 +14,23 @@ import kotlinx.coroutines.sync.withLock
  * writes that finish out of order leave the older version in the store with nothing to correct it,
  * and the user sees their most recent change quietly reverted.
  *
- * Nothing here tracks what has already been written, so a value can be written twice - [save] is
- * expected to be an idempotent upsert. That is deliberate: remembering what landed would let a
- * failed write drop a value that a later flush would otherwise have stored.
+ * A value is dropped once it has been written, unless a newer one was recorded meanwhile, so a
+ * flush with nothing new writes nothing. A failed write keeps it, for the next flush to retry.
+ *
+ * [record] and [flush] may be called from any thread.
  */
+@OptIn(ExperimentalAtomicApi::class)
 internal class LatestValueWriter<T : Any>(
     private val save: suspend (T) -> Unit,
 ) {
+    // Each recorded value gets a box of its own, so a flush clears exactly the value it wrote, even
+    // when the same value is recorded again while it is being written.
+    private class Pending<T>(
+        val value: T,
+    )
+
     private val mutex = Mutex()
-    private var pending: T? = null
+    private val pending = AtomicReference<Pending<T>?>(null)
 
     /** Records [value] as the latest and writes it, waiting for any write already in flight. */
     suspend fun write(value: T) {
@@ -30,16 +40,16 @@ internal class LatestValueWriter<T : Any>(
 
     /** Records [value] as the latest without writing it, for a later [write] or [flush] to write. */
     fun record(value: T) {
-        pending = value
+        pending.store(Pending(value))
     }
 
     /** Writes the latest value, if one has been recorded since the last write. */
     suspend fun flush() {
         mutex.withLock {
-            val value = pending ?: return
-            save(value)
+            val latest = pending.load() ?: return
+            save(latest.value)
             // Unless a newer value arrived while this one was being written.
-            if (pending === value) pending = null
+            pending.compareAndSet(latest, null)
         }
     }
 }

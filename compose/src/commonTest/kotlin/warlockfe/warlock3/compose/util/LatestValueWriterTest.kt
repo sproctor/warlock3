@@ -87,4 +87,22 @@ class LatestValueWriterTest {
             writer.flush()
             assertEquals(listOf("second"), stored)
         }
+
+    @Test
+    fun theSameValueRecordedAgainDuringAWriteIsWrittenAgain() =
+        runTest {
+            val stored = mutableListOf<String>()
+            lateinit var writer: LatestValueWriter<String>
+            writer =
+                LatestValueWriter { value ->
+                    // The same string recorded again mid-write, as an unchanged layout would be.
+                    if (stored.isEmpty()) writer.record(value)
+                    stored += value
+                }
+
+            writer.write("layout")
+            writer.flush()
+
+            assertEquals(listOf("layout", "layout"), stored, "a recording made during the write must not be dropped")
+        }
 }
