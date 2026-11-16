@@ -3,8 +3,10 @@ package warlockfe.warlock3.compose.ui.window
 import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -67,12 +69,14 @@ class WindowRegistryImpl(
     private val characterSettingsRepository: CharacterSettingsRepository,
     private val windowSettingsRepository: WindowSettingsRepository,
     skinPresets: StateFlow<Map<String, StyleDefinition>>,
+    parentJob: Job? = null,
 ) : WindowRegistry {
     private val streams = AtomicReference(persistentMapOf<String, ComposeTextStream>())
 
     private val panels = AtomicReference(persistentMapOf<String, ComposePanelState>())
 
-    private val scope = CoroutineScope(SupervisorJob())
+    // Closed with its game, and a child of [parentJob] so stopping the app stops it too.
+    private val scope = CoroutineScope(SupervisorJob(parentJob))
 
     private val workQueue = StreamWorkQueue(scope = scope)
 
@@ -408,7 +412,16 @@ class WindowRegistryFactory(
     private val characterSettingsRepository: CharacterSettingsRepository,
     private val windowSettingsRepository: WindowSettingsRepository,
     private val skinPresets: StateFlow<Map<String, StyleDefinition>>,
+    parentJob: Job? = null,
 ) {
+    // The parent of every registry's work, under the app's job so stopping the app stops it too.
+    private val registriesJob = SupervisorJob(parentJob)
+
+    /** Stops the work of every registry made here and waits for it to end, for tests. */
+    internal suspend fun cancelAndJoinAll() {
+        registriesJob.cancelAndJoin()
+    }
+
     fun create(): WindowRegistry =
         WindowRegistryImpl(
             soundPlayer = soundPlayer,
@@ -421,6 +434,7 @@ class WindowRegistryFactory(
             characterSettingsRepository = characterSettingsRepository,
             windowSettingsRepository = windowSettingsRepository,
             skinPresets = skinPresets,
+            parentJob = registriesJob,
         )
 }
 

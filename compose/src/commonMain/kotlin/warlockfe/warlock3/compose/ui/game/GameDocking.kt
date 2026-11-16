@@ -47,6 +47,7 @@ import com.seanproctor.docking.state.EmptyAnchorVisibility
 import com.seanproctor.docking.ui.platformDockCapabilities
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -57,7 +58,9 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.merge
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -368,19 +371,29 @@ fun rememberGameDockState(
                 if (withTimeoutOrNull(CHARACTER_WAIT) { viewModel.awaitWindowsRestored() } == null) {
                     Logger.w { "Window restore still running after $CHARACTER_WAIT; docking against it" }
                 }
-                val saved = runCatching { viewModel.loadDockLayout() }.getOrNull()
+                val saved = runCatching { viewModel.dockLayout.loadLayout() }.getOrNull()
                 // Before the restore, so the reconcile inside it can already put a window the
                 // character closed in an earlier session back where they left it.
-                spots.restore(runCatching { viewModel.loadDockSpots() }.getOrNull())
+                spots.restore(runCatching { viewModel.dockLayout.loadSpots() }.getOrNull())
                 applyRestoredLayout(state, saved, liveOpenWindows(), ::registerWindow, spots)
                 restoreFinished.complete(Unit)
-                snapshotFlow { state.layout }
-                    .drop(1)
-                    .debounce(1.seconds)
-                    .collect {
-                        viewModel.saveDockLayout(DockingPersistence.encode(state.captureLayout()))
-                        dockSpotsToSave(spots)?.let { viewModel.saveDockSpots(it) }
-                    }
+                // Record every change right away and save on a debounce: the view model saves what is
+                // recorded when the game closes, so a change made just before is not lost. Only the
+                // save encodes the layout, not each change.
+                try {
+                    snapshotFlow { state.layout }
+                        .drop(1)
+                        .onEach {
+                            viewModel.dockLayout.recordLayout { DockingPersistence.encode(state.captureLayout()) }
+                            viewModel.dockLayout.recordSpots { dockSpotsToSave(spots) }
+                        }.debounce(1.seconds)
+                        .collect { viewModel.dockLayout.flush() }
+                } finally {
+                    // Leaving the composition (a rotation, say) while the game goes on: save a change
+                    // the debounce has not gotten to now, so the view model does not hold this state
+                    // until the game closes. The state replacing this one waits for it when loading.
+                    withContext(NonCancellable) { viewModel.dockLayout.flush() }
+                }
             }
             // Hold the first layout pass for the restore, so early windows do not flash into
             // default spots only to be replaced - but only for a bounded moment, so a session

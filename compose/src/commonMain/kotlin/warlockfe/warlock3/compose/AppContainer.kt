@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.io.files.FileSystem
@@ -344,6 +345,7 @@ class AppContainer private constructor(
             windowSettingsRepository = windowSettingRepository,
             skinPresets = skinPresets,
             alterationRepository = alterationRepository,
+            parentJob = externalScope.coroutineContext.job,
         )
     }
 
