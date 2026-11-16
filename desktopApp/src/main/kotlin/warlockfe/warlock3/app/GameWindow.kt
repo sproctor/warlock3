@@ -2,7 +2,6 @@ package warlockfe.warlock3.app
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -16,9 +15,6 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.WindowPlacement
 import androidx.compose.ui.window.WindowState
-import androidx.lifecycle.ViewModelStore
-import androidx.lifecycle.ViewModelStoreOwner
-import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import dev.nucleusframework.application.DecoratedWindow
 import dev.nucleusframework.application.NucleusApplicationScope
 import kotlinx.coroutines.flow.Flow
@@ -76,14 +72,6 @@ internal fun NucleusApplicationScope.GameWindow(
         }
     // Where this window's game screen publishes its dock state.
     val dockHost = remember { DesktopDockHost() }
-    // This window's own view-model store, cleared when the game closes. A Tao window, unlike an AWT
-    // one, gives its scene no store of its own: every window falls back to one process-wide store,
-    // where a second window's dashboard got the first window's view model, bound to the first
-    // window's game, and connecting from it took that window over.
-    val viewModelStoreOwner = remember { GameWindowViewModelStoreOwner() }
-    DisposableEffect(viewModelStoreOwner) {
-        onDispose { viewModelStoreOwner.viewModelStore.clear() }
-    }
     val subtitle by gameState.getTitle().collectAsState("loading")
     val title = "Warlock - $subtitle"
     val connectedScreen = gameState.screen as? GameScreen.ConnectedGameState
@@ -128,7 +116,6 @@ internal fun NucleusApplicationScope.GameWindow(
         onPreviewKeyEvent = dockHost::cancelDragOnEscape,
     ) {
         CompositionLocalProvider(
-            LocalViewModelStoreOwner provides viewModelStoreOwner,
             LocalSkin provides skin,
             LocalDesktopDockHost provides dockHost,
             // A copy that cannot open the system clipboard must not take the app down with it;
@@ -191,12 +178,3 @@ internal fun GameState.getTitle(): Flow<String> =
             flow { emit("Error") }
         }
     }
-
-/**
- * One game window's view-model store. Held by the application composition, outside the window,
- * which has no host to take a store from, so it is a plain store rather than one remembered from a
- * parent.
- */
-private class GameWindowViewModelStoreOwner : ViewModelStoreOwner {
-    override val viewModelStore = ViewModelStore()
-}
