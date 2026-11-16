@@ -41,7 +41,9 @@ subprojects {
         // which Kotlin 2.4 compiles `runBlocking` down to, and a fork-first classpath
         // crashed at startup with NoSuchMethodError. It now tracks 1.11.0
         // (1.11.0-intellij-1), but nothing guarantees it keeps up. Collapse the two onto
-        // the stock artifact.
+        // the stock artifact. Remove once https://youtrack.jetbrains.com/issue/JEWEL-1384
+        // ships and `dependencyInsight --dependency org.jetbrains.intellij.deps.kotlinx`
+        // on :desktopApp finds nothing (still pulled by 0.42.0-263.7307.200).
         modules {
             module("org.jetbrains.intellij.deps.kotlinx:kotlinx-coroutines-core-jvm") {
                 replacedBy(
