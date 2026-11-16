@@ -37,15 +37,21 @@ internal class DockLayoutStore(
     // Saved on the same beat as the arrangement, and for the same reason.
     private val spotsWriter = LatestValueWriter<Lazy<String?>> { spots -> spots.value?.let { save(DOCK_SPOTS_KEY, it) } }
 
-    // The latest of each, for [encodeRecorded].
-    private var latestLayout: Lazy<String>? = null
-    private var latestSpots: Lazy<String?>? = null
+    /**
+     * The saved docking-layout JSON, or null when none has been saved yet. A change recorded and not
+     * yet saved, by a docking state that has since left the composition, is saved first, so the
+     * state that replaces it restores that change too.
+     */
+    suspend fun loadLayout(): String? {
+        flush()
+        return load(DOCK_LAYOUT_KEY)
+    }
 
-    /** The saved docking-layout JSON, or null when none has been saved yet. */
-    suspend fun loadLayout(): String? = load(DOCK_LAYOUT_KEY)
-
-    /** The saved closed-window spots, or null when none have been saved yet. */
-    suspend fun loadSpots(): String? = load(DOCK_SPOTS_KEY)
+    /** The saved closed-window spots, or null when none have been saved yet; see [loadLayout]. */
+    suspend fun loadSpots(): String? {
+        flush()
+        return load(DOCK_SPOTS_KEY)
+    }
 
     /**
      * Records that the docking layout changed, with how to [encode] it as JSON for the next [flush]
@@ -53,9 +59,7 @@ internal class DockLayoutStore(
      * has not reached yet is still saved when the game closes.
      */
     fun recordLayout(encode: () -> String) {
-        val layout = lazy(encode)
-        latestLayout = layout
-        layoutWriter.record(layout)
+        layoutWriter.record(lazy(encode))
     }
 
     /**
@@ -63,21 +67,7 @@ internal class DockLayoutStore(
      * reopening puts them back in a later session too.
      */
     fun recordSpots(encode: () -> String?) {
-        val spots = lazy(encode)
-        latestSpots = spots
-        spotsWriter.record(spots)
-    }
-
-    /**
-     * Encodes what has been recorded and not yet encoded, for a docking state that is leaving the
-     * composition: its unsaved changes are still saved by the next [flush], as it last was, and the
-     * state itself is no longer held here. Call on the main thread, which owns that state.
-     */
-    fun encodeRecorded() {
-        latestLayout?.value
-        latestSpots?.value
-        latestLayout = null
-        latestSpots = null
+        spotsWriter.record(lazy(encode))
     }
 
     /** Saves the layout and spots recorded since they were last saved. */

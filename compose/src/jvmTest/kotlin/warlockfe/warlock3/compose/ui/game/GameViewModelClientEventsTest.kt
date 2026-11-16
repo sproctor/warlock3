@@ -48,9 +48,10 @@ class GameViewModelClientEventsTest {
     @AfterTest
     fun tearDown() {
         Dispatchers.resetMain()
-        // The database stays open: a game's window registry queries it from flows that closing the
-        // registry cancels but doesn't wait for, and a query still running when the database closes
-        // crashes the JVM in native SQLite. Its files can go with it; the open handles don't mind.
+        // The database stays open: deleteTestDir waits for the window registries' queries, but other
+        // container work queued on this test's dispatchers never finishes, and a query still running
+        // when the database closes crashes the JVM in native SQLite. Its files can go with it; the
+        // open handles don't mind.
         deleteTestDir(dir)
     }
 

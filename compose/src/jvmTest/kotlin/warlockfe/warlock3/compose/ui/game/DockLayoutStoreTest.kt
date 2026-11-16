@@ -45,22 +45,18 @@ class DockLayoutStoreTest {
         }
 
     @Test
-    fun aLayoutEncodedOnLeavingTheCompositionIsTheOneSaved() =
+    fun loadingSavesAChangeRecordedByTheStateItReplaces() =
         runTest {
             val container = testAppContainer(dir, StandardTestDispatcher(testScheduler))
             val store = DockLayoutStore(MutableStateFlow("char"), container.characterSettingsRepository)
-            var onScreen = "before leaving"
             var spotsDirty = true
 
-            store.recordLayout { onScreen }
+            // Recorded by a docking state that left before its debounced save.
+            store.recordLayout { "moved" }
             // Like DockSpotMemory: encoding the spots marks them saved.
             store.recordSpots { if (spotsDirty) "spots".also { spotsDirty = false } else null }
-            store.encodeRecorded()
-            // The state this read is gone; whatever it would say now is not what was on screen.
-            onScreen = "after leaving"
-            store.flush()
 
-            assertEquals("before leaving", store.loadLayout())
+            assertEquals("moved", store.loadLayout())
             assertEquals("spots", store.loadSpots())
         }
 }

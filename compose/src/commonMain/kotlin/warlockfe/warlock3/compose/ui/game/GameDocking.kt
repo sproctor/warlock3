@@ -47,6 +47,7 @@ import com.seanproctor.docking.state.EmptyAnchorVisibility
 import com.seanproctor.docking.ui.platformDockCapabilities
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -59,6 +60,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -387,10 +389,10 @@ fun rememberGameDockState(
                         }.debounce(1.seconds)
                         .collect { viewModel.dockLayout.flush() }
                 } finally {
-                    // Leaving the composition (a rotation, say) while the game goes on: encode a
-                    // change the debounce has not saved now, from this state, so the close saves
-                    // what was on screen here rather than reading this state once it is gone.
-                    viewModel.dockLayout.encodeRecorded()
+                    // Leaving the composition (a rotation, say) while the game goes on: save a change
+                    // the debounce has not gotten to now, so the view model does not hold this state
+                    // until the game closes. The state replacing this one waits for it when loading.
+                    withContext(NonCancellable) { viewModel.dockLayout.flush() }
                 }
             }
             // Hold the first layout pass for the restore, so early windows do not flash into

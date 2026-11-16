@@ -92,7 +92,6 @@ suspend fun testAppContainer(
  * write) can still be adding files as it goes, so a delete that finds the folder refilled is tried
  * again for a little while.
  */
-@OptIn(ExperimentalPathApi::class)
 fun deleteTestDir(dir: java.nio.file.Path) {
     // Stop the work of every container opened in it first, so nothing is left watching the folder.
     // Its window registries' work is also waited for: it queries the database, which fails once the
