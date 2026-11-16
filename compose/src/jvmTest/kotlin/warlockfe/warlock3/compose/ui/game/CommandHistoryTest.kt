@@ -215,4 +215,16 @@ class CommandHistoryTest {
             secondJob.cancel()
             assertEquals("look", second.commandAt(1))
         }
+
+    @Test
+    fun aNegativeHistorySizeKeepsNothingButStillSends() =
+        runTest {
+            val history = history(flowOf(-2))
+            advanceUntilIdle()
+
+            history.record("look")
+
+            assertEquals("", history.commandAt(0))
+            assertEquals(null, history.commandAt(1))
+        }
 }

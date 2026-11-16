@@ -48,7 +48,7 @@ internal actual fun watchConfigChanges(rootDir: String): Flow<String> =
 
         registerTree(root)
 
-        // The loop closes the service itself, from its own thread, when it is cancelled. Closing
+        // The loop's job closes the service itself when it ends, from its own thread. Closing
         // it only in awaitClose would wait on this flow's collector being dispatched again, which
         // never happens once that dispatcher has stopped (a test's, say), and every service left
         // open holds one of the user's inotify instances until the process exits.
@@ -82,10 +82,11 @@ internal actual fun watchConfigChanges(rootDir: String): Flow<String> =
                     throw e
                 } catch (e: Exception) {
                     Logger.w(e) { "Config file watch loop stopped" }
-                } finally {
-                    runCatching { watchService.close() }
                 }
             }
+        // On completion rather than in a finally: a job cancelled before it starts never runs its
+        // body, finally included, but it still completes.
+        job.invokeOnCompletion { runCatching { watchService.close() } }
 
         awaitClose {
             job.cancel()

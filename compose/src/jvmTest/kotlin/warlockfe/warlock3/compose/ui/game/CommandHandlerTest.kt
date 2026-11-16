@@ -116,7 +116,8 @@ class CommandHandlerTest {
         override fun findScriptInstance(description: String): ScriptInstance? =
             scripts.value.values
                 .map { it.instance }
-                .firstOrNull { it.name == description || it.id.toString() == description }
+                // By id, or by a prefix of the name, as the real manager finds them.
+                .firstOrNull { it.id.toString() == description || it.name.startsWith(description, ignoreCase = true) }
 
         override fun scriptStateChanged(instance: ScriptInstance) {
             scripts.update { it + (instance.id to ScriptData(instance.status, instance)) }
@@ -178,6 +179,22 @@ class CommandHandlerTest {
             assertTrue("Script hunt stopped." in client.printed)
             assertTrue("Script missing not found." in client.printed)
             assertEquals(emptyList(), client.sentCommands)
+        }
+
+    @Test
+    fun extraSpacesBetweenScriptNamesStopNoOtherScript() =
+        runTest {
+            val handler = handler()
+            val hunt = scriptManager.run("hunt")
+            val forage = scriptManager.run("forage")
+            val gather = scriptManager.run("gather")
+
+            handler.handle("/kill hunt  gather")
+
+            assertEquals(ScriptStatus.Stopped, hunt.status)
+            assertEquals(ScriptStatus.Stopped, gather.status)
+            // An empty name between the spaces would have matched the first one still running.
+            assertEquals(ScriptStatus.Running, forage.status)
         }
 
     @Test

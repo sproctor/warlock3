@@ -77,6 +77,7 @@ internal class CommandHandler(
         }
     }
 
-    // The names or ids after a script command, one per space. TODO: verify arguments
-    private fun scriptNames(args: String?): List<String> = args?.split(' ').orEmpty()
+    // The names or ids after a script command, separated by spaces. Never an empty one: a script is
+    // found by a prefix of its name, which an empty name is of every script.
+    private fun scriptNames(args: String?): List<String> = args?.split(' ')?.filter { it.isNotEmpty() }.orEmpty()
 }

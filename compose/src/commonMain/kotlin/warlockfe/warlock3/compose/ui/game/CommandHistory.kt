@@ -63,7 +63,8 @@ internal class CommandHistory(
             .launchIn(scope)
         historySize
             .onEach {
-                maxHistorySize = it
+                // client.toml accepts any number; below zero, trim would remove the entry buffer.
+                maxHistorySize = it.coerceAtLeast(0)
                 trim()
             }.launchIn(scope)
         loadOnConnect()
