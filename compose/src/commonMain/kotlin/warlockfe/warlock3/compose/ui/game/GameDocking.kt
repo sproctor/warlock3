@@ -378,13 +378,20 @@ fun rememberGameDockState(
                 // Record every change right away and save on a debounce: the view model saves what is
                 // recorded when the game closes, so a change made just before is not lost. Only the
                 // save encodes the layout, not each change.
-                snapshotFlow { state.layout }
-                    .drop(1)
-                    .onEach {
-                        viewModel.dockLayout.recordLayout { DockingPersistence.encode(state.captureLayout()) }
-                        viewModel.dockLayout.recordSpots { dockSpotsToSave(spots) }
-                    }.debounce(1.seconds)
-                    .collect { viewModel.dockLayout.flush() }
+                try {
+                    snapshotFlow { state.layout }
+                        .drop(1)
+                        .onEach {
+                            viewModel.dockLayout.recordLayout { DockingPersistence.encode(state.captureLayout()) }
+                            viewModel.dockLayout.recordSpots { dockSpotsToSave(spots) }
+                        }.debounce(1.seconds)
+                        .collect { viewModel.dockLayout.flush() }
+                } finally {
+                    // Leaving the composition (a rotation, say) while the game goes on: encode a
+                    // change the debounce has not saved now, from this state, so the close saves
+                    // what was on screen here rather than reading this state once it is gone.
+                    viewModel.dockLayout.encodeRecorded()
+                }
             }
             // Hold the first layout pass for the restore, so early windows do not flash into
             // default spots only to be replaced - but only for a bounded moment, so a session

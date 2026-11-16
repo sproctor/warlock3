@@ -1,5 +1,6 @@
 package warlockfe.warlock3.compose.ui.game
 
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import kotlinx.collections.immutable.persistentHashSetOf
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -118,5 +119,30 @@ class GameViewModelClientEventsTest {
             assertSame(failure, thrown)
             assertTrue(client.closed)
             assertEquals(GameScreen.Dashboard, gameState.screen)
+        }
+
+    @Test
+    fun closingSavesACommandSentJustBefore() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            val container = appContainer(StandardTestDispatcher(testScheduler))
+            val windowRegistry = container.windowRegistryFactory.create()
+            val client = EagerClient(ClientCompassEvent(persistentHashSetOf()), windowRegistry)
+            val gameState = GameState()
+            container.gameViewModelFactory.start(
+                connection = GameConnection(client, windowRegistry, key = "key", reconnect = null),
+                gameState = gameState,
+            )
+            client.characterId.value = "char"
+            advanceUntilIdle()
+            val viewModel = assertIs<GameScreen.ConnectedGameState>(gameState.screen).viewModel
+
+            viewModel.entryTextState.setTextAndPlaceCursorAtEnd("look")
+            viewModel.submit()
+            // Closed before the save that sending launched has run.
+            viewModel.close()
+            advanceUntilIdle()
+
+            assertEquals(listOf("look"), container.commandHistoryRepository.load("char"))
         }
 }

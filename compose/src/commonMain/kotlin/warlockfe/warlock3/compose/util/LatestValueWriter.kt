@@ -17,7 +17,8 @@ import kotlin.concurrent.atomics.ExperimentalAtomicApi
  * A value is dropped once it has been written, unless a newer one was recorded meanwhile, so a
  * flush with nothing new writes nothing. A failed write keeps it, for the next flush to retry.
  *
- * [record] and [flush] may be called from any thread.
+ * [record] and [flush] may be called from any thread, but [flush] runs [save] on the caller's, so a
+ * value that has to be read on a particular thread has to be flushed there.
  */
 @OptIn(ExperimentalAtomicApi::class)
 internal class LatestValueWriter<T : Any>(

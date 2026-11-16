@@ -29,11 +29,17 @@ internal class DockLayoutStore(
 ) {
     // These hold how to encode the latest layout and spots rather than the JSON itself: the layout
     // changes every frame of a drag, and only the encoding the debounce or the close gets to is
-    // worth making. The spots encode to null when nothing changed since they were last saved.
-    private val layoutWriter = LatestValueWriter<() -> String> { save(DOCK_LAYOUT_KEY, it()) }
+    // worth making. Each encoding is made at most once, so a save that fails retries the same JSON:
+    // encoding the spots marks them saved, and a second encoding would find nothing to save. The
+    // spots encode to null when nothing changed since they were last saved.
+    private val layoutWriter = LatestValueWriter<Lazy<String>> { save(DOCK_LAYOUT_KEY, it.value) }
 
     // Saved on the same beat as the arrangement, and for the same reason.
-    private val spotsWriter = LatestValueWriter<() -> String?> { encode -> encode()?.let { save(DOCK_SPOTS_KEY, it) } }
+    private val spotsWriter = LatestValueWriter<Lazy<String?>> { spots -> spots.value?.let { save(DOCK_SPOTS_KEY, it) } }
+
+    // The latest of each, for [encodeRecorded].
+    private var latestLayout: Lazy<String>? = null
+    private var latestSpots: Lazy<String?>? = null
 
     /** The saved docking-layout JSON, or null when none has been saved yet. */
     suspend fun loadLayout(): String? = load(DOCK_LAYOUT_KEY)
@@ -47,7 +53,9 @@ internal class DockLayoutStore(
      * has not reached yet is still saved when the game closes.
      */
     fun recordLayout(encode: () -> String) {
-        layoutWriter.record(encode)
+        val layout = lazy(encode)
+        latestLayout = layout
+        layoutWriter.record(layout)
     }
 
     /**
@@ -55,7 +63,21 @@ internal class DockLayoutStore(
      * reopening puts them back in a later session too.
      */
     fun recordSpots(encode: () -> String?) {
-        spotsWriter.record(encode)
+        val spots = lazy(encode)
+        latestSpots = spots
+        spotsWriter.record(spots)
+    }
+
+    /**
+     * Encodes what has been recorded and not yet encoded, for a docking state that is leaving the
+     * composition: its unsaved changes are still saved by the next [flush], as it last was, and the
+     * state itself is no longer held here. Call on the main thread, which owns that state.
+     */
+    fun encodeRecorded() {
+        latestLayout?.value
+        latestSpots?.value
+        latestLayout = null
+        latestSpots = null
     }
 
     /** Saves the layout and spots recorded since they were last saved. */
