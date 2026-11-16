@@ -32,18 +32,10 @@ subprojects {
     dependencies {
         add("ktlintRuleset", rootProject.libs.ktlint.compose.rules)
 
-        // The IntelliJ platform icons artifacts (icons-api, which Jewel pulls in) depend on
-        // JetBrains' fork of coroutines, which sits under a different Maven group and so
-        // never conflict-resolves against the stock kotlinx-coroutines-core we ask for.
-        // Both jars carry kotlinx/coroutines/*, so without this rule both land in the
-        // packaged app and classpath order decides which implementation it runs. The fork
-        // has drifted from upstream before: at 1.10.2 it lacked BuildersKt.runBlockingK,
-        // which Kotlin 2.4 compiles `runBlocking` down to, and a fork-first classpath
-        // crashed at startup with NoSuchMethodError. It now tracks 1.11.0
-        // (1.11.0-intellij-1), but nothing guarantees it keeps up. Collapse the two onto
-        // the stock artifact. Remove once https://youtrack.jetbrains.com/issue/JEWEL-1384
-        // ships and `dependencyInsight --dependency org.jetbrains.intellij.deps.kotlinx`
-        // on :desktopApp finds nothing (still pulled by 0.42.0-263.7307.200).
+        // Jewel's IntelliJ icons artifacts pull in JetBrains' fork of coroutines instead of
+        // the stock library. The fork can be out of sync with upstream, and since it has a
+        // different Maven group, Gradle would ship both. Use the stock artifact.
+        // https://youtrack.jetbrains.com/issue/JEWEL-1384
         modules {
             module("org.jetbrains.intellij.deps.kotlinx:kotlinx-coroutines-core-jvm") {
                 replacedBy(
