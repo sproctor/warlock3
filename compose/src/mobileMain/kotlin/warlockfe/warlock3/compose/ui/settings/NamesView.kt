@@ -4,7 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -210,7 +209,8 @@ fun EditNameDialog(
             }
         },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            // Scrolls: on a phone the style editor stacks each row, which is taller than the dialog.
+            ScrollableColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 val hasLowercase = text.text.firstOrNull()?.isLowerCase() == true
                 TextField(
                     state = text,
