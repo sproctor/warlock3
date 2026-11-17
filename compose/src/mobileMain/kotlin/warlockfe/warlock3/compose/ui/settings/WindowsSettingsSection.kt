@@ -32,7 +32,6 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.jetbrains.compose.resources.painterResource
-import warlockfe.warlock3.compose.components.CheckboxRow
 import warlockfe.warlock3.compose.components.FontPickerDialog
 import warlockfe.warlock3.compose.components.MAX_PANEL_SCALE
 import warlockfe.warlock3.compose.components.MIN_PANEL_SCALE
@@ -43,6 +42,7 @@ import warlockfe.warlock3.compose.components.formatPanelScale
 import warlockfe.warlock3.compose.components.toFontConfig
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.arrow_right
+import warlockfe.warlock3.compose.shim.WarlockCheckboxRow
 import warlockfe.warlock3.compose.ui.window.toStyleLayer
 import warlockfe.warlock3.compose.util.LocalDarkTheme
 import warlockfe.warlock3.compose.util.LocalSkin
@@ -326,7 +326,7 @@ private fun WindowRow(
                     )
                 }
                 if (nameFilterAvailable) {
-                    CheckboxRow(
+                    WarlockCheckboxRow(
                         checked = settings?.nameFilter == true,
                         onCheckedChange = onSaveNameFilter,
                         text = "Only show lines with names in list",

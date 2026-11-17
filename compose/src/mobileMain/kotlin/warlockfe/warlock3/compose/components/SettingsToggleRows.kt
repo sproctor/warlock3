@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
@@ -20,8 +19,8 @@ import androidx.compose.ui.unit.dp
 
 // Settings screens repeated these label-plus-control rows inline a dozen times. The control takes
 // `onCheckedChange = null` / `onClick = null` because the surrounding row owns the toggle/select
-// semantics (so tapping the label works too). These mirror Jewel's CheckboxRow and RadioButtonRow,
-// which the desktop screens use directly.
+// semantics (so tapping the label works too). RadioButtonRow mirrors Jewel's, which the desktop
+// screens use directly; the checkbox row is the shared WarlockCheckboxRow.
 
 /** A label and a Material [Switch] in a single [toggleable] row. */
 @Composable
@@ -41,29 +40,6 @@ fun SwitchRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Switch(checked = checked, onCheckedChange = null)
-        Spacer(Modifier.width(16.dp))
-        Text(text)
-    }
-}
-
-/** A label and a Material [Checkbox] in a single [toggleable] row. */
-@Composable
-fun CheckboxRow(
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-    text: String,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier =
-            modifier.toggleable(
-                value = checked,
-                onValueChange = onCheckedChange,
-                role = Role.Checkbox,
-            ),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Checkbox(checked = checked, onCheckedChange = null)
         Spacer(Modifier.width(16.dp))
         Text(text)
     }

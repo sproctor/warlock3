@@ -10,7 +10,7 @@ import warlockfe.warlock3.core.text.WarlockColor
 // The pickers the style editors open. Each platform has its own: desktop opens them in dialog
 // windows of their own, mobile as dialogs over the screen.
 
-/** Picks a color, starting from [initialColor] (white on desktop, the picker's default on mobile, when null). */
+/** Picks a color, starting from [initialColor], or from white when that is null. */
 @Composable
 expect fun ColorPickerDialog(
     initialColor: Color?,
@@ -47,8 +47,8 @@ expect fun BackgroundPickerDialog(
     onSelect: (Background) -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
-    palette: Map<String, WarlockColor> = emptyMap(),
     onSelectSlot: (String) -> Unit = {},
+    palette: Map<String, WarlockColor> = emptyMap(),
 )
 
 /** Picks a text color from the skin's [palette], or hands off to a custom color through [onSelectCustom]. */

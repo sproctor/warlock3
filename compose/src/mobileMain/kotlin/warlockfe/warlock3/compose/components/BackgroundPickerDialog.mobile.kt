@@ -40,8 +40,6 @@ import warlockfe.warlock3.core.text.toHexString
  * to, so it stays distinguishable from None. Color opens the standard color picker.
  */
 @OptIn(ExperimentalLayoutApi::class)
-// onSelectSlot has a default, on the expect declaration, which an actual may not repeat.
-@Suppress("ktlint:compose:lambda-param-event-trailing")
 @Composable
 actual fun BackgroundPickerDialog(
     current: Background,
@@ -49,8 +47,8 @@ actual fun BackgroundPickerDialog(
     onSelect: (Background) -> Unit,
     onClose: () -> Unit,
     modifier: Modifier,
-    palette: Map<String, WarlockColor>,
     onSelectSlot: (String) -> Unit,
+    palette: Map<String, WarlockColor>,
 ) {
     var pickingColor by remember { mutableStateOf(false) }
     if (pickingColor) {

@@ -55,9 +55,7 @@ actual fun ColorPickerDialog(
     var hexError by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(initialColor) {
-        if (initialColor != null) {
-            controller.selectByColor(initialColor, fromUser = false)
-        }
+        controller.selectByColor(initialColor ?: Color.White, fromUser = false)
     }
 
     AlertDialog(

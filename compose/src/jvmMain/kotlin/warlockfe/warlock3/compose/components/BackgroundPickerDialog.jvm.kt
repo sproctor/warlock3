@@ -41,8 +41,6 @@ import warlockfe.warlock3.core.text.toHexString
  * color picker. Applies the chosen [Background] and closes.
  */
 @OptIn(ExperimentalLayoutApi::class)
-// onSelectSlot has a default, on the expect declaration, which an actual may not repeat.
-@Suppress("ktlint:compose:lambda-param-event-trailing")
 @Composable
 actual fun BackgroundPickerDialog(
     current: Background,
@@ -50,8 +48,8 @@ actual fun BackgroundPickerDialog(
     onSelect: (Background) -> Unit,
     onClose: () -> Unit,
     modifier: Modifier,
-    palette: Map<String, WarlockColor>,
     onSelectSlot: (String) -> Unit,
+    palette: Map<String, WarlockColor>,
 ) {
     var pickingColor by remember { mutableStateOf(false) }
     if (pickingColor) {

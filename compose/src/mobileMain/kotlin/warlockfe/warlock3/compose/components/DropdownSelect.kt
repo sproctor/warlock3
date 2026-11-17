@@ -15,10 +15,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.TextStyle
+import warlockfe.warlock3.compose.shim.dropdownSelectedIndex
 
+/**
+ * The Material dropdown, with an optional floating [label]. Shared screens use
+ * [warlockfe.warlock3.compose.shim.WarlockDropdownSelect], which draws through this with no label;
+ * the label is what the mobile-only screens that call this directly need.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun <T> DropdownSelect(
+internal fun <T> DropdownSelect(
     items: List<T>,
     selected: T?,
     onSelect: (T) -> Unit,
@@ -28,15 +34,8 @@ fun <T> DropdownSelect(
     textStyle: TextStyle? = null,
 ) {
     var expanded by remember { mutableStateOf(false) }
-    // A null [selected] that is not itself one of the items shows nothing selected; null is a real
-    // item where T is nullable (the character selector's "Global").
-    val selectedIndex = items.indexOf(selected)
-    val selectedLabel =
-        when {
-            selectedIndex >= 0 -> itemLabelBuilder(items[selectedIndex])
-            selected != null -> itemLabelBuilder(selected)
-            else -> ""
-        }
+    val selectedIndex = dropdownSelectedIndex(items, selected)
+    val selectedLabel = if (selectedIndex >= 0) itemLabelBuilder(items[selectedIndex]) else ""
     ExposedDropdownMenuBox(
         modifier = modifier,
         expanded = expanded,

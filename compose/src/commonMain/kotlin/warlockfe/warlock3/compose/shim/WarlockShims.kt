@@ -52,10 +52,9 @@ expect fun WarlockCheckboxRow(
 )
 
 /**
- * A read-only dropdown of [items], showing [selected]. A null [selected] that is not itself one of
- * the items shows nothing selected (a game-sent selection that names no option, say); null is a
- * real item where T is nullable, such as the character selector's "Global". [textStyle] replaces
- * the platform's default style for the labels.
+ * A read-only dropdown of [items], showing [selected] as [dropdownSelectedIndex] picks it: nothing
+ * for a null that is not one of the items, the first item for a value no longer in the list.
+ * [textStyle] replaces the platform's default style for the labels.
  */
 @Composable
 expect fun <T> WarlockDropdownSelect(
