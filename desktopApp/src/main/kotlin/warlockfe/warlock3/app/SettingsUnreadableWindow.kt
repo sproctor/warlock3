@@ -19,11 +19,11 @@ import dev.nucleusframework.application.nucleusApplication
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Text
-import warlockfe.warlock3.compose.desktop.shim.WarlockButton
 import warlockfe.warlock3.compose.desktop.theme.WarlockDesktopTheme
 import warlockfe.warlock3.compose.desktop.theme.WarlockTitleBar
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.app_icon
+import warlockfe.warlock3.compose.shim.WarlockButton
 import warlockfe.warlock3.core.prefs.SettingsProblem
 import kotlin.system.exitProcess
 

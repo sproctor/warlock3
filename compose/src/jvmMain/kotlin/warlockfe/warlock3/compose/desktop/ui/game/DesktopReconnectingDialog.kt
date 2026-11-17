@@ -18,8 +18,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import org.jetbrains.jewel.ui.component.HorizontalProgressBar
 import org.jetbrains.jewel.ui.component.Text
-import warlockfe.warlock3.compose.desktop.shim.WarlockDialog
-import warlockfe.warlock3.compose.desktop.shim.WarlockOutlinedButton
+import warlockfe.warlock3.compose.shim.WarlockDialog
+import warlockfe.warlock3.compose.shim.WarlockOutlinedButton
 
 /**
  * Modal progress dialog shown while a game reconnect is in flight. The reconnect re-runs the full

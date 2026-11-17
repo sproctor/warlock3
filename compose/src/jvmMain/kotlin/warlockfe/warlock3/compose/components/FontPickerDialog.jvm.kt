@@ -1,4 +1,4 @@
-package warlockfe.warlock3.compose.desktop.components
+package warlockfe.warlock3.compose.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -29,26 +29,20 @@ import androidx.compose.ui.unit.sp
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.VerticallyScrollableContainer
-import warlockfe.warlock3.compose.components.FONT_PICKER_SAMPLE_TEXT
-import warlockfe.warlock3.compose.components.FONT_SIZE_STEP
-import warlockfe.warlock3.compose.components.FontPickerState
-import warlockfe.warlock3.compose.components.FontUpdate
-import warlockfe.warlock3.compose.components.fontWeightOptions
-import warlockfe.warlock3.compose.components.rememberFontPickerState
-import warlockfe.warlock3.compose.desktop.shim.WarlockButton
-import warlockfe.warlock3.compose.desktop.shim.WarlockDialog
-import warlockfe.warlock3.compose.desktop.shim.WarlockDropdownSelect
-import warlockfe.warlock3.compose.desktop.shim.WarlockOutlinedButton
-import warlockfe.warlock3.compose.desktop.shim.WarlockTextField
+import warlockfe.warlock3.compose.shim.WarlockButton
+import warlockfe.warlock3.compose.shim.WarlockDialog
+import warlockfe.warlock3.compose.shim.WarlockDropdownSelect
+import warlockfe.warlock3.compose.shim.WarlockOutlinedButton
+import warlockfe.warlock3.compose.shim.WarlockTextField
 import warlockfe.warlock3.core.text.FontConfig
 
 @Suppress("ktlint:compose:modifier-missing-check")
 @Composable
-fun DesktopFontPickerDialog(
+actual fun FontPickerDialog(
     current: FontConfig?,
     onCloseRequest: () -> Unit,
     onSaveClick: (FontUpdate) -> Unit,
-    monospaceOnly: Boolean = false,
+    monospaceOnly: Boolean,
 ) {
     val state = rememberFontPickerState(current, JewelTheme.defaultTextStyle.fontSize.value, monospaceOnly)
 

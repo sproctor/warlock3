@@ -1,4 +1,4 @@
-package warlockfe.warlock3.compose.desktop.components
+package warlockfe.warlock3.compose.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -38,18 +38,18 @@ import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.OutlinedButton
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.util.toArgbHexString
-import warlockfe.warlock3.compose.desktop.shim.WarlockButton
-import warlockfe.warlock3.compose.desktop.shim.WarlockDialog
-import warlockfe.warlock3.compose.desktop.shim.WarlockOutlinedButton
-import warlockfe.warlock3.compose.desktop.shim.WarlockTextField
+import warlockfe.warlock3.compose.shim.WarlockButton
+import warlockfe.warlock3.compose.shim.WarlockDialog
+import warlockfe.warlock3.compose.shim.WarlockOutlinedButton
+import warlockfe.warlock3.compose.shim.WarlockTextField
 import warlockfe.warlock3.compose.util.parseHexOrNull
 import warlockfe.warlock3.compose.util.toWarlockColor
 import warlockfe.warlock3.core.text.WarlockColor
 
 @Suppress("ktlint:compose:modifier-missing-check")
 @Composable
-fun DesktopColorPickerDialog(
-    initialColor: Color,
+actual fun ColorPickerDialog(
+    initialColor: Color?,
     onCloseRequest: () -> Unit,
     onColorSelect: (color: WarlockColor) -> Unit,
 ) {
@@ -58,7 +58,7 @@ fun DesktopColorPickerDialog(
     var hexError by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(initialColor) {
-        val color = initialColor.takeOrElse { Color.White }
+        val color = (initialColor ?: Color.Unspecified).takeOrElse { Color.White }
         hexInput.setTextAndPlaceCursorAtEnd(color.toArgbHexString())
     }
 
@@ -147,11 +147,11 @@ fun DesktopColorPickerDialog(
 }
 
 @Composable
-fun DesktopColorPickerButton(
+actual fun ColorPickerButton(
     text: String,
     color: Color,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier,
+    modifier: Modifier,
 ) {
     OutlinedButton(modifier = modifier, onClick = onClick) {
         Row(verticalAlignment = Alignment.CenterVertically) {

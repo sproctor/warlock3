@@ -1,4 +1,4 @@
-package warlockfe.warlock3.compose.desktop.components
+package warlockfe.warlock3.compose.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -16,17 +16,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import org.jetbrains.jewel.foundation.theme.LocalContentColor
-import org.jetbrains.jewel.ui.component.CheckboxRow
-import org.jetbrains.jewel.ui.component.Text
-import warlockfe.warlock3.compose.components.GENERIC_SAMPLE
-import warlockfe.warlock3.compose.components.StyleChip
-import warlockfe.warlock3.compose.components.StyleSample
-import warlockfe.warlock3.compose.components.backgroundLabel
-import warlockfe.warlock3.compose.components.fontLabel
-import warlockfe.warlock3.compose.components.fontWeightOptions
-import warlockfe.warlock3.compose.desktop.shim.WarlockDropdownSelect
-import warlockfe.warlock3.compose.desktop.shim.WarlockOutlinedButton
+import warlockfe.warlock3.compose.shim.WarlockCheckboxRow
+import warlockfe.warlock3.compose.shim.WarlockDropdownSelect
+import warlockfe.warlock3.compose.shim.WarlockOutlinedButton
+import warlockfe.warlock3.compose.shim.WarlockSecondaryText
+import warlockfe.warlock3.compose.shim.WarlockText
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.compose.util.toWarlockColor
 import warlockfe.warlock3.core.text.Background
@@ -45,15 +39,15 @@ import warlockfe.warlock3.core.text.specifiedOrNull
 import kotlin.math.roundToInt
 
 /**
- * The shared desktop (Jewel) editor for one text style at one edit scope, reused by presets, the base
- * text, windows, highlights, and names. Each attribute shows its control, a "set here"/"inherited" tag,
+ * The editor for one text style at one edit scope, reused by presets, the base text, windows,
+ * highlights, and names, on desktop and mobile alike. Each attribute shows its control, a "set here"/"inherited" tag,
  * and a reset that is enabled only when the value was set at [editScope]. Every change folds into
  * [editLayer] via [applyEdit] and is handed back through [onSave] for the caller to persist to that one
  * scope's layer. [sample] (the fully-resolved cascade) drives the effective values shown and the live
  * preview.
  */
 @Composable
-fun DesktopTextStyleEditor(
+fun TextStyleEditor(
     sourced: SourcedStyle,
     sample: ResolvedStyle,
     editScope: StyleScope,
@@ -79,7 +73,7 @@ fun DesktopTextStyleEditor(
     var editTextColor by remember { mutableStateOf(false) }
 
     editColor?.let { onPick ->
-        DesktopColorPickerDialog(
+        ColorPickerDialog(
             initialColor = sample.textColor.toColor(),
             onCloseRequest = { editColor = null },
             onColorSelect = { color ->
@@ -89,7 +83,7 @@ fun DesktopTextStyleEditor(
         )
     }
     if (editFont) {
-        DesktopFontPickerDialog(
+        FontPickerDialog(
             current = FontConfig(family = sample.fontFamily, size = sample.fontSize, weight = sample.weight),
             onCloseRequest = { editFont = false },
             onSaveClick = { update ->
@@ -103,7 +97,7 @@ fun DesktopTextStyleEditor(
         )
     }
     if (editBackground) {
-        DesktopBackgroundPickerDialog(
+        BackgroundPickerDialog(
             // The sparse edit-scope layer, not the resolved sample: Inherit must show selected only when
             // this scope itself hasn't set a background, even though a lower layer (skin/global) resolves
             // to a Fill.
@@ -116,7 +110,7 @@ fun DesktopTextStyleEditor(
         )
     }
     if (editTextColor) {
-        DesktopColorRefPickerDialog(
+        ColorRefPickerDialog(
             palette = palette,
             onSelectSlot = { edit(StyleEdit.SetTextColorRef(it)) },
             onSelectCustom = { editColor = { color -> edit(StyleEdit.SetTextColor(color)) } },
@@ -129,7 +123,7 @@ fun DesktopTextStyleEditor(
 
         AttributeRow("Text color", sourced.textColor.source, editScope, onReset = { edit(StyleEdit.Reset(StyleAttribute.TextColor)) }) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                DesktopColorPickerButton(
+                ColorPickerButton(
                     text = "Text",
                     color = sample.textColor.toColor(),
                     onClick = {
@@ -143,7 +137,7 @@ fun DesktopTextStyleEditor(
                     },
                 )
                 editLayer.textColorRef?.let { slot ->
-                    Text("tracks $slot", color = LocalContentColor.current.copy(alpha = 0.6f))
+                    WarlockSecondaryText("tracks $slot")
                 }
             }
         }
@@ -155,7 +149,7 @@ fun DesktopTextStyleEditor(
                     text = backgroundLabel(sample.background),
                 )
                 editLayer.backgroundRef?.let { slot ->
-                    Text("tracks $slot", color = LocalContentColor.current.copy(alpha = 0.6f))
+                    WarlockSecondaryText("tracks $slot")
                 }
             }
         }
@@ -170,7 +164,7 @@ fun DesktopTextStyleEditor(
         }
 
         AttributeRow("Italic", sourced.italic.source, editScope, onReset = { edit(StyleEdit.Reset(StyleAttribute.Italic)) }) {
-            CheckboxRow(
+            WarlockCheckboxRow(
                 checked = sample.italic,
                 onCheckedChange = { edit(StyleEdit.SetItalic(it)) },
                 text = "Italic",
@@ -178,7 +172,7 @@ fun DesktopTextStyleEditor(
         }
 
         AttributeRow("Underline", sourced.underline.source, editScope, onReset = { edit(StyleEdit.Reset(StyleAttribute.Underline)) }) {
-            CheckboxRow(
+            WarlockCheckboxRow(
                 checked = sample.underline,
                 onCheckedChange = { edit(StyleEdit.SetUnderline(it)) },
                 text = "Underline",
@@ -192,7 +186,7 @@ fun DesktopTextStyleEditor(
                 editScope,
                 onReset = { edit(StyleEdit.Reset(StyleAttribute.EntireLine)) },
             ) {
-                CheckboxRow(
+                WarlockCheckboxRow(
                     checked = sample.entireLine,
                     onCheckedChange = { edit(StyleEdit.SetEntireLine(it)) },
                     text = "Highlight entire line",
@@ -202,7 +196,7 @@ fun DesktopTextStyleEditor(
 
         if (showMonospace) {
             AttributeRow("Monospace", sourced.monospace.source, editScope, onReset = { edit(StyleEdit.Reset(StyleAttribute.Monospace)) }) {
-                CheckboxRow(
+                WarlockCheckboxRow(
                     checked = sample.monospace,
                     onCheckedChange = { edit(StyleEdit.SetMonospace(it)) },
                     text = "Monospace",
@@ -235,10 +229,10 @@ private fun AttributeRow(
     control: @Composable () -> Unit,
 ) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(label, modifier = Modifier.width(96.dp))
+        WarlockText(label, modifier = Modifier.width(96.dp))
         control()
         Spacer(Modifier.width(4.dp))
-        Text(sourceLabel(source, editScope))
+        WarlockText(sourceLabel(source, editScope))
         Spacer(Modifier.weight(1f))
         WarlockOutlinedButton(
             onClick = onReset,
@@ -271,7 +265,7 @@ private fun StylePreview(
             val ratio = contrastRatio(textColor, effectiveBackground)
             if (ratio < 3.0) {
                 val rounded = (ratio * 10).roundToInt() / 10.0
-                Text("Low contrast ($rounded:1)", color = Color(0xFFCC7A00))
+                WarlockText("Low contrast ($rounded:1)", color = Color(0xFFCC7A00))
             }
         }
     }

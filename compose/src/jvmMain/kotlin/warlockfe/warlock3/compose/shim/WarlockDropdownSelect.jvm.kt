@@ -1,4 +1,4 @@
-package warlockfe.warlock3.compose.desktop.shim
+package warlockfe.warlock3.compose.shim
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -10,13 +10,13 @@ import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.ListComboBox
 
 @Composable
-fun <T> WarlockDropdownSelect(
+actual fun <T> WarlockDropdownSelect(
     items: List<T>,
     selected: T?,
     onSelect: (T) -> Unit,
-    modifier: Modifier = Modifier,
-    textStyle: TextStyle = JewelTheme.defaultTextStyle,
-    itemLabelBuilder: (T) -> String = { it.toString() },
+    modifier: Modifier,
+    itemLabelBuilder: (T) -> String,
+    textStyle: TextStyle?,
 ) {
     val labels = remember(items) { items.map(itemLabelBuilder) }
     // ListComboBox shows an empty label for index -1, which is how a caller says nothing is selected
@@ -44,6 +44,6 @@ fun <T> WarlockDropdownSelect(
         },
         modifier = modifier,
         listState = listState,
-        textStyle = textStyle,
+        textStyle = textStyle ?: JewelTheme.defaultTextStyle,
     )
 }

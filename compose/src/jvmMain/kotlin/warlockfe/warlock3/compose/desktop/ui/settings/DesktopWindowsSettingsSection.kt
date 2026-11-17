@@ -30,19 +30,19 @@ import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.jewel.foundation.theme.LocalContentColor
 import org.jetbrains.jewel.ui.component.CheckboxRow
 import org.jetbrains.jewel.ui.component.Text
+import warlockfe.warlock3.compose.components.FontPickerDialog
 import warlockfe.warlock3.compose.components.MAX_PANEL_SCALE
 import warlockfe.warlock3.compose.components.MIN_PANEL_SCALE
 import warlockfe.warlock3.compose.components.PANEL_SCALE_STEP
+import warlockfe.warlock3.compose.components.TextStyleEditor
 import warlockfe.warlock3.compose.components.fontLabel
 import warlockfe.warlock3.compose.components.formatPanelScale
 import warlockfe.warlock3.compose.components.toFontConfig
-import warlockfe.warlock3.compose.desktop.components.DesktopFontPickerDialog
-import warlockfe.warlock3.compose.desktop.components.DesktopTextStyleEditor
-import warlockfe.warlock3.compose.desktop.shim.WarlockButton
-import warlockfe.warlock3.compose.desktop.shim.WarlockOutlinedButton
-import warlockfe.warlock3.compose.desktop.shim.WarlockTextField
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.arrow_right
+import warlockfe.warlock3.compose.shim.WarlockButton
+import warlockfe.warlock3.compose.shim.WarlockOutlinedButton
+import warlockfe.warlock3.compose.shim.WarlockTextField
 import warlockfe.warlock3.compose.ui.settings.WindowSettingsLiveContext
 import warlockfe.warlock3.compose.ui.settings.WindowsViewModel
 import warlockfe.warlock3.compose.ui.window.toStyleLayer
@@ -121,7 +121,7 @@ fun DesktopWindowsSettingsSection(
     // color picker).
     var editFont by remember { mutableStateOf<Triple<FontConfig?, Boolean, (FontConfig?) -> Unit>?>(null) }
     editFont?.let { (current, monoOnly, onSave) ->
-        DesktopFontPickerDialog(
+        FontPickerDialog(
             current = current,
             monospaceOnly = monoOnly,
             onCloseRequest = { editFont = null },
@@ -299,7 +299,7 @@ private fun DesktopWindowRow(
                 // Feed it to the sample (for a realistic preview) but not to the source tags, so unset
                 // attributes read "default" rather than "from skin".
                 val windowLayer = (settings?.toStyleLayer() ?: StyleLayer()).resolveRefs(palette)
-                DesktopTextStyleEditor(
+                TextStyleEditor(
                     sourced = resolveSourced(listOf(StyleScope.CHARACTER to windowLayer)),
                     sample =
                         sampleStyle(

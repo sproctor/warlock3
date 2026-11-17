@@ -40,14 +40,14 @@ import warlockfe.warlock3.app.updater.UpdatePrompt
 import warlockfe.warlock3.app.updater.buildUpdater
 import warlockfe.warlock3.compose.AppContainer
 import warlockfe.warlock3.compose.crash.CrashReporting
-import warlockfe.warlock3.compose.desktop.shim.WarlockAlertDialog
-import warlockfe.warlock3.compose.desktop.shim.WarlockButton
 import warlockfe.warlock3.compose.desktop.theme.WarlockDesktopTheme
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.app_icon
 import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.compose.model.StartupConnection
 import warlockfe.warlock3.compose.observeSkin
+import warlockfe.warlock3.compose.shim.WarlockAlertDialog
+import warlockfe.warlock3.compose.shim.WarlockButton
 import warlockfe.warlock3.compose.util.SentryCrashReporter
 import warlockfe.warlock3.core.prefs.SettingsUnreadableException
 import warlockfe.warlock3.core.prefs.ThemeSetting

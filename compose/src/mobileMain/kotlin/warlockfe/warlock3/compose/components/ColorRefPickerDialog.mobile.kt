@@ -32,12 +32,12 @@ import warlockfe.warlock3.core.text.WarlockColor
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun ColorRefPickerDialog(
+actual fun ColorRefPickerDialog(
     palette: Map<String, WarlockColor>,
     onSelectSlot: (String) -> Unit,
     onSelectCustom: () -> Unit,
     onClose: () -> Unit,
-    modifier: Modifier = Modifier,
+    modifier: Modifier,
 ) {
     AlertDialog(
         onDismissRequest = onClose,

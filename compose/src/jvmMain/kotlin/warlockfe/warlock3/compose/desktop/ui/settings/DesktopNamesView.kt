@@ -23,13 +23,13 @@ import io.github.vinceglb.filekit.absolutePath
 import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
 import org.jetbrains.jewel.ui.component.Text
 import warlockfe.warlock3.compose.components.StyleChip
-import warlockfe.warlock3.compose.desktop.components.DesktopTextStyleEditor
-import warlockfe.warlock3.compose.desktop.shim.WarlockButton
-import warlockfe.warlock3.compose.desktop.shim.WarlockDialog
-import warlockfe.warlock3.compose.desktop.shim.WarlockListItem
-import warlockfe.warlock3.compose.desktop.shim.WarlockOutlinedButton
-import warlockfe.warlock3.compose.desktop.shim.WarlockScrollableColumn
-import warlockfe.warlock3.compose.desktop.shim.WarlockTextField
+import warlockfe.warlock3.compose.components.TextStyleEditor
+import warlockfe.warlock3.compose.shim.WarlockButton
+import warlockfe.warlock3.compose.shim.WarlockDialog
+import warlockfe.warlock3.compose.shim.WarlockListItem
+import warlockfe.warlock3.compose.shim.WarlockOutlinedButton
+import warlockfe.warlock3.compose.shim.WarlockScrollableColumn
+import warlockfe.warlock3.compose.shim.WarlockTextField
 import warlockfe.warlock3.compose.ui.settings.NamesViewModel
 import warlockfe.warlock3.compose.ui.settings.resolvedWindowBackground
 import warlockfe.warlock3.compose.ui.settings.toStyleLayer
@@ -173,7 +173,7 @@ private fun DesktopEditNameDialog(
             if (hasLowercase) {
                 Text("First letter of name is lowercase")
             }
-            DesktopTextStyleEditor(
+            TextStyleEditor(
                 sourced = resolveSourced(stack),
                 sample = sampleStyle(stack),
                 editScope = StyleScope.CHARACTER,

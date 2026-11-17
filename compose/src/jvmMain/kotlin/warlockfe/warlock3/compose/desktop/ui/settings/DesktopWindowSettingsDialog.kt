@@ -15,14 +15,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import org.jetbrains.jewel.ui.component.CheckboxRow
+import warlockfe.warlock3.compose.components.ColorPickerButton
+import warlockfe.warlock3.compose.components.ColorPickerDialog
+import warlockfe.warlock3.compose.components.FontPickerDialog
 import warlockfe.warlock3.compose.components.fontLabel
 import warlockfe.warlock3.compose.components.toFontConfig
-import warlockfe.warlock3.compose.desktop.components.DesktopColorPickerButton
-import warlockfe.warlock3.compose.desktop.components.DesktopColorPickerDialog
-import warlockfe.warlock3.compose.desktop.components.DesktopFontPickerDialog
-import warlockfe.warlock3.compose.desktop.shim.WarlockButton
-import warlockfe.warlock3.compose.desktop.shim.WarlockDialog
-import warlockfe.warlock3.compose.desktop.shim.WarlockOutlinedButton
+import warlockfe.warlock3.compose.shim.WarlockButton
+import warlockfe.warlock3.compose.shim.WarlockDialog
+import warlockfe.warlock3.compose.shim.WarlockOutlinedButton
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.text.FontConfig
 import warlockfe.warlock3.core.text.StyleDefinition
@@ -50,7 +50,7 @@ fun DesktopWindowSettingsDialog(
     var editFont by remember { mutableStateOf<Pair<FontConfig?, Boolean>?>(null) }
 
     if (editColor != null) {
-        DesktopColorPickerDialog(
+        ColorPickerDialog(
             initialColor = editColor!!.first.toColor(),
             onCloseRequest = { editColor = null },
             onColorSelect = { color ->
@@ -60,7 +60,7 @@ fun DesktopWindowSettingsDialog(
         )
     }
     editFont?.let { (current, monospaceOnly) ->
-        DesktopFontPickerDialog(
+        FontPickerDialog(
             current = current,
             monospaceOnly = monospaceOnly,
             onCloseRequest = { editFont = null },
@@ -82,7 +82,7 @@ fun DesktopWindowSettingsDialog(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             val textColor = style.textColor.ifUnspecified(defaultStyle.textColor)
-            DesktopColorPickerButton(
+            ColorPickerButton(
                 text = "Content",
                 color = textColor.toColor(),
                 onClick = {
@@ -93,7 +93,7 @@ fun DesktopWindowSettingsDialog(
                 },
             )
             val backgroundColor = style.backgroundColor.ifUnspecified(defaultStyle.backgroundColor)
-            DesktopColorPickerButton(
+            ColorPickerButton(
                 text = "Background",
                 color = backgroundColor.toColor(),
                 onClick = {
