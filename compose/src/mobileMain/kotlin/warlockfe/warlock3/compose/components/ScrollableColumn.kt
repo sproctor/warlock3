@@ -28,6 +28,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -42,6 +43,14 @@ import io.github.oikvpqya.compose.fastscroller.ThumbStyle
 import io.github.oikvpqya.compose.fastscroller.TrackStyle
 import io.github.oikvpqya.compose.fastscroller.VerticalScrollbar
 import io.github.oikvpqya.compose.fastscroller.rememberScrollbarAdapter
+
+/**
+ * Whether a [ScrollableColumn] keeps its content clear of its scrollbar. Off, the scrollbar is drawn over
+ * the column's trailing edge, which suits text that runs to the edge, like a game window. On, the content
+ * stops short of the scrollbar, so controls that reach the edge (a form's buttons and fields) stay
+ * uncovered and clickable.
+ */
+val LocalScrollbarGutter = staticCompositionLocalOf { false }
 
 @Composable
 fun ScrollableColumn(
@@ -78,12 +87,13 @@ fun BoxScope.ScrollableColumn(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val layoutDirection = LocalLayoutDirection.current
+    val gutter = if (LocalScrollbarGutter.current) scrollbarStyle.thickness else 0.dp
     var height by remember { mutableIntStateOf(0) }
     Column(
         modifier
             .padding(
                 start = contentPadding.calculateStartPadding(layoutDirection),
-                end = contentPadding.calculateEndPadding(layoutDirection),
+                end = contentPadding.calculateEndPadding(layoutDirection) + gutter,
             ).onGloballyPositioned { coordinates ->
                 height = coordinates.size.height
             }.verticalScroll(state),

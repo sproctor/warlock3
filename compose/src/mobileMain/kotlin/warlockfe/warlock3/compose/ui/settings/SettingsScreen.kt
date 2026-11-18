@@ -13,6 +13,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -21,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.unit.dp
 import org.jetbrains.compose.resources.painterResource
+import warlockfe.warlock3.compose.components.LocalScrollbarGutter
 import warlockfe.warlock3.compose.components.ScrollableColumn
 import warlockfe.warlock3.compose.crash.CrashReporting
 import warlockfe.warlock3.compose.generated.resources.Res
@@ -65,48 +67,56 @@ fun SettingsScreen(
             )
         },
     ) { padding ->
-        Box(Modifier.fillMaxSize().padding(padding)) {
-            val selected = page
-            if (selected == null) {
-                ScrollableColumn {
-                    SettingsGroup.entries.forEach { group ->
-                        if (group.title.isNotEmpty()) {
-                            Text(
-                                text = group.title,
-                                style = MaterialTheme.typography.titleSmall,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 4.dp),
-                            )
-                        }
-                        SettingsPage.entries.filter { it.group == group }.forEach { entry ->
-                            ListItem(
-                                modifier = Modifier.clickable { page = entry },
-                                headlineContent = { Text(entry.title) },
-                                leadingContent = {
-                                    Icon(
-                                        painter = painterResource(entry.icon),
-                                        contentDescription = null,
-                                    )
-                                },
-                                trailingContent = {
-                                    Icon(
-                                        painter = painterResource(Res.drawable.arrow_right),
-                                        contentDescription = null,
-                                    )
-                                },
-                            )
+        // Forms in settings run controls to the right edge, so keep them clear of the scrollbar.
+        CompositionLocalProvider(LocalScrollbarGutter provides true) {
+            Box(Modifier.fillMaxSize().padding(padding)) {
+                val selected = page
+                if (selected == null) {
+                    ScrollableColumn {
+                        SettingsGroup.entries.forEach { group ->
+                            if (group.title.isNotEmpty()) {
+                                Text(
+                                    text = group.title,
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 4.dp),
+                                )
+                            }
+                            SettingsPage.entries.filter { it.group == group }.forEach { entry ->
+                                ListItem(
+                                    modifier = Modifier.clickable { page = entry },
+                                    headlineContent = { Text(entry.title) },
+                                    leadingContent = {
+                                        Icon(
+                                            painter = painterResource(entry.icon),
+                                            contentDescription = null,
+                                        )
+                                    },
+                                    trailingContent = {
+                                        Icon(
+                                            painter = painterResource(Res.drawable.arrow_right),
+                                            contentDescription = null,
+                                        )
+                                    },
+                                )
+                            }
                         }
                     }
+                } else {
+                    // The page margin, as on desktop. Crash reports is a Material list that insets its own
+                    // rows, like the category list above.
+                    val margin = if (selected == SettingsPage.CrashReports) 0.dp else 16.dp
+                    Box(Modifier.padding(horizontal = margin)) {
+                        SettingsContent(
+                            page = selected,
+                            currentCharacter = currentCharacter,
+                            settingsViewModelFactory = settingsViewModelFactory,
+                            crashReporting = crashReporting,
+                            initialWindowTarget = initialWindowTarget,
+                            windowLiveContext = windowLiveContext,
+                        )
+                    }
                 }
-            } else {
-                SettingsContent(
-                    page = selected,
-                    currentCharacter = currentCharacter,
-                    settingsViewModelFactory = settingsViewModelFactory,
-                    crashReporting = crashReporting,
-                    initialWindowTarget = initialWindowTarget,
-                    windowLiveContext = windowLiveContext,
-                )
             }
         }
     }
