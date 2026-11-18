@@ -20,6 +20,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.dp
 import org.jetbrains.compose.resources.painterResource
 import warlockfe.warlock3.compose.components.LocalScrollbarGutter
@@ -103,9 +104,13 @@ fun SettingsScreen(
                         }
                     }
                 } else {
-                    // The page margin, as on desktop. Crash reports is a Material list that insets its own
-                    // rows, like the category list above.
-                    val margin = if (selected == SettingsPage.CrashReports) 0.dp else 16.dp
+                    // The page margin, as on desktop. Pages that are nothing but a Material list run edge
+                    // to edge instead, like the category list above, since list rows inset themselves.
+                    val margin =
+                        when (selected) {
+                            SettingsPage.CrashReports, SettingsPage.Accounts, SettingsPage.Characters -> 0.dp
+                            else -> SettingsPageMargin
+                        }
                     Box(Modifier.padding(horizontal = margin)) {
                         SettingsContent(
                             page = selected,
@@ -121,3 +126,25 @@ fun SettingsScreen(
         }
     }
 }
+
+/** The horizontal margin around a settings page's content. */
+internal val SettingsPageMargin = 16.dp
+
+/**
+ * Widens a Material list row by [SettingsPageMargin] on each side, out to the screen edges. A
+ * `ListItem` insets its content by 16dp itself, so inside the page margin its text would otherwise
+ * start 16dp further in than the page's title and fields; bled out, the two line up.
+ */
+internal fun Modifier.bleedIntoPageMargin(): Modifier =
+    layout { measurable, constraints ->
+        if (!constraints.hasBoundedWidth) {
+            val placeable = measurable.measure(constraints)
+            return@layout layout(placeable.width, placeable.height) { placeable.placeRelative(0, 0) }
+        }
+        val bleed = SettingsPageMargin.roundToPx()
+        val placeable =
+            measurable.measure(
+                constraints.copy(minWidth = constraints.minWidth + 2 * bleed, maxWidth = constraints.maxWidth + 2 * bleed),
+            )
+        layout(placeable.width - 2 * bleed, placeable.height) { placeable.placeRelative(-bleed, 0) }
+    }

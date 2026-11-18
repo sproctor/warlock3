@@ -61,6 +61,7 @@ fun VariablesView(
         ScrollableColumn(Modifier.weight(1f)) {
             variables.forEach { variable ->
                 ListItem(
+                    modifier = Modifier.bleedIntoPageMargin(),
                     headlineContent = { Text(variable.name) },
                     supportingContent = { Text(variable.value) },
                     trailingContent = {

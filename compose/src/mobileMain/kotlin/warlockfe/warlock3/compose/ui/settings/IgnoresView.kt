@@ -64,6 +64,7 @@ fun IgnoresView(
         ) {
             ignores.forEach { ignore ->
                 ListItem(
+                    modifier = Modifier.bleedIntoPageMargin(),
                     headlineContent = {
                         Text(text = ignore.pattern)
                     },

@@ -99,6 +99,7 @@ fun NamesView(
         ) {
             names.forEach { name ->
                 ListItem(
+                    modifier = Modifier.bleedIntoPageMargin(),
                     headlineContent = {
                         Text(text = name.text)
                     },

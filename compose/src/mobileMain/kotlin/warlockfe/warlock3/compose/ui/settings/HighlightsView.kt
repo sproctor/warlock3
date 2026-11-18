@@ -115,6 +115,7 @@ fun HighlightsView(
                 key(highlight.id) {
                     ReorderableItem(modifier = Modifier.fillMaxWidth()) {
                         ListItem(
+                            modifier = Modifier.bleedIntoPageMargin(),
                             headlineContent = {
                                 Text(text = highlight.pattern)
                             },
