@@ -11,8 +11,8 @@ import androidx.compose.ui.Modifier
 import org.jetbrains.jewel.ui.component.PopupMenu
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.separator
-import warlockfe.warlock3.compose.desktop.shim.WarlockNavMenuItem
-import warlockfe.warlock3.compose.desktop.shim.WarlockOutlinedButton
+import warlockfe.warlock3.compose.shim.WarlockNavMenuItem
+import warlockfe.warlock3.compose.shim.WarlockOutlinedButton
 import warlockfe.warlock3.core.prefs.models.Action
 import kotlin.uuid.Uuid
 

@@ -1,4 +1,4 @@
-package warlockfe.warlock3.compose.desktop.components
+package warlockfe.warlock3.compose.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -22,8 +22,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.jetbrains.jewel.foundation.theme.LocalContentColor
 import org.jetbrains.jewel.ui.component.Text
-import warlockfe.warlock3.compose.desktop.shim.WarlockDialog
-import warlockfe.warlock3.compose.desktop.shim.WarlockOutlinedButton
+import warlockfe.warlock3.compose.shim.WarlockDialog
+import warlockfe.warlock3.compose.shim.WarlockOutlinedButton
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.text.WarlockColor
 
@@ -34,12 +34,12 @@ import warlockfe.warlock3.core.text.WarlockColor
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun DesktopColorRefPickerDialog(
+actual fun ColorRefPickerDialog(
     palette: Map<String, WarlockColor>,
     onSelectSlot: (String) -> Unit,
     onSelectCustom: () -> Unit,
     onClose: () -> Unit,
-    modifier: Modifier = Modifier,
+    modifier: Modifier,
 ) {
     WarlockDialog(
         title = "Text color",

@@ -29,11 +29,12 @@ import kotlinx.coroutines.flow.collectLatest
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Text
-import warlockfe.warlock3.compose.desktop.shim.WarlockIconButton
-import warlockfe.warlock3.compose.desktop.shim.WarlockTextField
+import warlockfe.warlock3.compose.components.ColorPickerDialog
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.close
 import warlockfe.warlock3.compose.generated.resources.edit
+import warlockfe.warlock3.compose.shim.WarlockIconButton
+import warlockfe.warlock3.compose.shim.WarlockTextField
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.core.text.toHexString
@@ -112,7 +113,7 @@ fun DesktopColorTextField(
     }
     editColor?.let { (colorText, setColor) ->
         val initialColor = colorText.toWarlockColor().toColor()
-        DesktopColorPickerDialog(
+        ColorPickerDialog(
             initialColor = initialColor,
             onCloseRequest = { editColor = null },
             onColorSelect = { color ->

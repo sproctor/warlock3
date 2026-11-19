@@ -14,9 +14,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Text
-import warlockfe.warlock3.compose.desktop.shim.WarlockListItem
-import warlockfe.warlock3.compose.desktop.shim.WarlockOutlinedButton
-import warlockfe.warlock3.compose.desktop.shim.WarlockScrollableColumn
+import warlockfe.warlock3.compose.shim.WarlockListItem
+import warlockfe.warlock3.compose.shim.WarlockOutlinedButton
+import warlockfe.warlock3.compose.shim.WarlockScrollableColumn
 import warlockfe.warlock3.compose.ui.settings.CharactersViewModel
 import warlockfe.warlock3.core.client.GameCharacter
 

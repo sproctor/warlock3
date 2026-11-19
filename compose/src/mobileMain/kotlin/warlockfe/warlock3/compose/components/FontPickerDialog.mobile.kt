@@ -37,11 +37,11 @@ import androidx.compose.ui.unit.sp
 import warlockfe.warlock3.core.text.FontConfig
 
 @Composable
-fun FontPickerDialog(
+actual fun FontPickerDialog(
     current: FontConfig?,
     onCloseRequest: () -> Unit,
     onSaveClick: (FontUpdate) -> Unit,
-    monospaceOnly: Boolean = false,
+    monospaceOnly: Boolean,
 ) {
     val state = rememberFontPickerState(current, MaterialTheme.typography.bodyMedium.fontSize.value, monospaceOnly)
 

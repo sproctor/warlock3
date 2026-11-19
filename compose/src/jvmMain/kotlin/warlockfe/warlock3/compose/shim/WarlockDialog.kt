@@ -1,4 +1,4 @@
-package warlockfe.warlock3.compose.desktop.shim
+package warlockfe.warlock3.compose.shim
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement

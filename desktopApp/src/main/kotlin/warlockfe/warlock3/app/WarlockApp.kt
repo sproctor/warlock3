@@ -17,12 +17,12 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import warlockfe.warlock3.compose.AppContainer
 import warlockfe.warlock3.compose.MainScreenViewModels
-import warlockfe.warlock3.compose.desktop.shim.WarlockAlertDialog
-import warlockfe.warlock3.compose.desktop.shim.WarlockButton
 import warlockfe.warlock3.compose.desktop.ui.DesktopMainScreen
 import warlockfe.warlock3.compose.desktop.ui.game.DesktopReconnectingDialog
 import warlockfe.warlock3.compose.model.GameScreen
 import warlockfe.warlock3.compose.model.GameState
+import warlockfe.warlock3.compose.shim.WarlockAlertDialog
+import warlockfe.warlock3.compose.shim.WarlockButton
 import warlockfe.warlock3.compose.ui.settings.SettingsPage
 import warlockfe.warlock3.compose.ui.settings.WindowSettingsLiveContext
 import warlockfe.warlock3.compose.util.createPlatformDialogSettings

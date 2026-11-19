@@ -11,7 +11,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import org.jetbrains.jewel.ui.component.Text
-import warlockfe.warlock3.compose.desktop.shim.WarlockDropdownSelect
+import warlockfe.warlock3.compose.shim.WarlockDropdownSelect
 import warlockfe.warlock3.core.client.GameCharacter
 
 @Composable

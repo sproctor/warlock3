@@ -2,9 +2,9 @@ package warlockfe.warlock3.compose.desktop.ui.settings
 
 import androidx.compose.runtime.Composable
 import org.jetbrains.jewel.ui.component.Text
-import warlockfe.warlock3.compose.desktop.shim.WarlockAlertDialog
-import warlockfe.warlock3.compose.desktop.shim.WarlockButton
-import warlockfe.warlock3.compose.desktop.shim.WarlockOutlinedButton
+import warlockfe.warlock3.compose.shim.WarlockAlertDialog
+import warlockfe.warlock3.compose.shim.WarlockButton
+import warlockfe.warlock3.compose.shim.WarlockOutlinedButton
 
 @Suppress("ktlint:compose:modifier-missing-check")
 @Composable

@@ -21,10 +21,10 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.unit.dp
 import org.jetbrains.jewel.ui.component.Text
-import warlockfe.warlock3.compose.desktop.shim.WarlockButton
-import warlockfe.warlock3.compose.desktop.shim.WarlockDialog
-import warlockfe.warlock3.compose.desktop.shim.WarlockOutlinedButton
-import warlockfe.warlock3.compose.desktop.shim.WarlockTextField
+import warlockfe.warlock3.compose.shim.WarlockButton
+import warlockfe.warlock3.compose.shim.WarlockDialog
+import warlockfe.warlock3.compose.shim.WarlockOutlinedButton
+import warlockfe.warlock3.compose.shim.WarlockTextField
 import warlockfe.warlock3.compose.util.buildKeyCombo
 import warlockfe.warlock3.compose.util.buildKeyString
 import warlockfe.warlock3.compose.util.getKeyModifiers

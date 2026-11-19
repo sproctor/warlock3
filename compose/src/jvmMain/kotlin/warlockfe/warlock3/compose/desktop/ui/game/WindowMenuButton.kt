@@ -14,9 +14,9 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.unit.dp
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.jewel.ui.component.MenuScope
-import warlockfe.warlock3.compose.desktop.shim.WarlockMenuButton
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.more_horiz
+import warlockfe.warlock3.compose.shim.WarlockMenuButton
 
 /**
  * The "..." overflow button used by the per-window header and the window-list rows. Renders the

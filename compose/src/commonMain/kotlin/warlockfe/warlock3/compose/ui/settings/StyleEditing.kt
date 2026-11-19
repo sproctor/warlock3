@@ -15,7 +15,7 @@ import warlockfe.warlock3.core.text.toStyleDefinition
 import warlockfe.warlock3.core.text.toWarlockColor
 
 // Helpers for the sections that edit one flat style with no cascade (names, highlights) using the shared
-// DesktopTextStyleEditor / TextStyleEditor: they store a dense StyleDefinition-shaped style, so the
+// TextStyleEditor: they store a dense StyleDefinition-shaped style, so the
 // editor's StyleLayer is projected to and from that.
 
 /**
