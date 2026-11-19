@@ -3,6 +3,7 @@ package warlockfe.warlock3.compose.components
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.takeOrElse
 import warlockfe.warlock3.core.text.Background
 import warlockfe.warlock3.core.text.FontConfig
 import warlockfe.warlock3.core.text.WarlockColor
@@ -10,7 +11,7 @@ import warlockfe.warlock3.core.text.WarlockColor
 // The pickers the style editors open. Each platform has its own: desktop opens them in dialog
 // windows of their own, mobile as dialogs over the screen.
 
-/** Picks a color, starting from [initialColor], or from white when that is null. */
+/** Picks a color, starting from [initialColor], or from white when that is null or unspecified. */
 @Composable
 expect fun ColorPickerDialog(
     initialColor: Color?,
@@ -60,3 +61,6 @@ expect fun ColorRefPickerDialog(
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
 )
+
+/** The color a picker starts from: [this], or white when there is none to start from. */
+internal fun Color?.orWhite(): Color = this?.takeOrElse { Color.White } ?: Color.White

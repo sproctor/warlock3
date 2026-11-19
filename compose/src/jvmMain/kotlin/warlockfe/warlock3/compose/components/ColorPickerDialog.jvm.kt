@@ -26,7 +26,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.unit.dp
 import com.github.skydoves.colorpicker.compose.AlphaSlider
 import com.github.skydoves.colorpicker.compose.AlphaTile
@@ -58,7 +57,7 @@ actual fun ColorPickerDialog(
     var hexError by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(initialColor) {
-        val color = (initialColor ?: Color.Unspecified).takeOrElse { Color.White }
+        val color = initialColor.orWhite()
         hexInput.setTextAndPlaceCursorAtEnd(color.toArgbHexString())
     }
 

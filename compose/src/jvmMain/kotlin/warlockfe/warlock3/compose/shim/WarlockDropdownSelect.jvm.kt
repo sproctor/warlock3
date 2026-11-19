@@ -1,7 +1,6 @@
 package warlockfe.warlock3.compose.shim
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.TextStyle
 import org.jetbrains.jewel.foundation.lazy.SelectionMode
@@ -18,7 +17,9 @@ actual fun <T> WarlockDropdownSelect(
     itemLabelBuilder: (T) -> String,
     textStyle: TextStyle?,
 ) {
-    val labels = remember(items) { items.map(itemLabelBuilder) }
+    // Not remembered by items alone: a label builder that reads other state would go stale, and mobile
+    // relabels on every recomposition too.
+    val labels = items.map(itemLabelBuilder)
     // ListComboBox shows an empty label for index -1, which is how nothing selected is drawn.
     val selectedIndex = dropdownSelectedIndex(items, selected)
     // ListComboBox is single-select, but its default list state is created with SelectionMode.Multiple,
