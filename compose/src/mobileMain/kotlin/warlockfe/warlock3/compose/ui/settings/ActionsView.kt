@@ -80,6 +80,7 @@ fun ActionsView(
                 candidates = pool.filterNot { it.id in toolbar },
                 emptyText = "No buttons yet. Add an action below to the bar.",
                 onChange = viewModel::setToolbar,
+                bleedRows = true,
             )
 
             Spacer(Modifier.height(24.dp))
@@ -93,6 +94,7 @@ fun ActionsView(
             }
             pool.forEach { action ->
                 ListItem(
+                    modifier = Modifier.bleedIntoPageMargin(),
                     leadingContent = groupIndicator(action),
                     headlineContent = { Text(action.name.ifBlank { "(unnamed)" }) },
                     supportingContent = { Text(if (action.isGroup) "Group" else "Script") },
@@ -152,7 +154,8 @@ private fun groupIndicator(action: Action): (@Composable () -> Unit)? =
 
 /**
  * Edits an ordered list of action ids (the toolbar, or a group's children): each entry can be moved
- * up/down or removed, and an "Add" dropdown appends an action picked from [candidates].
+ * up/down or removed, and an "Add" dropdown appends an action picked from [candidates]. With
+ * [bleedRows] the rows reach into the settings page margin; the group dialog has no such margin.
  */
 @Composable
 private fun ActionIdListEditor(
@@ -161,6 +164,7 @@ private fun ActionIdListEditor(
     candidates: List<Action>,
     emptyText: String,
     onChange: (List<Uuid>) -> Unit,
+    bleedRows: Boolean = false,
 ) {
     if (ids.isEmpty()) {
         Text(
@@ -172,6 +176,7 @@ private fun ActionIdListEditor(
     ids.forEachIndexed { index, id ->
         val action = pool[id]
         ListItem(
+            modifier = if (bleedRows) Modifier.bleedIntoPageMargin() else Modifier,
             leadingContent = action?.let { groupIndicator(it) },
             headlineContent = { Text(action?.name?.ifBlank { "(unnamed)" } ?: "(missing action)") },
             trailingContent = {
