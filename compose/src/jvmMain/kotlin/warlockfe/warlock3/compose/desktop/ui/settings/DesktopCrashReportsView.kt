@@ -35,10 +35,10 @@ import warlockfe.warlock3.compose.crash.CrashReport
 import warlockfe.warlock3.compose.crash.CrashReporting
 import warlockfe.warlock3.compose.crash.CrashReportingText
 import warlockfe.warlock3.compose.crash.displayTime
-import warlockfe.warlock3.compose.desktop.shim.WarlockAlertDialog
-import warlockfe.warlock3.compose.desktop.shim.WarlockButton
-import warlockfe.warlock3.compose.desktop.shim.WarlockListItem
-import warlockfe.warlock3.compose.desktop.shim.WarlockOutlinedButton
+import warlockfe.warlock3.compose.shim.WarlockAlertDialog
+import warlockfe.warlock3.compose.shim.WarlockButton
+import warlockfe.warlock3.compose.shim.WarlockListItem
+import warlockfe.warlock3.compose.shim.WarlockOutlinedButton
 
 /** The crash-reporting choice, and the saved copy of each report. */
 @Composable

@@ -36,15 +36,15 @@ import org.jetbrains.jewel.ui.component.RadioButtonRow
 import org.jetbrains.jewel.ui.component.Text
 import sh.calvin.reorderable.ReorderableColumn
 import warlockfe.warlock3.compose.components.StyleChip
-import warlockfe.warlock3.compose.desktop.components.DesktopTextStyleEditor
-import warlockfe.warlock3.compose.desktop.shim.WarlockButton
-import warlockfe.warlock3.compose.desktop.shim.WarlockDialog
-import warlockfe.warlock3.compose.desktop.shim.WarlockListItem
-import warlockfe.warlock3.compose.desktop.shim.WarlockOutlinedButton
-import warlockfe.warlock3.compose.desktop.shim.WarlockScrollableColumn
-import warlockfe.warlock3.compose.desktop.shim.WarlockTextField
+import warlockfe.warlock3.compose.components.TextStyleEditor
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.drag_indicator
+import warlockfe.warlock3.compose.shim.WarlockButton
+import warlockfe.warlock3.compose.shim.WarlockDialog
+import warlockfe.warlock3.compose.shim.WarlockListItem
+import warlockfe.warlock3.compose.shim.WarlockOutlinedButton
+import warlockfe.warlock3.compose.shim.WarlockScrollableColumn
+import warlockfe.warlock3.compose.shim.WarlockTextField
 import warlockfe.warlock3.compose.ui.settings.HighlightsViewModel
 import warlockfe.warlock3.compose.ui.settings.resolvedWindowBackground
 import warlockfe.warlock3.compose.util.LocalDarkTheme
@@ -246,7 +246,7 @@ private fun DesktopEditHighlightDialog(
                     }
                     val layer = styles[i].resolveRefs(palette)
                     val stack = listOf(StyleScope.CHARACTER to layer)
-                    DesktopTextStyleEditor(
+                    TextStyleEditor(
                         sourced = resolveSourced(stack),
                         sample = sampleStyle(stack),
                         editScope = StyleScope.CHARACTER,

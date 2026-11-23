@@ -41,14 +41,14 @@ import warlockfe.warlock3.core.text.toHexString
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun BackgroundPickerDialog(
+actual fun BackgroundPickerDialog(
     current: Background,
     inheritedBackground: Background,
     onSelect: (Background) -> Unit,
     onClose: () -> Unit,
-    modifier: Modifier = Modifier,
-    palette: Map<String, WarlockColor> = emptyMap(),
-    onSelectSlot: (String) -> Unit = {},
+    modifier: Modifier,
+    onSelectSlot: (String) -> Unit,
+    palette: Map<String, WarlockColor>,
 ) {
     var pickingColor by remember { mutableStateOf(false) }
     if (pickingColor) {

@@ -13,12 +13,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.unit.dp
-import warlockfe.warlock3.compose.components.CheckboxRow
 import warlockfe.warlock3.compose.components.ColorPickerButton
 import warlockfe.warlock3.compose.components.ColorPickerDialog
 import warlockfe.warlock3.compose.components.FontPickerDialog
 import warlockfe.warlock3.compose.components.fontLabel
 import warlockfe.warlock3.compose.components.toFontConfig
+import warlockfe.warlock3.compose.shim.WarlockCheckboxRow
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.text.FontConfig
 import warlockfe.warlock3.core.text.StyleDefinition
@@ -108,7 +108,7 @@ fun WindowSettingsDialog(
                     }
                 }
                 if (nameFilterOption) {
-                    CheckboxRow(
+                    WarlockCheckboxRow(
                         checked = nameFilter,
                         onCheckedChange = { saveNameFilter(it) },
                         text = "Only show lines with names in list",

@@ -14,7 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import org.jetbrains.jewel.ui.component.Text
 import warlockfe.warlock3.compose.components.DEFAULT_PANEL_SCALE
-import warlockfe.warlock3.compose.desktop.shim.WarlockScrollableColumn
+import warlockfe.warlock3.compose.shim.WarlockScrollableColumn
 import warlockfe.warlock3.compose.ui.settings.WindowSettingsLiveContext
 import warlockfe.warlock3.compose.ui.settings.WindowsViewModel
 import warlockfe.warlock3.compose.util.LocalDarkTheme

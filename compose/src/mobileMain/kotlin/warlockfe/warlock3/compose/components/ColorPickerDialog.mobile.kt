@@ -44,7 +44,7 @@ import warlockfe.warlock3.compose.util.toWarlockColor
 import warlockfe.warlock3.core.text.WarlockColor
 
 @Composable
-fun ColorPickerDialog(
+actual fun ColorPickerDialog(
     initialColor: Color?,
     onCloseRequest: () -> Unit,
     onColorSelect: (color: WarlockColor) -> Unit,
@@ -55,9 +55,7 @@ fun ColorPickerDialog(
     var hexError by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(initialColor) {
-        if (initialColor != null) {
-            controller.selectByColor(initialColor, fromUser = false)
-        }
+        controller.selectByColor(initialColor.orWhite(), fromUser = false)
     }
 
     AlertDialog(
@@ -143,11 +141,11 @@ fun ColorPickerDialog(
 }
 
 @Composable
-fun ColorPickerButton(
+actual fun ColorPickerButton(
     text: String,
     color: Color,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier,
+    modifier: Modifier,
 ) {
     OutlinedButton(
         modifier = modifier,

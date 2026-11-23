@@ -31,12 +31,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import org.jetbrains.compose.resources.painterResource
-import warlockfe.warlock3.compose.components.CheckboxRow
 import warlockfe.warlock3.compose.components.ScrollableColumn
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.add
 import warlockfe.warlock3.compose.generated.resources.delete
 import warlockfe.warlock3.compose.generated.resources.edit
+import warlockfe.warlock3.compose.shim.WarlockCheckboxRow
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.models.Ignore
 import warlockfe.warlock3.core.prefs.models.IgnoreMatchMode
@@ -64,6 +64,7 @@ fun IgnoresView(
         ) {
             ignores.forEach { ignore ->
                 ListItem(
+                    modifier = Modifier.bleedIntoPageMargin(),
                     headlineContent = {
                         Text(text = ignore.pattern)
                     },
@@ -252,7 +253,7 @@ fun EditIgnoreDialog(
                         }
                     }
                 }
-                CheckboxRow(
+                WarlockCheckboxRow(
                     checked = !ignoreCase,
                     onCheckedChange = { ignoreCase = !it },
                     text = "Case sensitive",

@@ -41,11 +41,11 @@ import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.PopupMenu
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.separator
-import warlockfe.warlock3.compose.desktop.shim.WarlockNavMenuItem
-import warlockfe.warlock3.compose.desktop.shim.WarlockScrollableColumn
 import warlockfe.warlock3.compose.desktop.ui.game.gameChrome
 import warlockfe.warlock3.compose.desktop.ui.window.DesktopPanelContent
 import warlockfe.warlock3.compose.desktop.ui.window.MeasuredScrollbarAdapter
+import warlockfe.warlock3.compose.shim.WarlockNavMenuItem
+import warlockfe.warlock3.compose.shim.WarlockScrollableColumn
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.client.WarlockMenuData

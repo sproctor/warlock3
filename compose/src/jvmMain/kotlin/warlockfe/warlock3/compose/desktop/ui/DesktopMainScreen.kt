@@ -11,11 +11,11 @@ import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Text
 import warlockfe.warlock3.compose.MainScreen
 import warlockfe.warlock3.compose.MainScreenViewModels
-import warlockfe.warlock3.compose.desktop.shim.WarlockButton
 import warlockfe.warlock3.compose.desktop.ui.dashboard.DesktopDashboardView
 import warlockfe.warlock3.compose.desktop.ui.game.DesktopGameView
 import warlockfe.warlock3.compose.desktop.ui.sge.DesktopSgeWizard
 import warlockfe.warlock3.compose.model.GameState
+import warlockfe.warlock3.compose.shim.WarlockButton
 import warlockfe.warlock3.core.client.GameCharacter
 
 /**

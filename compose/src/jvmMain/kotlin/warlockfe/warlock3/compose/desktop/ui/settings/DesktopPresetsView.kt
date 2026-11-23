@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import org.jetbrains.jewel.foundation.theme.LocalContentColor
 import org.jetbrains.jewel.ui.component.Text
 import warlockfe.warlock3.compose.components.DEFAULT_PANEL_SCALE
+import warlockfe.warlock3.compose.components.FontPickerDialog
 import warlockfe.warlock3.compose.components.GENERIC_SAMPLE
 import warlockfe.warlock3.compose.components.MAX_PANEL_SCALE
 import warlockfe.warlock3.compose.components.MIN_PANEL_SCALE
@@ -30,15 +31,14 @@ import warlockfe.warlock3.compose.components.PANEL_SCALE_HELP
 import warlockfe.warlock3.compose.components.PANEL_SCALE_STEP
 import warlockfe.warlock3.compose.components.StyleChip
 import warlockfe.warlock3.compose.components.StyleSample
+import warlockfe.warlock3.compose.components.TextStyleEditor
 import warlockfe.warlock3.compose.components.backgroundLabel
 import warlockfe.warlock3.compose.components.fontLabel
 import warlockfe.warlock3.compose.components.formatPanelScale
 import warlockfe.warlock3.compose.components.sampleFor
 import warlockfe.warlock3.compose.components.toFontConfig
-import warlockfe.warlock3.compose.desktop.components.DesktopFontPickerDialog
-import warlockfe.warlock3.compose.desktop.components.DesktopTextStyleEditor
-import warlockfe.warlock3.compose.desktop.shim.WarlockOutlinedButton
-import warlockfe.warlock3.compose.desktop.shim.WarlockScrollableColumn
+import warlockfe.warlock3.compose.shim.WarlockOutlinedButton
+import warlockfe.warlock3.compose.shim.WarlockScrollableColumn
 import warlockfe.warlock3.compose.ui.settings.PresetsViewModel
 import warlockfe.warlock3.compose.ui.settings.resolvedWindowBackground
 import warlockfe.warlock3.compose.util.LocalDarkTheme
@@ -83,7 +83,7 @@ private fun PresetItem.sample(): StyleSample =
 /**
  * The Appearance -> Presets page: a Global/character scope selector over a master list of the base
  * "default text" plus the named presets (each drawn in its own resolved style), drilling in to the
- * shared [DesktopTextStyleEditor] for the selected scope. Also hosts the character's monospace font,
+ * shared [TextStyleEditor] for the selected scope. Also hosts the character's monospace font,
  * which is not part of any style layer.
  */
 @Composable
@@ -228,7 +228,7 @@ fun DesktopPresetsView(
             }
             Spacer(Modifier.height(12.dp))
             WarlockScrollableColumn(modifier = Modifier.fillMaxWidth().weight(1f)) {
-                DesktopTextStyleEditor(
+                TextStyleEditor(
                     sourced = model.sourced,
                     sample = model.sample,
                     editScope = model.editScope,
@@ -281,7 +281,7 @@ private fun FontRow(
 ) {
     var editing by remember { mutableStateOf(false) }
     if (editing) {
-        DesktopFontPickerDialog(
+        FontPickerDialog(
             current = font,
             monospaceOnly = monospaceOnly,
             onCloseRequest = { editing = false },

@@ -1,4 +1,4 @@
-package warlockfe.warlock3.compose.desktop.components
+package warlockfe.warlock3.compose.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -28,8 +28,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import org.jetbrains.jewel.foundation.theme.LocalContentColor
 import org.jetbrains.jewel.ui.component.Text
-import warlockfe.warlock3.compose.components.inheritedBackgroundLabel
-import warlockfe.warlock3.compose.desktop.shim.WarlockDialog
+import warlockfe.warlock3.compose.shim.WarlockDialog
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.text.Background
 import warlockfe.warlock3.core.text.WarlockColor
@@ -43,18 +42,18 @@ import warlockfe.warlock3.core.text.toHexString
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun DesktopBackgroundPickerDialog(
+actual fun BackgroundPickerDialog(
     current: Background,
     inheritedBackground: Background,
     onSelect: (Background) -> Unit,
     onClose: () -> Unit,
-    modifier: Modifier = Modifier,
-    palette: Map<String, WarlockColor> = emptyMap(),
-    onSelectSlot: (String) -> Unit = {},
+    modifier: Modifier,
+    onSelectSlot: (String) -> Unit,
+    palette: Map<String, WarlockColor>,
 ) {
     var pickingColor by remember { mutableStateOf(false) }
     if (pickingColor) {
-        DesktopColorPickerDialog(
+        ColorPickerDialog(
             initialColor = (current as? Background.Fill)?.color.toColor(default = Color.Gray),
             onCloseRequest = { pickingColor = false },
             onColorSelect = {

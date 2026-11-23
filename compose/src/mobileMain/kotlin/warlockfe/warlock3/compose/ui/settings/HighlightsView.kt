@@ -45,7 +45,6 @@ import io.github.vinceglb.filekit.absolutePath
 import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
 import org.jetbrains.compose.resources.painterResource
 import sh.calvin.reorderable.ReorderableColumn
-import warlockfe.warlock3.compose.components.CheckboxRow
 import warlockfe.warlock3.compose.components.ScrollableColumn
 import warlockfe.warlock3.compose.components.StyleChip
 import warlockfe.warlock3.compose.components.TextStyleEditor
@@ -56,6 +55,7 @@ import warlockfe.warlock3.compose.generated.resources.delete
 import warlockfe.warlock3.compose.generated.resources.drag_indicator
 import warlockfe.warlock3.compose.generated.resources.edit
 import warlockfe.warlock3.compose.generated.resources.palette
+import warlockfe.warlock3.compose.shim.WarlockCheckboxRow
 import warlockfe.warlock3.compose.util.LocalDarkTheme
 import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.compose.util.toColorPalette
@@ -115,6 +115,7 @@ fun HighlightsView(
                 key(highlight.id) {
                     ReorderableItem(modifier = Modifier.fillMaxWidth()) {
                         ListItem(
+                            modifier = Modifier.bleedIntoPageMargin(),
                             headlineContent = {
                                 Text(text = highlight.pattern)
                             },
@@ -342,19 +343,19 @@ fun EditHighlightDialog(
                 }
                 if (!isRegex) {
                     styles.getOrNull(0)?.let { style ->
-                        CheckboxRow(
+                        WarlockCheckboxRow(
                             checked = style.entireLine == true,
                             onCheckedChange = { styles[0] = style.copy(entireLine = it) },
                             text = "Highlight entire line",
                         )
                     }
-                    CheckboxRow(
+                    WarlockCheckboxRow(
                         checked = matchPartialWord,
                         onCheckedChange = { matchPartialWord = it },
                         text = "Match partial words",
                     )
                 }
-                CheckboxRow(
+                WarlockCheckboxRow(
                     checked = ignoreCase,
                     onCheckedChange = { ignoreCase = it },
                     text = "Ignore case",

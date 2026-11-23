@@ -48,12 +48,12 @@ import org.jetbrains.jewel.ui.component.styling.LinkUnderlineBehavior
 import org.jetbrains.jewel.ui.theme.defaultButtonStyle
 import org.jetbrains.jewel.ui.theme.linkStyle
 import org.jetbrains.jewel.ui.theme.textFieldStyle
+import warlockfe.warlock3.compose.components.ColorPickerDialog
 import warlockfe.warlock3.compose.components.DEFAULT_PANEL_SCALE
+import warlockfe.warlock3.compose.components.FontPickerDialog
 import warlockfe.warlock3.compose.components.PANEL_BASE_FONT_SIZE
-import warlockfe.warlock3.compose.desktop.components.DesktopColorPickerDialog
-import warlockfe.warlock3.compose.desktop.components.DesktopFontPickerDialog
-import warlockfe.warlock3.compose.desktop.shim.WarlockDropdownSelect
 import warlockfe.warlock3.compose.model.SkinObject
+import warlockfe.warlock3.compose.shim.WarlockDropdownSelect
 import warlockfe.warlock3.compose.ui.window.LocalProgressBarSettings
 import warlockfe.warlock3.compose.ui.window.PanelButton
 import warlockfe.warlock3.compose.ui.window.PanelImage
@@ -455,7 +455,7 @@ private fun ProgressBarWithColorMenu(
                 ProgressBarColorTarget.Background -> backgroundColor
                 ProgressBarColorTarget.Text -> textColor
             }
-        DesktopColorPickerDialog(
+        ColorPickerDialog(
             initialColor = current.toColor(),
             onCloseRequest = { editingTarget = null },
             onColorSelect = { chosen ->
@@ -471,7 +471,7 @@ private fun ProgressBarWithColorMenu(
     }
 
     if (editingFont) {
-        DesktopFontPickerDialog(
+        FontPickerDialog(
             current =
                 FontConfig(
                     family = setting?.fontFamily,
