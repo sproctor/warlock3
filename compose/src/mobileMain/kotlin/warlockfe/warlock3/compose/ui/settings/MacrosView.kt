@@ -59,6 +59,7 @@ fun MacrosView(
         ) {
             macros.forEach { macro ->
                 ListItem(
+                    modifier = Modifier.bleedIntoPageMargin(),
                     headlineContent = { Text(macro.keyCombo.toDisplayString()) },
                     supportingContent = { Text(macro.action) },
                     trailingContent = {

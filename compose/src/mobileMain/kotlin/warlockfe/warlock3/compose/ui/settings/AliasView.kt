@@ -60,6 +60,7 @@ fun AliasView(
         ScrollableColumn(Modifier.fillMaxWidth().weight(1f)) {
             aliases.forEach { alias ->
                 ListItem(
+                    modifier = Modifier.bleedIntoPageMargin(),
                     headlineContent = {
                         Text(text = alias.pattern)
                     },

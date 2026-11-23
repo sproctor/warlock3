@@ -64,6 +64,7 @@ fun AlterationsView(
         ) {
             alterations.forEach { alteration ->
                 ListItem(
+                    modifier = Modifier.bleedIntoPageMargin(),
                     headlineContent = {
                         Text(text = alteration.pattern)
                     },

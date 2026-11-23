@@ -1,9 +1,9 @@
 package warlockfe.warlock3.compose.components
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
@@ -15,6 +15,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.Measurable
+import androidx.compose.ui.layout.Placeable
 import androidx.compose.ui.unit.dp
 import warlockfe.warlock3.compose.shim.WarlockCheckboxRow
 import warlockfe.warlock3.compose.shim.WarlockDropdownSelect
@@ -121,124 +124,232 @@ fun TextStyleEditor(
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         StylePreview(sample, windowBackground, sampleLine, baseStyle)
 
-        AttributeRow("Text color", sourced.textColor.source, editScope, onReset = { edit(StyleEdit.Reset(StyleAttribute.TextColor)) }) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ColorPickerButton(
-                    text = "Text",
-                    color = sample.textColor.toColor(),
-                    onClick = {
-                        // With a skin palette available, offer palette (skin-tracking) picks; otherwise the
-                        // plain color picker stores a frozen literal.
-                        if (palette.isEmpty()) {
-                            editColor = { color -> edit(StyleEdit.SetTextColor(color)) }
-                        } else {
-                            editTextColor = true
+        val attributes =
+            buildList {
+                attribute("Text color", sourced.textColor.source, onReset = { edit(StyleEdit.Reset(StyleAttribute.TextColor)) }) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        ColorPickerButton(
+                            text = "Text",
+                            color = sample.textColor.toColor(),
+                            onClick = {
+                                // With a skin palette available, offer palette (skin-tracking) picks; otherwise the
+                                // plain color picker stores a frozen literal.
+                                if (palette.isEmpty()) {
+                                    editColor = { color -> edit(StyleEdit.SetTextColor(color)) }
+                                } else {
+                                    editTextColor = true
+                                }
+                            },
+                        )
+                        editLayer.textColorRef?.let { slot ->
+                            WarlockSecondaryText("tracks $slot")
                         }
-                    },
-                )
-                editLayer.textColorRef?.let { slot ->
-                    WarlockSecondaryText("tracks $slot")
+                    }
+                }
+
+                attribute("Background", sourced.background.source, onReset = { edit(StyleEdit.Reset(StyleAttribute.Background)) }) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        WarlockOutlinedButton(
+                            onClick = { editBackground = true },
+                            text = backgroundLabel(sample.background),
+                        )
+                        editLayer.backgroundRef?.let { slot ->
+                            WarlockSecondaryText("tracks $slot")
+                        }
+                    }
+                }
+
+                attribute("Weight", sourced.weight.source, onReset = { edit(StyleEdit.Reset(StyleAttribute.Weight)) }) {
+                    WarlockDropdownSelect(
+                        items = fontWeightOptions,
+                        selected = fontWeightOptions.firstOrNull { it.weight == sample.weight } ?: fontWeightOptions.first(),
+                        onSelect = { edit(StyleEdit.SetWeight(it.weight)) },
+                        itemLabelBuilder = { it.label },
+                    )
+                }
+
+                attribute("Italic", sourced.italic.source, onReset = { edit(StyleEdit.Reset(StyleAttribute.Italic)) }) {
+                    WarlockCheckboxRow(
+                        checked = sample.italic,
+                        onCheckedChange = { edit(StyleEdit.SetItalic(it)) },
+                        text = "Italic",
+                    )
+                }
+
+                attribute("Underline", sourced.underline.source, onReset = { edit(StyleEdit.Reset(StyleAttribute.Underline)) }) {
+                    WarlockCheckboxRow(
+                        checked = sample.underline,
+                        onCheckedChange = { edit(StyleEdit.SetUnderline(it)) },
+                        text = "Underline",
+                    )
+                }
+
+                if (showEntireLine) {
+                    attribute(
+                        "Entire line",
+                        sourced.entireLine.source,
+                        onReset = { edit(StyleEdit.Reset(StyleAttribute.EntireLine)) },
+                    ) {
+                        WarlockCheckboxRow(
+                            checked = sample.entireLine,
+                            onCheckedChange = { edit(StyleEdit.SetEntireLine(it)) },
+                            text = "Highlight entire line",
+                        )
+                    }
+                }
+
+                if (showMonospace) {
+                    attribute("Monospace", sourced.monospace.source, onReset = { edit(StyleEdit.Reset(StyleAttribute.Monospace)) }) {
+                        WarlockCheckboxRow(
+                            checked = sample.monospace,
+                            onCheckedChange = { edit(StyleEdit.SetMonospace(it)) },
+                            text = "Monospace",
+                        )
+                    }
+                }
+
+                if (showFont) {
+                    // The font row sets family, size and weight together; its weight and the Weight row share the
+                    // one underlying field, so a change in either is reflected in both.
+                    attribute("Font", sourced.fontFamily.source, onReset = {
+                        edit(StyleEdit.Reset(StyleAttribute.FontFamily), StyleEdit.Reset(StyleAttribute.FontSize))
+                    }) {
+                        WarlockOutlinedButton(
+                            onClick = { editFont = true },
+                            text = FontConfig(family = sample.fontFamily, size = sample.fontSize, weight = sample.weight).fontLabel(),
+                        )
+                    }
                 }
             }
-        }
-
-        AttributeRow("Background", sourced.background.source, editScope, onReset = { edit(StyleEdit.Reset(StyleAttribute.Background)) }) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                WarlockOutlinedButton(
-                    onClick = { editBackground = true },
-                    text = backgroundLabel(sample.background),
-                )
-                editLayer.backgroundRef?.let { slot ->
-                    WarlockSecondaryText("tracks $slot")
-                }
-            }
-        }
-
-        AttributeRow("Weight", sourced.weight.source, editScope, onReset = { edit(StyleEdit.Reset(StyleAttribute.Weight)) }) {
-            WarlockDropdownSelect(
-                items = fontWeightOptions,
-                selected = fontWeightOptions.firstOrNull { it.weight == sample.weight } ?: fontWeightOptions.first(),
-                onSelect = { edit(StyleEdit.SetWeight(it.weight)) },
-                itemLabelBuilder = { it.label },
-            )
-        }
-
-        AttributeRow("Italic", sourced.italic.source, editScope, onReset = { edit(StyleEdit.Reset(StyleAttribute.Italic)) }) {
-            WarlockCheckboxRow(
-                checked = sample.italic,
-                onCheckedChange = { edit(StyleEdit.SetItalic(it)) },
-                text = "Italic",
-            )
-        }
-
-        AttributeRow("Underline", sourced.underline.source, editScope, onReset = { edit(StyleEdit.Reset(StyleAttribute.Underline)) }) {
-            WarlockCheckboxRow(
-                checked = sample.underline,
-                onCheckedChange = { edit(StyleEdit.SetUnderline(it)) },
-                text = "Underline",
-            )
-        }
-
-        if (showEntireLine) {
-            AttributeRow(
-                "Entire line",
-                sourced.entireLine.source,
-                editScope,
-                onReset = { edit(StyleEdit.Reset(StyleAttribute.EntireLine)) },
-            ) {
-                WarlockCheckboxRow(
-                    checked = sample.entireLine,
-                    onCheckedChange = { edit(StyleEdit.SetEntireLine(it)) },
-                    text = "Highlight entire line",
-                )
-            }
-        }
-
-        if (showMonospace) {
-            AttributeRow("Monospace", sourced.monospace.source, editScope, onReset = { edit(StyleEdit.Reset(StyleAttribute.Monospace)) }) {
-                WarlockCheckboxRow(
-                    checked = sample.monospace,
-                    onCheckedChange = { edit(StyleEdit.SetMonospace(it)) },
-                    text = "Monospace",
-                )
-            }
-        }
-
-        if (showFont) {
-            // The font row sets family, size and weight together; its weight and the Weight row share the
-            // one underlying field, so a change in either is reflected in both.
-            AttributeRow("Font", sourced.fontFamily.source, editScope, onReset = {
-                edit(StyleEdit.Reset(StyleAttribute.FontFamily), StyleEdit.Reset(StyleAttribute.FontSize))
-            }) {
-                WarlockOutlinedButton(
-                    onClick = { editFont = true },
-                    text = FontConfig(family = sample.fontFamily, size = sample.fontSize, weight = sample.weight).fontLabel(),
-                )
-            }
-        }
+        AttributeRows(attributes, editScope)
     }
 }
 
-/** One attribute's control plus its source tag and a reset enabled only when set at [editScope]. */
-@Composable
-private fun AttributeRow(
+/** One row of the editor: an attribute's label, the control that sets it, and how to reset it. */
+private class Attribute(
+    val label: String,
+    val source: StyleScope?,
+    val onReset: () -> Unit,
+    val control: @Composable () -> Unit,
+)
+
+private fun MutableList<Attribute>.attribute(
     label: String,
     source: StyleScope?,
-    editScope: StyleScope,
     onReset: () -> Unit,
     control: @Composable () -> Unit,
 ) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        WarlockText(label, modifier = Modifier.width(96.dp))
-        control()
-        Spacer(Modifier.width(4.dp))
-        WarlockText(sourceLabel(source, editScope))
-        Spacer(Modifier.weight(1f))
-        WarlockOutlinedButton(
-            onClick = onReset,
-            text = "Reset",
-            enabled = source == editScope,
-        )
+    add(Attribute(label, source, onReset, control))
+}
+
+/**
+ * The attribute rows: each one's control, a source tag, and a reset enabled only when the value was set
+ * at [editScope].
+ *
+ * Each row is one line - label, control, tag, and Reset against the right edge - when every row fits
+ * that way, which on desktop they always do. When any row does not (on a phone, where a Material
+ * dropdown alone is 280dp wide), every row stacks instead: the label, tag and Reset share a header line
+ * and the control drops to its own line below, so Reset is never squeezed or pushed past the edge.
+ * The rows decide together so the form reads as one layout rather than a mix of the two.
+ */
+@Composable
+private fun AttributeRows(
+    attributes: List<Attribute>,
+    editScope: StyleScope,
+) {
+    Layout(
+        contents =
+            attributes.flatMap { attribute ->
+                listOf(
+                    { WarlockText(attribute.label, modifier = Modifier.width(96.dp)) },
+                    // Boxed so the control is exactly one measurable, whatever it emits.
+                    { Box { attribute.control() } },
+                    { WarlockText(sourceLabel(attribute.source, editScope)) },
+                    {
+                        WarlockOutlinedButton(
+                            onClick = attribute.onReset,
+                            text = "Reset",
+                            enabled = attribute.source == editScope,
+                        )
+                    },
+                )
+            },
+    ) { slots, constraints ->
+        val gap = 8.dp.roundToPx()
+        // The spacing the one-line layout has always had: [gap] between items, an extra 4dp before the
+        // tag, and at least two gaps before Reset.
+        val tagLead = gap + 4.dp.roundToPx() + gap
+        val rowGap = 6.dp.roundToPx()
+        val stackGap = 4.dp.roundToPx()
+        val loose = constraints.copy(minWidth = 0, minHeight = 0)
+
+        class MeasuredRow(
+            val label: Placeable,
+            val control: Placeable,
+            val tag: Measurable,
+            val reset: Placeable,
+        ) {
+            val inlineWidth =
+                label.width + gap + control.width + tagLead + tag.maxIntrinsicWidth(loose.maxHeight) + gap + gap + reset.width
+        }
+
+        val rows =
+            slots.chunked(4).map { (label, control, tag, reset) ->
+                MeasuredRow(
+                    label = label.single().measure(loose),
+                    control = control.single().measure(loose),
+                    tag = tag.single(),
+                    reset = reset.single().measure(loose),
+                )
+            }
+        val inlineWidth = rows.maxOfOrNull { it.inlineWidth } ?: 0
+        val width = if (constraints.hasBoundedWidth) constraints.maxWidth else inlineWidth
+        val inline = inlineWidth <= width
+        val center = Alignment.CenterVertically
+
+        val tags =
+            rows.map { row ->
+                if (inline) {
+                    row.tag.measure(loose)
+                } else {
+                    // The tag gets what the header has left between the label and Reset, wrapping if it must.
+                    val room = (width - row.label.width - gap - gap - row.reset.width).coerceAtLeast(0)
+                    row.tag.measure(loose.copy(maxWidth = room))
+                }
+            }
+        val headerHeights =
+            rows.mapIndexed { i, row ->
+                if (inline) {
+                    maxOf(row.label.height, row.control.height, tags[i].height, row.reset.height)
+                } else {
+                    maxOf(row.label.height, tags[i].height, row.reset.height)
+                }
+            }
+        val rowHeights =
+            rows.mapIndexed { i, row ->
+                if (inline) headerHeights[i] else headerHeights[i] + stackGap + row.control.height
+            }
+        val height = (rowHeights.sum() + rowGap * (rows.size - 1).coerceAtLeast(0)).coerceAtLeast(constraints.minHeight)
+
+        layout(width, height) {
+            var y = 0
+            rows.forEachIndexed { i, row ->
+                val tag = tags[i]
+                val header = headerHeights[i]
+                val resetX = width - row.reset.width
+                row.label.placeRelative(0, y + center.align(row.label.height, header))
+                row.reset.placeRelative(resetX, y + center.align(row.reset.height, header))
+                if (inline) {
+                    val controlX = row.label.width + gap
+                    row.control.placeRelative(controlX, y + center.align(row.control.height, header))
+                    tag.placeRelative(controlX + row.control.width + tagLead, y + center.align(tag.height, header))
+                } else {
+                    tag.placeRelative(resetX - gap - tag.width, y + center.align(tag.height, header))
+                    row.control.placeRelative(0, y + header + stackGap)
+                }
+                y += rowHeights[i] + rowGap
+            }
+        }
     }
 }
 
