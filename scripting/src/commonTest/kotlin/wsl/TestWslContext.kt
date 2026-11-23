@@ -4,17 +4,15 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.io.buffered
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
-import kotlinx.io.files.SystemTemporaryDirectory
 import kotlinx.io.writeString
 import warlockfe.warlock3.core.prefs.config.CharacterConfigStore
 import warlockfe.warlock3.core.prefs.repositories.VariableRepository
 import warlockfe.warlock3.core.script.ScriptStatus
-
-private var testStoreSeq = 0
+import warlockfe.warlock3.scripting.testTempPath
 
 /** Parses [content] into script lines via a throwaway temp file, then deletes the file. */
 fun parseScript(content: String): List<WslLine> {
-    val path = Path(SystemTemporaryDirectory, "wsl-script-${testStoreSeq++}.wsl")
+    val path = testTempPath("wsl-script", ".wsl")
     SystemFileSystem.sink(path).buffered().use { it.writeString(content) }
     try {
         return WslScript("test", path, SystemFileSystem).parse()
@@ -42,7 +40,7 @@ suspend fun WslContext.runToCompletion(maxStatements: Int = 10_000) {
 /** A [CharacterConfigStore] over a throwaway temp directory; backs a real [VariableRepository] in tests. */
 fun newTestConfigStore(): CharacterConfigStore =
     CharacterConfigStore(
-        Path(SystemTemporaryDirectory, "wsl-test-store-${testStoreSeq++}").toString(),
+        testTempPath("wsl-test-store").toString(),
         SystemFileSystem,
     )
 
@@ -56,7 +54,7 @@ fun buildTestContext(
     soundPlayer: FakeSoundPlayer = FakeSoundPlayer(),
     highlightRepository: FakeHighlightRepository = FakeHighlightRepository(),
     nameRepository: FakeNameRepository = FakeNameRepository(),
-    file: Path = Path(SystemTemporaryDirectory, "wsl-test-instance.wsl"),
+    file: Path = testTempPath("wsl-test-instance", ".wsl"),
 ): WslContext {
     val variableRepository = VariableRepository(configStore)
     val scriptInstance =
