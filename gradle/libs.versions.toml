@@ -30,14 +30,9 @@ appdirs = "2.0.0"
 autolink = "0.12.0"
 clikt = "5.2.1"
 coil = "3.6.3"
-compose = "1.12.2"
+compose = "1.13.0-rc01"
 compose-hot-reload = "1.3.0"
-compose-material3 = "1.12.0-alpha03"
-##             ⬆ = "1.13.0-alpha01"
-##             ⬆ = "1.13.0-alpha02"
-##             ⬆ = "1.13.0-beta01"
-##             ⬆ = "1.13.0-beta02"
-##             ⬆ = "1.13.0-rc01"
+compose-material3 = "1.13.0-rc01"
 colorpicker = "1.3.0"
 compose-docking = "0.4.0"
 fastscroller = "0.3.2"
@@ -81,6 +76,7 @@ uri = "0.0.21"
 xmlutil = "1.0.2.1"
 
 compileSdk = "37"
+compileSdkMinor = "2"
 minSdk = "26"
 targetSdk = "37"
 jvmToolchainVersion = "21"
@@ -102,7 +98,9 @@ compose-components-resources = { module = "org.jetbrains.compose.components:comp
 compose-docking-core = { module = "com.seanproctor:compose-docking-core", version.ref = "compose-docking" }
 compose-docking-jewel = { module = "com.seanproctor:compose-docking-jewel", version.ref = "compose-docking" }
 compose-docking-material3 = { module = "com.seanproctor:compose-docking-material3", version.ref = "compose-docking" }
+compose-foundation = { module = "org.jetbrains.compose.foundation:foundation", version.ref = "compose" }
 compose-material3 = { module = "org.jetbrains.compose.material3:material3", version.ref = "compose-material3" }
+compose-ui = { module = "org.jetbrains.compose.ui:ui", version.ref = "compose" }
 compose-ui-tooling = { module = " org.jetbrains.compose.ui:ui-tooling", version.ref = "compose" }
 compose-ui-tooling-preview = { module = "org.jetbrains.compose.ui:ui-tooling-preview", version.ref = "compose" }
 fastscroller-core = { module = "io.github.oikvpqya.compose.fastscroller:fastscroller-core", version.ref = "fastscroller" }
