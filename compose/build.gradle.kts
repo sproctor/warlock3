@@ -33,10 +33,19 @@ kotlin {
     }
     android {
         namespace = "warlockfe.warlock3.compose"
-        compileSdk =
-            libs.versions.compileSdk
-                .get()
-                .toInt()
+        compileSdk {
+            version =
+                release(
+                    libs.versions.compileSdk
+                        .get()
+                        .toInt(),
+                ) {
+                    minorApiLevel =
+                        libs.versions.compileSdkMinor
+                            .get()
+                            .toInt()
+                }
+        }
         minSdk =
             libs.versions.minSdk
                 .get()
@@ -133,16 +142,18 @@ kotlin {
         }
 
         jvmTest.dependencies {
-            // The host's Skia/desktop runtime, for the tests that drive a real ImageComposeScene
-            // (the library compilation doesn't bundle the skiko native lib).
-            implementation(compose.desktop.currentOs)
+            // The Skia runtime for the tests that drive a real ImageComposeScene: the desktop ui
+            // artifact brings skiko's native libraries for every OS.
+            implementation(libs.compose.ui)
+            implementation(libs.compose.foundation)
         }
 
         getByName("jvmBenchmark").dependencies {
             implementation(libs.kotlinx.benchmark.runtime)
-            // The host's Skia/desktop runtime, so TextMeasurer-based text-layout benchmarks can run
-            // (the library compilation doesn't bundle the skiko native lib).
-            implementation(compose.desktop.currentOs)
+            // The Skia runtime, so TextMeasurer-based text-layout benchmarks can run: the desktop
+            // ui artifact brings skiko's native libraries for every OS.
+            implementation(libs.compose.ui)
+            implementation(libs.compose.foundation)
         }
 
         getByName("commonJvmAndroidMain") {

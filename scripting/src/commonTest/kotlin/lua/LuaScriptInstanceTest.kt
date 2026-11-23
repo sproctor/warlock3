@@ -14,7 +14,6 @@ import kotlinx.coroutines.withTimeout
 import kotlinx.io.buffered
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
-import kotlinx.io.files.SystemTemporaryDirectory
 import kotlinx.io.writeString
 import kotlinx.serialization.json.Json
 import warlockfe.warlock3.core.client.ClientEvent
@@ -27,11 +26,14 @@ import warlockfe.warlock3.core.script.ScriptStatus
 import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.core.util.SoundPlayer
+import warlockfe.warlock3.scripting.deleteTestTempPaths
+import warlockfe.warlock3.scripting.testTempPath
 import warlockfe.warlock3.scripting.wsl.FakeScriptManager
 import warlockfe.warlock3.scripting.wsl.FakeSoundPlayer
 import warlockfe.warlock3.scripting.wsl.FakeWarlockClient
 import warlockfe.warlock3.scripting.wsl.newTestConfigStore
 import kotlin.coroutines.CoroutineContext
+import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
@@ -43,16 +45,17 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 
-private var luaTestSeq = 0
-
 /**
  * End-to-end coverage of the Lua engine: each test writes a small script to a temp file, runs it
  * through a real [LuaScriptInstance] against in-memory fakes, and asserts on what reached the
  * client. These use real time (the interpreter blocks a real thread), so waits are generous.
  */
 class LuaScriptInstanceTest {
+    @AfterTest
+    fun deleteTempFiles() = deleteTestTempPaths()
+
     private fun writeScript(content: String): Path {
-        val path = Path(SystemTemporaryDirectory, "lua-test-${luaTestSeq++}.lua")
+        val path = testTempPath("lua-test", ".lua")
         SystemFileSystem.sink(path).buffered().use { it.writeString(content) }
         return path
     }

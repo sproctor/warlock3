@@ -62,7 +62,10 @@ class SelectionRowPinsTest {
             s.pointer(PointerEventType.Press, Offset(10f, 5f))
             s.scrollBy(1500f)
 
+            // Compose 1.13 makes no selection on the first move after a scroll this far under the
+            // press, only from the next one; a real drag sends a stream of moves.
             s.pointer(PointerEventType.Move, Offset(10f, 60f))
+            s.pointer(PointerEventType.Move, Offset(10f, 90f))
             assertEquals(emptyList(), s.failures)
             assertTrue(0L in s.composed, "the pressed row should still be composed after the scroll")
             assertTrue(s.state.selectedTexts.isNotEmpty(), "the drag should have produced a selection")

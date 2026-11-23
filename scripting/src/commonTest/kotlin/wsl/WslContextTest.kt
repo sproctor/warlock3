@@ -7,10 +7,12 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.io.buffered
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
-import kotlinx.io.files.SystemTemporaryDirectory
 import kotlinx.io.writeString
 import warlockfe.warlock3.core.client.ClientTextEvent
 import warlockfe.warlock3.core.prefs.config.CharacterConfigStore
+import warlockfe.warlock3.scripting.deleteTestTempPaths
+import warlockfe.warlock3.scripting.testTempPath
+import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -21,12 +23,15 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class WslContextTest {
+    @AfterTest
+    fun deleteTempFiles() = deleteTestTempPaths()
+
     /** Writes [content] to a temp file, parses it into lines, then removes the file. */
     private fun script(
         name: String,
         content: String,
     ): Pair<Path, List<WslLine>> {
-        val path = Path(SystemTemporaryDirectory, "wslctx-$name.wsl")
+        val path = testTempPath("wslctx-$name", ".wsl")
         SystemFileSystem.sink(path).buffered().use { it.writeString(content) }
         val lines = WslScript(name, path, SystemFileSystem).parse()
         SystemFileSystem.delete(path)

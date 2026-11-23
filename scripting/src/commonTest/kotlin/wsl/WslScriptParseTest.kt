@@ -3,8 +3,8 @@ package warlockfe.warlock3.scripting.wsl
 import kotlinx.io.buffered
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
-import kotlinx.io.files.SystemTemporaryDirectory
 import kotlinx.io.writeString
+import warlockfe.warlock3.scripting.testTempPath
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -17,7 +17,7 @@ class WslScriptParseTest {
         name: String,
         content: String,
     ): List<WslLine> {
-        val path = Path(SystemTemporaryDirectory, "wsltest-$name.wsl")
+        val path = testTempPath("wsltest-$name", ".wsl")
         SystemFileSystem.sink(path).buffered().use { it.writeString(content) }
         try {
             return WslScript(name, path, SystemFileSystem).parse()

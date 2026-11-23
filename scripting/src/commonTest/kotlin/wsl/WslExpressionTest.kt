@@ -5,8 +5,10 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.io.buffered
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
-import kotlinx.io.files.SystemTemporaryDirectory
 import kotlinx.io.writeString
+import warlockfe.warlock3.scripting.deleteTestTempPaths
+import warlockfe.warlock3.scripting.testTempPath
+import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -18,8 +20,11 @@ import kotlin.test.assertTrue
  * expression out of a command line and evaluates it against a [WslContext].
  */
 class WslExpressionTest {
+    @AfterTest
+    fun deleteTempFiles() = deleteTestTempPaths()
+
     private fun parseExpression(content: String): WslExpression {
-        val path = Path(SystemTemporaryDirectory, "wslexpr.wsl")
+        val path = testTempPath("wslexpr", ".wsl")
         SystemFileSystem.sink(path).buffered().use { it.writeString("echo %{$content}") }
         try {
             val lines = WslScript("expr", path, SystemFileSystem).parse()

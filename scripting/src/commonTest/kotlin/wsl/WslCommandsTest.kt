@@ -6,9 +6,11 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.io.buffered
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
-import kotlinx.io.files.SystemTemporaryDirectory
 import kotlinx.io.writeString
 import warlockfe.warlock3.core.client.ClientTextEvent
+import warlockfe.warlock3.scripting.deleteTestTempPaths
+import warlockfe.warlock3.scripting.testTempPath
+import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -18,6 +20,9 @@ import kotlin.test.assertTrue
 
 /** Exercises the WSL command table by invoking entries directly against a test [WslContext]. */
 class WslCommandsTest {
+    @AfterTest
+    fun deleteTempFiles() = deleteTestTempPaths()
+
     private suspend fun WslContext.command(
         name: String,
         args: String = "",
@@ -27,7 +32,7 @@ class WslCommandsTest {
     }
 
     private fun parseLines(content: String): List<WslLine> {
-        val path = Path(SystemTemporaryDirectory, "wslcmd.wsl")
+        val path = testTempPath("wslcmd", ".wsl")
         SystemFileSystem.sink(path).buffered().use { it.writeString(content) }
         try {
             return WslScript("cmd", path, SystemFileSystem).parse()

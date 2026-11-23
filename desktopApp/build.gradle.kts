@@ -16,7 +16,8 @@ dependencies {
     implementation(project(":wrayth"))
     implementation(project(":compose"))
 
-    implementation(compose.desktop.currentOs)
+    implementation(libs.compose.ui)
+    implementation(libs.compose.foundation)
 
     implementation(libs.nucleus.application)
     implementation(libs.nucleus.decorated.window.tao)

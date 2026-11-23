@@ -5,18 +5,23 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.io.buffered
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
-import kotlinx.io.files.SystemTemporaryDirectory
 import kotlinx.io.writeString
+import warlockfe.warlock3.scripting.deleteTestTempPaths
+import warlockfe.warlock3.scripting.testTempPath
+import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class WslEmptyStringTest {
+    @AfterTest
+    fun deleteTempFiles() = deleteTestTempPaths()
+
     private fun parse(
         name: String,
         content: String,
     ): List<WslLine> {
-        val path = Path(SystemTemporaryDirectory, "wslempty-$name.wsl")
+        val path = testTempPath("wslempty-$name", ".wsl")
         SystemFileSystem.sink(path).buffered().use { it.writeString(content) }
         try {
             return WslScript(name, path, SystemFileSystem).parse()

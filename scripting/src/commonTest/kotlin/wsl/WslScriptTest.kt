@@ -2,6 +2,8 @@ package warlockfe.warlock3.scripting.wsl
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.test.runTest
+import warlockfe.warlock3.scripting.deleteTestTempPaths
+import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -11,6 +13,9 @@ import kotlin.test.assertEquals
  * variables and echoed output).
  */
 class WslScriptTest {
+    @AfterTest
+    fun deleteTempFiles() = deleteTestTempPaths()
+
     private suspend fun CoroutineScope.runScript(
         script: String,
         client: FakeWarlockClient = FakeWarlockClient(),
