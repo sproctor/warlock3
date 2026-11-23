@@ -211,7 +211,7 @@ fun TextStyleEditor(
                 if (showFont) {
                     // The font row sets family, size and weight together; its weight and the Weight row share the
                     // one underlying field, so a change in either is reflected in both.
-                    attribute("Font", sourced.fontFamily.source, onReset = {
+                    attribute("Font", fontRowSource(sourced, editScope), onReset = {
                         edit(StyleEdit.Reset(StyleAttribute.FontFamily), StyleEdit.Reset(StyleAttribute.FontSize))
                     }) {
                         WarlockOutlinedButton(
@@ -223,6 +223,19 @@ fun TextStyleEditor(
             }
         AttributeRows(attributes, editScope)
     }
+}
+
+/**
+ * Where the Font row's value comes from. The row sets and resets the family and the size together, so
+ * it counts as set at [editScope] when either one is; otherwise it shows where the family, or failing
+ * that the size, comes from.
+ */
+internal fun fontRowSource(
+    sourced: SourcedStyle,
+    editScope: StyleScope,
+): StyleScope? {
+    val sources = listOf(sourced.fontFamily.source, sourced.fontSize.source)
+    return if (editScope in sources) editScope else sources.firstOrNull { it != null }
 }
 
 /** One row of the editor: an attribute's label, the control that sets it, and how to reset it. */

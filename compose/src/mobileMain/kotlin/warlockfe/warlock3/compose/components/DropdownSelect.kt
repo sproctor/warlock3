@@ -63,7 +63,7 @@ internal fun <T> DropdownSelect(
             items.forEach { item ->
                 DropdownMenuItem(
                     text = {
-                        Text(text = itemLabelBuilder(item))
+                        Text(text = itemLabelBuilder(item), style = textStyle ?: LocalTextStyle.current)
                     },
                     onClick = {
                         onSelect(item)
