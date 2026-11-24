@@ -1,13 +1,22 @@
 package warlockfe.warlock3.compose.shim
 
+import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import org.jetbrains.jewel.foundation.theme.LocalContentColor
 import org.jetbrains.jewel.ui.component.CheckboxRow
 import org.jetbrains.jewel.ui.component.DefaultButton
 import org.jetbrains.jewel.ui.component.OutlinedButton
 import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.component.TextField
+
+actual val warlockContentColor: Color
+    @Composable get() = LocalContentColor.current
+
+actual val disclosureArrowSize: Dp = 16.dp
 
 @Composable
 actual fun WarlockText(
@@ -66,4 +75,21 @@ actual fun WarlockCheckboxRow(
     modifier: Modifier,
 ) {
     CheckboxRow(checked = checked, onCheckedChange = onCheckedChange, text = text, modifier = modifier)
+}
+
+@Composable
+actual fun WarlockTextField(
+    state: TextFieldState,
+    modifier: Modifier,
+    enabled: Boolean,
+    readOnly: Boolean,
+    placeholder: String?,
+) {
+    TextField(
+        state = state,
+        modifier = modifier,
+        enabled = enabled,
+        readOnly = readOnly,
+        placeholder = placeholder?.let { @Composable { Text(it) } },
+    )
 }

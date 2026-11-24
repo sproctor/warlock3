@@ -16,6 +16,7 @@ import org.jetbrains.jewel.ui.component.Text
 import warlockfe.warlock3.compose.components.DEFAULT_PANEL_SCALE
 import warlockfe.warlock3.compose.shim.WarlockScrollableColumn
 import warlockfe.warlock3.compose.ui.settings.WindowSettingsLiveContext
+import warlockfe.warlock3.compose.ui.settings.WindowsSettingsSection
 import warlockfe.warlock3.compose.ui.settings.WindowsViewModel
 import warlockfe.warlock3.compose.util.LocalDarkTheme
 import warlockfe.warlock3.compose.util.LocalSkin
@@ -69,7 +70,7 @@ fun DesktopWindowsView(
         Spacer(Modifier.height(16.dp))
 
         WarlockScrollableColumn(modifier = Modifier.weight(1f).fillMaxWidth()) {
-            DesktopWindowsSettingsSection(
+            WindowsSettingsSection(
                 characterId = currentCharacter.id,
                 characterPanelScale = characterPanelScale ?: DEFAULT_PANEL_SCALE,
                 viewModel = viewModel,

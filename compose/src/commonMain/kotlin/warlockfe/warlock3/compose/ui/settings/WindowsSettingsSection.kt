@@ -1,5 +1,6 @@
 package warlockfe.warlock3.compose.ui.settings
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -9,15 +10,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.clearText
 import androidx.compose.foundation.text.input.rememberTextFieldState
-import androidx.compose.material3.Button
-import androidx.compose.material3.Icon
-import androidx.compose.material3.LocalContentColor
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -29,6 +23,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.jetbrains.compose.resources.painterResource
@@ -42,7 +38,13 @@ import warlockfe.warlock3.compose.components.formatPanelScale
 import warlockfe.warlock3.compose.components.toFontConfig
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.arrow_right
+import warlockfe.warlock3.compose.shim.WarlockButton
 import warlockfe.warlock3.compose.shim.WarlockCheckboxRow
+import warlockfe.warlock3.compose.shim.WarlockOutlinedButton
+import warlockfe.warlock3.compose.shim.WarlockText
+import warlockfe.warlock3.compose.shim.WarlockTextField
+import warlockfe.warlock3.compose.shim.disclosureArrowSize
+import warlockfe.warlock3.compose.shim.warlockContentColor
 import warlockfe.warlock3.compose.ui.window.toStyleLayer
 import warlockfe.warlock3.compose.util.LocalDarkTheme
 import warlockfe.warlock3.compose.util.LocalSkin
@@ -62,11 +64,11 @@ import warlockfe.warlock3.core.window.WindowType
 import kotlin.math.roundToInt
 
 /**
- * Per-window color/font settings for the selected character (mobile). See the desktop twin
- * [warlockfe.warlock3.compose.desktop.ui.settings.DesktopWindowsSettingsSection] for the shared model:
- * shown windows, configured-but-hidden windows, a collapsed list of other server-known windows, and a
- * field to add settings by window id. Styling writes straight to the repository through
- * [WindowsViewModel]; show/hide routes through [liveContext] when connected, else the repository.
+ * Per-window color/font settings for the selected character, grouped into shown windows, windows with
+ * saved settings that aren't shown, a collapsed list of other (server-known but unconfigured) windows,
+ * and a field to add settings for a window by id. Styling is written straight to the repository through
+ * [WindowsViewModel]; show/hide routes through [liveContext] when the character is connected so the
+ * running layout updates, otherwise through the repository (applied on next connect).
  */
 @Composable
 fun WindowsSettingsSection(
@@ -101,7 +103,10 @@ fun WindowsSettingsSection(
         }
     val openNames = remember(openWindows) { openWindows.map { it.name }.toSet() }
 
+    // Rows expanded to their editor, seeded from the window a "Window settings" action targeted.
     val expanded = remember { mutableStateListOf<String>() }
+    // Names typed into the add field for windows we know nothing about yet; they render an empty editor
+    // and become real rows once a control is changed (which writes a config entry).
     val pending = remember { mutableStateListOf<String>() }
     var otherExpanded by remember { mutableStateOf(false) }
     LaunchedEffect(initialWindowTarget) {
@@ -112,7 +117,8 @@ fun WindowsSettingsSection(
         }
     }
 
-    // Each row's shared style editor owns its own color picker; only the font picker is hoisted here.
+    // One font picker is open at a time across every row (each row's shared style editor owns its own
+    // color picker).
     var editFont by remember { mutableStateOf<Triple<FontConfig?, Boolean, (FontConfig?) -> Unit>?>(null) }
     editFont?.let { (current, monoOnly, onSave) ->
         FontPickerDialog(
@@ -188,13 +194,8 @@ fun WindowsSettingsSection(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            TextField(
-                state = addState,
-                modifier = Modifier.weight(1f),
-                label = { Text("Window id") },
-                lineLimits = TextFieldLineLimits.SingleLine,
-            )
-            OutlinedButton(
+            WarlockTextField(state = addState, modifier = Modifier.weight(1f), placeholder = "Window id")
+            WarlockOutlinedButton(
                 onClick = {
                     val name = addState.text.toString().trim()
                     if (name.isNotEmpty()) {
@@ -205,9 +206,8 @@ fun WindowsSettingsSection(
                         addState.clearText()
                     }
                 },
-            ) {
-                Text("Add")
-            }
+                text = "Add",
+            )
         }
     }
 }
@@ -217,10 +217,10 @@ private fun GroupLabel(
     text: String,
     modifier: Modifier = Modifier,
 ) {
-    Text(
+    WarlockText(
         text = text,
         modifier = modifier.padding(top = 8.dp),
-        color = LocalContentColor.current.copy(alpha = 0.7f),
+        color = warlockContentColor.copy(alpha = 0.7f),
     )
 }
 
@@ -238,14 +238,9 @@ private fun ExpandHeader(
             .padding(top = 8.dp, bottom = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(
-            painter = painterResource(Res.drawable.arrow_right),
-            contentDescription = null,
-            modifier = Modifier.size(20.dp).rotate(if (expanded) 90f else 0f),
-            tint = LocalContentColor.current.copy(alpha = 0.7f),
-        )
+        DisclosureArrow(expanded = expanded, tint = warlockContentColor.copy(alpha = 0.7f))
         Spacer(Modifier.width(6.dp))
-        Text(label, color = LocalContentColor.current.copy(alpha = 0.7f))
+        WarlockText(label, color = warlockContentColor.copy(alpha = 0.7f))
     }
 }
 
@@ -278,22 +273,16 @@ private fun WindowRow(
             Modifier.fillMaxWidth().clickable(onClick = onToggleExpand).padding(vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(
-                painter = painterResource(Res.drawable.arrow_right),
-                contentDescription = null,
-                modifier = Modifier.size(20.dp).rotate(if (expanded) 90f else 0f),
-            )
-            Spacer(Modifier.width(8.dp))
-            Text(windowRowLabel(name, title), modifier = Modifier.weight(1f))
+            DisclosureArrow(expanded = expanded, tint = warlockContentColor)
+            Spacer(Modifier.width(ROW_ARROW_GAP))
+            WarlockText(windowRowLabel(name, title), modifier = Modifier.weight(1f))
             if (canToggleShown) {
-                OutlinedButton(onClick = { onSetVisible(!isOpen) }) {
-                    Text(if (isOpen) "Hide" else "Show")
-                }
+                WarlockOutlinedButton(onClick = { onSetVisible(!isOpen) }, text = if (isOpen) "Hide" else "Show")
             }
         }
         if (expanded) {
             Column(
-                Modifier.fillMaxWidth().padding(start = 28.dp, bottom = 8.dp),
+                Modifier.fillMaxWidth().padding(start = disclosureArrowSize + ROW_ARROW_GAP, bottom = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 // A window has no cascade of its own; the character's default text style is the fallback.
@@ -312,12 +301,14 @@ private fun WindowRow(
                     showFont = false,
                     palette = palette,
                 )
-                OutlinedButton(onClick = { onEditFont(settings?.font, false) { onSaveFont(it) } }) {
-                    Text("Font: ${settings?.font.fontLabel()}")
-                }
-                OutlinedButton(onClick = { onEditFont(settings?.monoFont, true) { onSaveMonoFont(it) } }) {
-                    Text("Monospace font: ${settings?.monoFont.fontLabel()}")
-                }
+                WarlockOutlinedButton(
+                    onClick = { onEditFont(settings?.font, false) { onSaveFont(it) } },
+                    text = "Font: ${settings?.font.fontLabel()}",
+                )
+                WarlockOutlinedButton(
+                    onClick = { onEditFont(settings?.monoFont, true) { onSaveMonoFont(it) } },
+                    text = "Monospace font: ${settings?.monoFont.fontLabel()}",
+                )
                 if (scaleAvailable) {
                     WindowScaleRow(
                         scale = settings?.scale,
@@ -332,12 +323,28 @@ private fun WindowRow(
                         text = "Only show lines with names in list",
                     )
                 }
-                Button(onClick = onRevert) {
-                    Text("Revert to defaults")
-                }
+                WarlockButton(onClick = onRevert, text = "Revert to defaults")
             }
         }
     }
+}
+
+// The gap between a window row's arrow and its label; the expanded editor is indented to the label.
+private val ROW_ARROW_GAP = 8.dp
+
+/** The arrow of a collapsible row: pointing right when collapsed, down when [expanded]. */
+@Composable
+private fun DisclosureArrow(
+    expanded: Boolean,
+    tint: Color,
+    modifier: Modifier = Modifier,
+) {
+    Image(
+        painter = painterResource(Res.drawable.arrow_right),
+        contentDescription = null,
+        modifier = modifier.size(disclosureArrowSize).rotate(if (expanded) 90f else 0f),
+        colorFilter = ColorFilter.tint(tint),
+    )
 }
 
 private fun windowRowLabel(
@@ -359,12 +366,12 @@ private fun WindowScaleRow(
         onSave(next.coerceIn(MIN_PANEL_SCALE, MAX_PANEL_SCALE))
     }
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Panel scale")
-        OutlinedButton(onClick = { step(-PANEL_SCALE_STEP) }) { Text("-") }
-        Text(if (scale == null) "Default" else formatPanelScale(current))
-        OutlinedButton(onClick = { step(PANEL_SCALE_STEP) }) { Text("+") }
+        WarlockText("Panel scale")
+        WarlockOutlinedButton(onClick = { step(-PANEL_SCALE_STEP) }, text = "-")
+        WarlockText(if (scale == null) "Default" else formatPanelScale(current))
+        WarlockOutlinedButton(onClick = { step(PANEL_SCALE_STEP) }, text = "+")
         if (scale != null) {
-            OutlinedButton(onClick = { onSave(null) }) { Text("Use default") }
+            WarlockOutlinedButton(onClick = { onSave(null) }, text = "Use default")
         }
     }
 }
