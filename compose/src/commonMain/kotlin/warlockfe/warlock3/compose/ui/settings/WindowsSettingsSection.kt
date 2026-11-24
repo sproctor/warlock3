@@ -4,6 +4,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -352,7 +354,11 @@ private fun windowRowLabel(
     title: String?,
 ): String = if (title != null && title.isNotBlank() && title != name) "$name ($title)" else name
 
-/** A panel window's scale override; null follows the character's panel scale. */
+/**
+ * A panel window's scale override; null follows the character's panel scale. "Use default" wraps
+ * below the stepper when the row is too narrow for both, as on a phone.
+ */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun WindowScaleRow(
     scale: Float?,
@@ -365,11 +371,17 @@ private fun WindowScaleRow(
         val next = ((current + delta) * 10f).roundToInt() / 10f
         onSave(next.coerceIn(MIN_PANEL_SCALE, MAX_PANEL_SCALE))
     }
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        WarlockText("Panel scale")
-        WarlockOutlinedButton(onClick = { step(-PANEL_SCALE_STEP) }, text = "-")
-        WarlockText(if (scale == null) "Default" else formatPanelScale(current))
-        WarlockOutlinedButton(onClick = { step(PANEL_SCALE_STEP) }, text = "+")
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+        itemVerticalAlignment = Alignment.CenterVertically,
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            WarlockText("Panel scale")
+            WarlockOutlinedButton(onClick = { step(-PANEL_SCALE_STEP) }, text = "-")
+            WarlockText(if (scale == null) "Default" else formatPanelScale(current))
+            WarlockOutlinedButton(onClick = { step(PANEL_SCALE_STEP) }, text = "+")
+        }
         if (scale != null) {
             WarlockOutlinedButton(onClick = { onSave(null) }, text = "Use default")
         }
