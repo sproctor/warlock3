@@ -18,15 +18,20 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.jetbrains.compose.resources.painterResource
@@ -94,15 +99,18 @@ fun WindowsSettingsSection(
     val titlesByName = remember(liveWindows) { liveWindows.associateBy { it.name } }
 
     val settingsByName = remember(windowSettings) { windowSettings.associateBy { it.name } }
+    val savedNames = settingsByName.keys
+    val announcedNames = titlesByName.keys
     // "main" is always shown and can't be hidden, so it's handled separately (it has no position row).
     val openWindows =
-        remember(windowSettings) { windowSettings.filter { it.open && it.name != "main" } }
+        remember(windowSettings) { windowSettings.filter { it.open && it.name != MAIN_WINDOW } }
     val savedNotOpen =
-        remember(windowSettings) { windowSettings.filter { !it.open && it.name != "main" } }
+        remember(windowSettings) { windowSettings.filter { !it.open && it.name != MAIN_WINDOW } }
     val hiddenWindows =
         remember(liveWindows, settingsByName) {
-            liveWindows.filter { it.name !in settingsByName && it.name != "main" }.sortedBy { it.name }
+            liveWindows.filter { it.name !in settingsByName && it.name != MAIN_WINDOW }.sortedBy { it.name }
         }
+    val hiddenNames = remember(hiddenWindows) { hiddenWindows.map { it.name }.toSet() }
     val openNames = remember(openWindows) { openWindows.map { it.name }.toSet() }
 
     // Rows expanded to their editor, seeded from the window a "Window settings" action targeted.
@@ -111,11 +119,22 @@ fun WindowsSettingsSection(
     // and become real rows once a control is changed (which writes a config entry).
     val pending = remember { mutableStateListOf<String>() }
     var otherExpanded by remember { mutableStateOf(false) }
+    // Windows the user asked to see whose group isn't known yet; see settleRevealRequests.
+    val revealRequests = remember { mutableStateListOf<String>() }
+
+    fun requestWindow(name: String) {
+        if (name !in expanded) expanded.add(name)
+        if (needsPendingRow(name, savedNames, announcedNames) && name !in pending) pending.add(name)
+        if (name !in revealRequests) revealRequests.add(name)
+    }
     LaunchedEffect(initialWindowTarget) {
-        val target = initialWindowTarget ?: return@LaunchedEffect
-        if (target !in expanded) expanded.add(target)
-        if (target !in settingsByName && target !in titlesByName && target !in pending) {
-            pending.add(target)
+        initialWindowTarget?.let { requestWindow(it) }
+    }
+    LaunchedEffect(hiddenNames, savedNames, announcedNames) {
+        snapshotFlow { revealRequests.toList() }.collect { requests ->
+            val outcome = settleRevealRequests(requests, hiddenNames, savedNames, announcedNames)
+            if (outcome.openOtherWindows) otherExpanded = true
+            if (outcome.unsettled.size != requests.size) revealRequests.retainAll(outcome.unsettled.toSet())
         }
     }
 
@@ -135,43 +154,47 @@ fun WindowsSettingsSection(
     }
 
     val row: @Composable (String, WindowSettings?) -> Unit = { name, settings ->
-        WindowRow(
-            name = name,
-            title = titlesByName[name]?.title,
-            settings = settings,
-            defaultStyle = defaultStyle,
-            palette = palette,
-            isOpen = name in openNames,
-            canToggleShown = name != "main",
-            nameFilterAvailable = titlesByName[name]?.nameFilterOption == true || settings?.nameFilter == true,
-            // Only panels lay widgets out in game-supplied pixels. Offline we have no window info, so
-            // keep the row for anyone who already set a scale rather than stranding their override.
-            scaleAvailable = titlesByName[name]?.windowType == WindowType.PANEL || settings?.scale != null,
-            characterPanelScale = characterPanelScale,
-            expanded = name in expanded,
-            onToggleExpand = { if (name in expanded) expanded.remove(name) else expanded.add(name) },
-            onSetVisible = { show ->
-                if (connected != null) {
-                    if (show) connected.openWindow(name) else connected.closeWindow(name)
-                } else {
-                    viewModel.setWindowShown(name, show)
-                }
-            },
-            onSaveStyle = { layer -> viewModel.saveStyle(name, layer) },
-            onSaveFont = { font -> viewModel.saveFont(name, font) },
-            onSaveMonoFont = { font -> viewModel.saveMonoFont(name, font) },
-            onSaveNameFilter = { value -> viewModel.saveNameFilter(name, value) },
-            onSaveScale = { value -> viewModel.saveScale(name, value) },
-            onRevert = { viewModel.revert(name) },
-            onEditFont = { current, monoOnly, onSave -> editFont = Triple(current, monoOnly, onSave) },
-        )
+        // Keyed so a row's remembered state (an open color picker, say) stays with its window when the
+        // groups reorder.
+        key(name) {
+            WindowRow(
+                name = name,
+                title = titlesByName[name]?.title,
+                settings = settings,
+                defaultStyle = defaultStyle,
+                palette = palette,
+                isOpen = name in openNames,
+                canToggleShown = name != MAIN_WINDOW,
+                nameFilterAvailable = titlesByName[name]?.nameFilterOption == true || settings?.nameFilter == true,
+                // Only panels lay widgets out in game-supplied pixels. Offline we have no window info, so
+                // keep the row for anyone who already set a scale rather than stranding their override.
+                scaleAvailable = titlesByName[name]?.windowType == WindowType.PANEL || settings?.scale != null,
+                characterPanelScale = characterPanelScale,
+                expanded = name in expanded,
+                onToggleExpand = { if (name in expanded) expanded.remove(name) else expanded.add(name) },
+                onSetVisible = { show ->
+                    if (connected != null) {
+                        if (show) connected.openWindow(name) else connected.closeWindow(name)
+                    } else {
+                        viewModel.setWindowShown(name, show)
+                    }
+                },
+                onSaveStyle = { layer -> viewModel.saveStyle(name, layer) },
+                onSaveFont = { font -> viewModel.saveFont(name, font) },
+                onSaveMonoFont = { font -> viewModel.saveMonoFont(name, font) },
+                onSaveNameFilter = { value -> viewModel.saveNameFilter(name, value) },
+                onSaveScale = { value -> viewModel.saveScale(name, value) },
+                onRevert = { viewModel.revert(name) },
+                onEditFont = { current, monoOnly, onSave -> editFont = Triple(current, monoOnly, onSave) },
+            )
+        }
     }
 
     Column(modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        val pendingRows = pending.filter { it !in settingsByName && it !in titlesByName }
+        val pendingRows = pending.filter { needsPendingRow(it, savedNames, announcedNames) }
 
         GroupLabel("Shown")
-        row("main", settingsByName["main"])
+        row(MAIN_WINDOW, settingsByName[MAIN_WINDOW])
         openWindows.forEach { row(it.name, it) }
         if (savedNotOpen.isNotEmpty() || pendingRows.isNotEmpty()) {
             GroupLabel("Saved settings (not shown)")
@@ -196,20 +219,20 @@ fun WindowsSettingsSection(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            WarlockTextField(state = addState, modifier = Modifier.weight(1f), placeholder = "Window id")
-            WarlockOutlinedButton(
-                onClick = {
-                    val name = addState.text.toString().trim()
-                    if (name.isNotEmpty()) {
-                        if (name !in expanded) expanded.add(name)
-                        if (name !in settingsByName && name !in titlesByName && name !in pending) {
-                            pending.add(name)
-                        }
-                        addState.clearText()
-                    }
-                },
-                text = "Add",
+            fun add() {
+                val name = addState.text.toString().trim()
+                if (name.isNotEmpty()) {
+                    requestWindow(name)
+                    addState.clearText()
+                }
+            }
+            WarlockTextField(
+                state = addState,
+                modifier = Modifier.weight(1f),
+                onSubmit = { add() },
+                placeholder = "Window id",
             )
+            WarlockOutlinedButton(onClick = { add() }, text = "Add")
         }
     }
 }
@@ -236,7 +259,7 @@ private fun ExpandHeader(
     Row(
         modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .expandableRow(expanded, onClick)
             .padding(top = 8.dp, bottom = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -272,7 +295,7 @@ private fun WindowRow(
 ) {
     Column(modifier.fillMaxWidth()) {
         Row(
-            Modifier.fillMaxWidth().clickable(onClick = onToggleExpand).padding(vertical = 4.dp),
+            Modifier.fillMaxWidth().expandableRow(expanded, onToggleExpand).padding(vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             DisclosureArrow(expanded = expanded, tint = warlockContentColor)
@@ -333,6 +356,14 @@ private fun WindowRow(
 
 // The gap between a window row's arrow and its label; the expanded editor is indented to the label.
 private val ROW_ARROW_GAP = 8.dp
+
+/** Makes a collapsible row's header toggle it, telling accessibility services that it's expandable. */
+private fun Modifier.expandableRow(
+    expanded: Boolean,
+    onToggle: () -> Unit,
+): Modifier =
+    semantics { stateDescription = if (expanded) "Expanded" else "Collapsed" }
+        .clickable(onClickLabel = if (expanded) "Collapse" else "Expand", role = Role.Button, onClick = onToggle)
 
 /** The arrow of a collapsible row: pointing right when collapsed, down when [expanded]. */
 @Composable

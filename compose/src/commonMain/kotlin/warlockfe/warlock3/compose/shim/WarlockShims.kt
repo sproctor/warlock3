@@ -79,8 +79,9 @@ expect fun <T> WarlockDropdownSelect(
 )
 
 /**
- * A single-line text field. [placeholder] names the field: desktop shows it while the field is
- * empty, mobile as the field's label.
+ * A single-line text field. [onSubmit], when given, runs on Enter (or the keyboard's Done key).
+ * [placeholder] names the field: desktop shows it while the field is empty, mobile as the field's
+ * label.
  */
 @Composable
 expect fun WarlockTextField(
@@ -88,5 +89,6 @@ expect fun WarlockTextField(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     readOnly: Boolean = false,
+    onSubmit: (() -> Unit)? = null,
     placeholder: String? = null,
 )

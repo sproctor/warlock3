@@ -1,9 +1,12 @@
 package warlockfe.warlock3.compose.shim
 
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.KeyboardActionHandler
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import org.jetbrains.jewel.foundation.theme.LocalContentColor
@@ -83,6 +86,7 @@ actual fun WarlockTextField(
     modifier: Modifier,
     enabled: Boolean,
     readOnly: Boolean,
+    onSubmit: (() -> Unit)?,
     placeholder: String?,
 ) {
     TextField(
@@ -90,6 +94,8 @@ actual fun WarlockTextField(
         modifier = modifier,
         enabled = enabled,
         readOnly = readOnly,
+        keyboardOptions = if (onSubmit != null) KeyboardOptions(imeAction = ImeAction.Done) else KeyboardOptions.Default,
+        onKeyboardAction = onSubmit?.let { submit -> KeyboardActionHandler { submit() } },
         placeholder = placeholder?.let { @Composable { Text(it) } },
     )
 }

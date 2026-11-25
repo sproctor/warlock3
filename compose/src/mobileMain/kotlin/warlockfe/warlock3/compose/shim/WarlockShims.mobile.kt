@@ -4,6 +4,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.KeyboardActionHandler
 import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.material3.Button
@@ -19,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import warlockfe.warlock3.compose.components.DropdownSelect
@@ -121,6 +124,7 @@ actual fun WarlockTextField(
     modifier: Modifier,
     enabled: Boolean,
     readOnly: Boolean,
+    onSubmit: (() -> Unit)?,
     placeholder: String?,
 ) {
     TextField(
@@ -128,6 +132,8 @@ actual fun WarlockTextField(
         modifier = modifier,
         enabled = enabled,
         readOnly = readOnly,
+        keyboardOptions = if (onSubmit != null) KeyboardOptions(imeAction = ImeAction.Done) else KeyboardOptions.Default,
+        onKeyboardAction = onSubmit?.let { submit -> KeyboardActionHandler { submit() } },
         label = placeholder?.let { @Composable { Text(it) } },
         lineLimits = TextFieldLineLimits.SingleLine,
     )
