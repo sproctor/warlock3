@@ -91,7 +91,10 @@ fun WindowsSettingsSection(
     modifier: Modifier = Modifier,
 ) {
     val palette = LocalSkin.current.toColorPalette(LocalDarkTheme.current)
-    val windowSettings by viewModel.windowSettings.collectAsState()
+    val loadedSettings by viewModel.windowSettings.collectAsState()
+    // False until this character's settings arrive; what's shown meanwhile is empty, not someone else's.
+    val settingsLoaded = loadedSettings?.characterId == characterId
+    val windowSettings = if (settingsLoaded) loadedSettings?.settings.orEmpty() else emptyList()
 
     val connected = liveContext?.takeIf { it.connectedCharacterId == characterId }
     val emptyWindowInfo = remember { MutableStateFlow(emptyList<WindowInfo>()) }
@@ -100,41 +103,43 @@ fun WindowsSettingsSection(
 
     val settingsByName = remember(windowSettings) { windowSettings.associateBy { it.name } }
     val savedNames = settingsByName.keys
-    val announcedNames = titlesByName.keys
     // "main" is always shown and can't be hidden, so it's handled separately (it has no position row).
     val openWindows =
         remember(windowSettings) { windowSettings.filter { it.open && it.name != MAIN_WINDOW } }
     val savedNotOpen =
         remember(windowSettings) { windowSettings.filter { !it.open && it.name != MAIN_WINDOW } }
-    val hiddenWindows =
-        remember(liveWindows, settingsByName) {
-            liveWindows.filter { it.name !in settingsByName && it.name != MAIN_WINDOW }.sortedBy { it.name }
-        }
-    val hiddenNames = remember(hiddenWindows) { hiddenWindows.map { it.name }.toSet() }
     val openNames = remember(openWindows) { openWindows.map { it.name }.toSet() }
 
     // Rows expanded to their editor, seeded from the window a "Window settings" action targeted.
     val expanded = remember { mutableStateListOf<String>() }
-    // Names typed into the add field for windows we know nothing about yet; they render an empty editor
-    // and become real rows once a control is changed (which writes a config entry).
+    // Windows the user asked for that have no saved settings; they render an empty editor and become
+    // real rows once a control is changed (which writes a config entry). See showsPendingRow.
     val pending = remember { mutableStateListOf<String>() }
+    val pendingNames = pending.toSet()
+    val hiddenWindows =
+        remember(liveWindows, settingsByName, pendingNames) {
+            liveWindows
+                .filter { it.name !in settingsByName && it.name !in pendingNames && it.name != MAIN_WINDOW }
+                .sortedBy { it.name }
+        }
+    val hiddenNames = remember(hiddenWindows) { hiddenWindows.map { it.name }.toSet() }
     var otherExpanded by remember { mutableStateOf(false) }
-    // Windows the user asked to see whose group isn't known yet; see settleRevealRequests.
+    // Windows the user asked to see, waiting to be placed; see settleRevealRequests.
     val revealRequests = remember { mutableStateListOf<String>() }
 
     fun requestWindow(name: String) {
         if (name !in expanded) expanded.add(name)
-        if (needsPendingRow(name, savedNames, announcedNames) && name !in pending) pending.add(name)
         if (name !in revealRequests) revealRequests.add(name)
     }
     LaunchedEffect(initialWindowTarget) {
         initialWindowTarget?.let { requestWindow(it) }
     }
-    LaunchedEffect(hiddenNames, savedNames, announcedNames) {
+    LaunchedEffect(settingsLoaded, hiddenNames, savedNames) {
         snapshotFlow { revealRequests.toList() }.collect { requests ->
-            val outcome = settleRevealRequests(requests, hiddenNames, savedNames, announcedNames)
+            val outcome = settleRevealRequests(requests, settingsLoaded, hiddenNames, savedNames) ?: return@collect
             if (outcome.openOtherWindows) otherExpanded = true
-            if (outcome.unsettled.size != requests.size) revealRequests.retainAll(outcome.unsettled.toSet())
+            outcome.newPending.forEach { if (it !in pending) pending.add(it) }
+            revealRequests.removeAll(requests)
         }
     }
 
@@ -155,7 +160,7 @@ fun WindowsSettingsSection(
 
     val row: @Composable (String, WindowSettings?) -> Unit = { name, settings ->
         // Keyed so a row's remembered state (an open color picker, say) stays with its window when the
-        // groups reorder.
+        // rows of its group reorder. A window that moves to another group starts fresh.
         key(name) {
             WindowRow(
                 name = name,
@@ -191,7 +196,7 @@ fun WindowsSettingsSection(
     }
 
     Column(modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        val pendingRows = pending.filter { needsPendingRow(it, savedNames, announcedNames) }
+        val pendingRows = pending.filter { showsPendingRow(it, savedNames) }
 
         GroupLabel("Shown")
         row(MAIN_WINDOW, settingsByName[MAIN_WINDOW])

@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import warlockfe.warlock3.core.client.GameCharacter
@@ -21,6 +22,12 @@ import warlockfe.warlock3.core.prefs.repositories.WindowSettingsRepository
 import warlockfe.warlock3.core.text.FontConfig
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.StyleLayer
+
+/** One character's saved window settings. */
+data class CharacterWindowSettings(
+    val characterId: String,
+    val settings: List<WindowSettings>,
+)
 
 /**
  * Per-window settings for one character at a time. Windows have no global settings, so with no character
@@ -52,8 +59,15 @@ class WindowsViewModel(
     val characterPanelScale: StateFlow<Float?> =
         observeCharacter(null) { characterSettingsRepository.observePanelScale(it) }
 
-    val windowSettings: StateFlow<List<WindowSettings>> =
-        observeCharacter(emptyList()) { windowSettingRepository.observeWindowSettings(it) }
+    /**
+     * The current character's saved window settings, or null until they first load. Tagged with the
+     * character they belong to, since after a switch the previous character's stay here until the new
+     * ones arrive.
+     */
+    val windowSettings: StateFlow<CharacterWindowSettings?> =
+        observeCharacter(null) { characterId ->
+            windowSettingRepository.observeWindowSettings(characterId).map { CharacterWindowSettings(characterId, it) }
+        }
 
     fun selectCharacter(character: GameCharacter?) {
         selectedCharacter.value = character

@@ -133,7 +133,14 @@ actual fun WarlockTextField(
         enabled = enabled,
         readOnly = readOnly,
         keyboardOptions = if (onSubmit != null) KeyboardOptions(imeAction = ImeAction.Done) else KeyboardOptions.Default,
-        onKeyboardAction = onSubmit?.let { submit -> KeyboardActionHandler { submit() } },
+        onKeyboardAction =
+            onSubmit?.let { submit ->
+                KeyboardActionHandler { performDefaultAction ->
+                    submit()
+                    // Done's own action, which closes the soft keyboard.
+                    performDefaultAction()
+                }
+            },
         label = placeholder?.let { @Composable { Text(it) } },
         lineLimits = TextFieldLineLimits.SingleLine,
     )

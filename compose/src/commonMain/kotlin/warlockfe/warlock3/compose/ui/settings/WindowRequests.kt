@@ -4,35 +4,37 @@ package warlockfe.warlock3.compose.ui.settings
 internal const val MAIN_WINDOW = "main"
 
 /**
- * Whether [name] needs a placeholder row, standing in for a window Warlock knows nothing about yet:
- * one with no saved settings ([savedNames]) that the game hasn't announced ([announcedNames]).
+ * Whether a window the user asked for still shows as a placeholder row, under "Saved settings (not
+ * shown)": until it has saved settings of its own. It stays there even once the game announces it, so
+ * a row the user is looking at doesn't jump into the collapsed "Other windows" group.
  */
-internal fun needsPendingRow(
+internal fun showsPendingRow(
     name: String,
     savedNames: Set<String>,
-    announcedNames: Set<String>,
-): Boolean = name != MAIN_WINDOW && name !in savedNames && name !in announcedNames
+): Boolean = name != MAIN_WINDOW && name !in savedNames
 
-/** What [settleRevealRequests] decided. */
+/** Where [settleRevealRequests] put the requested windows. */
 internal data class RevealOutcome(
     val openOtherWindows: Boolean,
-    val unsettled: List<String>,
+    val newPending: List<String>,
 )
 
 /**
- * Settles the windows the user asked to see (added by name, or targeted by a "Window settings"
- * action) once it's known which group each one is in. A request for one of [hiddenNames], the
- * windows in the collapsed "Other windows" group, opens that group. A request for any other saved
- * or announced window is settled where it is. The rest stay [RevealOutcome.unsettled], since their
- * settings or the game's announcement may still be on the way.
+ * Places the windows the user asked to see (added by name, or targeted by a "Window settings" action),
+ * or returns null to wait while the character's saved settings are still loading: until then every
+ * saved window looks unconfigured. A request for one of [hiddenNames], the windows in the collapsed
+ * "Other windows" group, opens that group. A request for a window with no saved settings that isn't
+ * there becomes a placeholder row. Any other request already has a row where it is.
  */
 internal fun settleRevealRequests(
     requests: List<String>,
+    settingsLoaded: Boolean,
     hiddenNames: Set<String>,
     savedNames: Set<String>,
-    announcedNames: Set<String>,
-): RevealOutcome =
-    RevealOutcome(
+): RevealOutcome? {
+    if (!settingsLoaded) return null
+    return RevealOutcome(
         openOtherWindows = requests.any { it in hiddenNames },
-        unsettled = requests.filter { needsPendingRow(it, savedNames, announcedNames) },
+        newPending = requests.filter { it !in hiddenNames && showsPendingRow(it, savedNames) },
     )
+}
