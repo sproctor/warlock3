@@ -110,11 +110,12 @@ fun WindowsSettingsSection(
         remember(windowSettings) { windowSettings.filter { !it.open && it.name != MAIN_WINDOW } }
     val openNames = remember(openWindows) { openWindows.map { it.name }.toSet() }
 
+    // The state below belongs to one character, so picking another in the selector starts it afresh.
     // Rows expanded to their editor, seeded from the window a "Window settings" action targeted.
-    val expanded = remember { mutableStateListOf<String>() }
+    val expanded = remember(characterId) { mutableStateListOf<String>() }
     // Windows the user asked for that have no saved settings; they render an empty editor and become
     // real rows once a control is changed (which writes a config entry). See showsPendingRow.
-    val pending = remember { mutableStateListOf<String>() }
+    val pending = remember(characterId) { mutableStateListOf<String>() }
     val pendingNames = pending.toSet()
     val hiddenWindows =
         remember(liveWindows, settingsByName, pendingNames) {
@@ -123,18 +124,20 @@ fun WindowsSettingsSection(
                 .sortedBy { it.name }
         }
     val hiddenNames = remember(hiddenWindows) { hiddenWindows.map { it.name }.toSet() }
-    var otherExpanded by remember { mutableStateOf(false) }
+    var otherExpanded by remember(characterId) { mutableStateOf(false) }
     // Windows the user asked to see, waiting to be placed; see settleRevealRequests.
-    val revealRequests = remember { mutableStateListOf<String>() }
+    val revealRequests = remember(characterId) { mutableStateListOf<String>() }
 
     fun requestWindow(name: String) {
         if (name !in expanded) expanded.add(name)
         if (name !in revealRequests) revealRequests.add(name)
     }
+    // Only the first time: the target is a window of the character the page opened on, not of one
+    // picked afterwards.
     LaunchedEffect(initialWindowTarget) {
         initialWindowTarget?.let { requestWindow(it) }
     }
-    LaunchedEffect(settingsLoaded, hiddenNames, savedNames) {
+    LaunchedEffect(revealRequests, settingsLoaded, hiddenNames, savedNames) {
         snapshotFlow { revealRequests.toList() }.collect { requests ->
             val outcome = settleRevealRequests(requests, settingsLoaded, hiddenNames, savedNames) ?: return@collect
             if (outcome.openOtherWindows) otherExpanded = true
@@ -196,24 +199,28 @@ fun WindowsSettingsSection(
     }
 
     Column(modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        val pendingRows = pending.filter { showsPendingRow(it, savedNames) }
+        // No rows until the character's settings are in: before then every editor would start from
+        // defaults rather than what's saved. A load takes a frame or two.
+        if (settingsLoaded) {
+            val pendingRows = pending.filter { showsPendingRow(it, savedNames) }
 
-        GroupLabel("Shown")
-        row(MAIN_WINDOW, settingsByName[MAIN_WINDOW])
-        openWindows.forEach { row(it.name, it) }
-        if (savedNotOpen.isNotEmpty() || pendingRows.isNotEmpty()) {
-            GroupLabel("Saved settings (not shown)")
-            savedNotOpen.forEach { row(it.name, it) }
-            pendingRows.forEach { row(it, null) }
-        }
-        if (hiddenWindows.isNotEmpty()) {
-            ExpandHeader(
-                label = "Other windows (${hiddenWindows.size})",
-                expanded = otherExpanded,
-                onClick = { otherExpanded = !otherExpanded },
-            )
-            if (otherExpanded) {
-                hiddenWindows.forEach { row(it.name, null) }
+            GroupLabel("Shown")
+            row(MAIN_WINDOW, settingsByName[MAIN_WINDOW])
+            openWindows.forEach { row(it.name, it) }
+            if (savedNotOpen.isNotEmpty() || pendingRows.isNotEmpty()) {
+                GroupLabel("Saved settings (not shown)")
+                savedNotOpen.forEach { row(it.name, it) }
+                pendingRows.forEach { row(it, null) }
+            }
+            if (hiddenWindows.isNotEmpty()) {
+                ExpandHeader(
+                    label = "Other windows (${hiddenWindows.size})",
+                    expanded = otherExpanded,
+                    onClick = { otherExpanded = !otherExpanded },
+                )
+                if (otherExpanded) {
+                    hiddenWindows.forEach { row(it.name, null) }
+                }
             }
         }
 
