@@ -1,9 +1,11 @@
-package warlockfe.warlock3.compose.desktop.ui.settings
+package warlockfe.warlock3.compose.ui.settings
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -16,20 +18,23 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.jetbrains.compose.resources.painterResource
-import org.jetbrains.jewel.foundation.theme.LocalContentColor
-import org.jetbrains.jewel.ui.component.CheckboxRow
-import org.jetbrains.jewel.ui.component.Text
 import warlockfe.warlock3.compose.components.FontPickerDialog
 import warlockfe.warlock3.compose.components.MAX_PANEL_SCALE
 import warlockfe.warlock3.compose.components.MIN_PANEL_SCALE
@@ -41,10 +46,12 @@ import warlockfe.warlock3.compose.components.toFontConfig
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.arrow_right
 import warlockfe.warlock3.compose.shim.WarlockButton
+import warlockfe.warlock3.compose.shim.WarlockCheckboxRow
 import warlockfe.warlock3.compose.shim.WarlockOutlinedButton
+import warlockfe.warlock3.compose.shim.WarlockText
 import warlockfe.warlock3.compose.shim.WarlockTextField
-import warlockfe.warlock3.compose.ui.settings.WindowSettingsLiveContext
-import warlockfe.warlock3.compose.ui.settings.WindowsViewModel
+import warlockfe.warlock3.compose.shim.disclosureArrowSize
+import warlockfe.warlock3.compose.shim.warlockContentColor
 import warlockfe.warlock3.compose.ui.window.toStyleLayer
 import warlockfe.warlock3.compose.util.LocalDarkTheme
 import warlockfe.warlock3.compose.util.LocalSkin
@@ -71,7 +78,7 @@ import kotlin.math.roundToInt
  * running layout updates, otherwise through the repository (applied on next connect).
  */
 @Composable
-fun DesktopWindowsSettingsSection(
+fun WindowsSettingsSection(
     characterId: String,
     viewModel: WindowsViewModel,
     // The edited character's panel scale, which a window's override falls back to. Passed in
@@ -84,7 +91,10 @@ fun DesktopWindowsSettingsSection(
     modifier: Modifier = Modifier,
 ) {
     val palette = LocalSkin.current.toColorPalette(LocalDarkTheme.current)
-    val windowSettings by viewModel.windowSettings.collectAsState()
+    val loadedSettings by viewModel.windowSettings.collectAsState()
+    // False until this character's settings arrive; what's shown meanwhile is empty, not someone else's.
+    val settingsLoaded = loadedSettings?.characterId == characterId
+    val windowSettings = if (settingsLoaded) loadedSettings?.settings.orEmpty() else emptyList()
 
     val connected = liveContext?.takeIf { it.connectedCharacterId == characterId }
     val emptyWindowInfo = remember { MutableStateFlow(emptyList<WindowInfo>()) }
@@ -92,28 +102,47 @@ fun DesktopWindowsSettingsSection(
     val titlesByName = remember(liveWindows) { liveWindows.associateBy { it.name } }
 
     val settingsByName = remember(windowSettings) { windowSettings.associateBy { it.name } }
+    val savedNames = settingsByName.keys
     // "main" is always shown and can't be hidden, so it's handled separately (it has no position row).
     val openWindows =
-        remember(windowSettings) { windowSettings.filter { it.open && it.name != "main" } }
+        remember(windowSettings) { windowSettings.filter { it.open && it.name != MAIN_WINDOW } }
     val savedNotOpen =
-        remember(windowSettings) { windowSettings.filter { !it.open && it.name != "main" } }
-    val hiddenWindows =
-        remember(liveWindows, settingsByName) {
-            liveWindows.filter { it.name !in settingsByName && it.name != "main" }.sortedBy { it.name }
-        }
+        remember(windowSettings) { windowSettings.filter { !it.open && it.name != MAIN_WINDOW } }
     val openNames = remember(openWindows) { openWindows.map { it.name }.toSet() }
 
+    // The state below belongs to one character, so picking another in the selector starts it afresh.
     // Rows expanded to their editor, seeded from the window a "Window settings" action targeted.
-    val expanded = remember { mutableStateListOf<String>() }
-    // Names typed into the add field for windows we know nothing about yet; they render an empty editor
-    // and become real rows once a control is changed (which writes a config entry).
-    val pending = remember { mutableStateListOf<String>() }
-    var otherExpanded by remember { mutableStateOf(false) }
+    val expanded = remember(characterId) { mutableStateListOf<String>() }
+    // Windows the user asked for that have no saved settings; they render an empty editor and become
+    // real rows once a control is changed (which writes a config entry). See showsPendingRow.
+    val pending = remember(characterId) { mutableStateListOf<String>() }
+    val pendingNames = pending.toSet()
+    val hiddenWindows =
+        remember(liveWindows, settingsByName, pendingNames) {
+            liveWindows
+                .filter { it.name !in settingsByName && it.name !in pendingNames && it.name != MAIN_WINDOW }
+                .sortedBy { it.name }
+        }
+    val hiddenNames = remember(hiddenWindows) { hiddenWindows.map { it.name }.toSet() }
+    var otherExpanded by remember(characterId) { mutableStateOf(false) }
+    // Windows the user asked to see, waiting to be placed; see settleRevealRequests.
+    val revealRequests = remember(characterId) { mutableStateListOf<String>() }
+
+    fun requestWindow(name: String) {
+        if (name !in expanded) expanded.add(name)
+        if (name !in revealRequests) revealRequests.add(name)
+    }
+    // Only the first time: the target is a window of the character the page opened on, not of one
+    // picked afterwards.
     LaunchedEffect(initialWindowTarget) {
-        val target = initialWindowTarget ?: return@LaunchedEffect
-        if (target !in expanded) expanded.add(target)
-        if (target !in settingsByName && target !in titlesByName && target !in pending) {
-            pending.add(target)
+        initialWindowTarget?.let { requestWindow(it) }
+    }
+    LaunchedEffect(revealRequests, settingsLoaded, hiddenNames, savedNames) {
+        snapshotFlow { revealRequests.toList() }.collect { requests ->
+            val outcome = settleRevealRequests(requests, settingsLoaded, hiddenNames, savedNames) ?: return@collect
+            if (outcome.openOtherWindows) otherExpanded = true
+            outcome.newPending.forEach { if (it !in pending) pending.add(it) }
+            revealRequests.removeAll(requests)
         }
     }
 
@@ -133,57 +162,65 @@ fun DesktopWindowsSettingsSection(
     }
 
     val row: @Composable (String, WindowSettings?) -> Unit = { name, settings ->
-        DesktopWindowRow(
-            name = name,
-            title = titlesByName[name]?.title,
-            settings = settings,
-            defaultStyle = defaultStyle,
-            palette = palette,
-            isOpen = name in openNames,
-            canToggleShown = name != "main",
-            nameFilterAvailable = titlesByName[name]?.nameFilterOption == true || settings?.nameFilter == true,
-            // Only panels lay widgets out in game-supplied pixels. Offline we have no window info, so
-            // keep the row for anyone who already set a scale rather than stranding their override.
-            scaleAvailable = titlesByName[name]?.windowType == WindowType.PANEL || settings?.scale != null,
-            characterPanelScale = characterPanelScale,
-            expanded = name in expanded,
-            onToggleExpand = { if (name in expanded) expanded.remove(name) else expanded.add(name) },
-            onSetVisible = { show ->
-                if (connected != null) {
-                    if (show) connected.openWindow(name) else connected.closeWindow(name)
-                } else {
-                    viewModel.setWindowShown(name, show)
-                }
-            },
-            onSaveStyle = { layer -> viewModel.saveStyle(name, layer) },
-            onSaveFont = { font -> viewModel.saveFont(name, font) },
-            onSaveMonoFont = { font -> viewModel.saveMonoFont(name, font) },
-            onSaveNameFilter = { value -> viewModel.saveNameFilter(name, value) },
-            onSaveScale = { value -> viewModel.saveScale(name, value) },
-            onRevert = { viewModel.revert(name) },
-            onEditFont = { current, monoOnly, onSave -> editFont = Triple(current, monoOnly, onSave) },
-        )
+        // Keyed so a row's remembered state (an open color picker, say) stays with its window when the
+        // rows of its group reorder. A window that moves to another group starts fresh.
+        key(name) {
+            WindowRow(
+                name = name,
+                title = titlesByName[name]?.title,
+                settings = settings,
+                defaultStyle = defaultStyle,
+                palette = palette,
+                isOpen = name in openNames,
+                canToggleShown = name != MAIN_WINDOW,
+                nameFilterAvailable = titlesByName[name]?.nameFilterOption == true || settings?.nameFilter == true,
+                // Only panels lay widgets out in game-supplied pixels. Offline we have no window info, so
+                // keep the row for anyone who already set a scale rather than stranding their override.
+                scaleAvailable = titlesByName[name]?.windowType == WindowType.PANEL || settings?.scale != null,
+                characterPanelScale = characterPanelScale,
+                expanded = name in expanded,
+                onToggleExpand = { if (name in expanded) expanded.remove(name) else expanded.add(name) },
+                onSetVisible = { show ->
+                    if (connected != null) {
+                        if (show) connected.openWindow(name) else connected.closeWindow(name)
+                    } else {
+                        viewModel.setWindowShown(name, show)
+                    }
+                },
+                onSaveStyle = { layer -> viewModel.saveStyle(name, layer) },
+                onSaveFont = { font -> viewModel.saveFont(name, font) },
+                onSaveMonoFont = { font -> viewModel.saveMonoFont(name, font) },
+                onSaveNameFilter = { value -> viewModel.saveNameFilter(name, value) },
+                onSaveScale = { value -> viewModel.saveScale(name, value) },
+                onRevert = { viewModel.revert(name) },
+                onEditFont = { current, monoOnly, onSave -> editFont = Triple(current, monoOnly, onSave) },
+            )
+        }
     }
 
     Column(modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        val pendingRows = pending.filter { it !in settingsByName && it !in titlesByName }
+        // No rows until the character's settings are in: before then every editor would start from
+        // defaults rather than what's saved. A load takes a frame or two.
+        if (settingsLoaded) {
+            val pendingRows = pending.filter { showsPendingRow(it, savedNames) }
 
-        GroupLabel("Shown")
-        row("main", settingsByName["main"])
-        openWindows.forEach { row(it.name, it) }
-        if (savedNotOpen.isNotEmpty() || pendingRows.isNotEmpty()) {
-            GroupLabel("Saved settings (not shown)")
-            savedNotOpen.forEach { row(it.name, it) }
-            pendingRows.forEach { row(it, null) }
-        }
-        if (hiddenWindows.isNotEmpty()) {
-            ExpandHeader(
-                label = "Other windows (${hiddenWindows.size})",
-                expanded = otherExpanded,
-                onClick = { otherExpanded = !otherExpanded },
-            )
-            if (otherExpanded) {
-                hiddenWindows.forEach { row(it.name, null) }
+            GroupLabel("Shown")
+            row(MAIN_WINDOW, settingsByName[MAIN_WINDOW])
+            openWindows.forEach { row(it.name, it) }
+            if (savedNotOpen.isNotEmpty() || pendingRows.isNotEmpty()) {
+                GroupLabel("Saved settings (not shown)")
+                savedNotOpen.forEach { row(it.name, it) }
+                pendingRows.forEach { row(it, null) }
+            }
+            if (hiddenWindows.isNotEmpty()) {
+                ExpandHeader(
+                    label = "Other windows (${hiddenWindows.size})",
+                    expanded = otherExpanded,
+                    onClick = { otherExpanded = !otherExpanded },
+                )
+                if (otherExpanded) {
+                    hiddenWindows.forEach { row(it.name, null) }
+                }
             }
         }
 
@@ -194,20 +231,20 @@ fun DesktopWindowsSettingsSection(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            WarlockTextField(state = addState, modifier = Modifier.weight(1f), placeholder = "Window id")
-            WarlockOutlinedButton(
-                onClick = {
-                    val name = addState.text.toString().trim()
-                    if (name.isNotEmpty()) {
-                        if (name !in expanded) expanded.add(name)
-                        if (name !in settingsByName && name !in titlesByName && name !in pending) {
-                            pending.add(name)
-                        }
-                        addState.clearText()
-                    }
-                },
-                text = "Add settings",
+            fun add() {
+                val name = addState.text.toString().trim()
+                if (name.isNotEmpty()) {
+                    requestWindow(name)
+                    addState.clearText()
+                }
+            }
+            WarlockTextField(
+                state = addState,
+                modifier = Modifier.weight(1f),
+                onSubmit = { add() },
+                placeholder = "Window id",
             )
+            WarlockOutlinedButton(onClick = { add() }, text = "Add")
         }
     }
 }
@@ -217,10 +254,10 @@ private fun GroupLabel(
     text: String,
     modifier: Modifier = Modifier,
 ) {
-    Text(
+    WarlockText(
         text = text,
         modifier = modifier.padding(top = 8.dp),
-        color = LocalContentColor.current.copy(alpha = 0.7f),
+        color = warlockContentColor.copy(alpha = 0.7f),
     )
 }
 
@@ -234,23 +271,18 @@ private fun ExpandHeader(
     Row(
         modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .expandableRow(expanded, onClick)
             .padding(top = 8.dp, bottom = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Image(
-            painter = painterResource(Res.drawable.arrow_right),
-            contentDescription = null,
-            modifier = Modifier.size(16.dp).rotate(if (expanded) 90f else 0f),
-            colorFilter = ColorFilter.tint(LocalContentColor.current.copy(alpha = 0.7f)),
-        )
+        DisclosureArrow(expanded = expanded, tint = warlockContentColor.copy(alpha = 0.7f))
         Spacer(Modifier.width(6.dp))
-        Text(label, color = LocalContentColor.current.copy(alpha = 0.7f))
+        WarlockText(label, color = warlockContentColor.copy(alpha = 0.7f))
     }
 }
 
 @Composable
-private fun DesktopWindowRow(
+private fun WindowRow(
     name: String,
     title: String?,
     settings: WindowSettings?,
@@ -275,24 +307,19 @@ private fun DesktopWindowRow(
 ) {
     Column(modifier.fillMaxWidth()) {
         Row(
-            Modifier.fillMaxWidth().clickable(onClick = onToggleExpand).padding(vertical = 4.dp),
+            Modifier.fillMaxWidth().expandableRow(expanded, onToggleExpand).padding(vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Image(
-                painter = painterResource(Res.drawable.arrow_right),
-                contentDescription = null,
-                modifier = Modifier.size(16.dp).rotate(if (expanded) 90f else 0f),
-                colorFilter = ColorFilter.tint(LocalContentColor.current),
-            )
-            Spacer(Modifier.width(8.dp))
-            Text(windowRowLabel(name, title), modifier = Modifier.weight(1f))
+            DisclosureArrow(expanded = expanded, tint = warlockContentColor)
+            Spacer(Modifier.width(ROW_ARROW_GAP))
+            WarlockText(windowRowLabel(name, title), modifier = Modifier.weight(1f))
             if (canToggleShown) {
                 WarlockOutlinedButton(onClick = { onSetVisible(!isOpen) }, text = if (isOpen) "Hide" else "Show")
             }
         }
         if (expanded) {
             Column(
-                Modifier.fillMaxWidth().padding(start = 24.dp, bottom = 8.dp),
+                Modifier.fillMaxWidth().padding(start = disclosureArrowSize + ROW_ARROW_GAP, bottom = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 // A window has no cascade of its own; the character's default text style is the fallback.
@@ -327,7 +354,7 @@ private fun DesktopWindowRow(
                     )
                 }
                 if (nameFilterAvailable) {
-                    CheckboxRow(
+                    WarlockCheckboxRow(
                         checked = settings?.nameFilter == true,
                         onCheckedChange = onSaveNameFilter,
                         text = "Only show lines with names in list",
@@ -339,12 +366,42 @@ private fun DesktopWindowRow(
     }
 }
 
+// The gap between a window row's arrow and its label; the expanded editor is indented to the label.
+private val ROW_ARROW_GAP = 8.dp
+
+/** Makes a collapsible row's header toggle it, telling accessibility services that it's expandable. */
+private fun Modifier.expandableRow(
+    expanded: Boolean,
+    onToggle: () -> Unit,
+): Modifier =
+    semantics { stateDescription = if (expanded) "Expanded" else "Collapsed" }
+        .clickable(onClickLabel = if (expanded) "Collapse" else "Expand", role = Role.Button, onClick = onToggle)
+
+/** The arrow of a collapsible row: pointing right when collapsed, down when [expanded]. */
+@Composable
+private fun DisclosureArrow(
+    expanded: Boolean,
+    tint: Color,
+    modifier: Modifier = Modifier,
+) {
+    Image(
+        painter = painterResource(Res.drawable.arrow_right),
+        contentDescription = null,
+        modifier = modifier.size(disclosureArrowSize).rotate(if (expanded) 90f else 0f),
+        colorFilter = ColorFilter.tint(tint),
+    )
+}
+
 private fun windowRowLabel(
     name: String,
     title: String?,
 ): String = if (title != null && title.isNotBlank() && title != name) "$name ($title)" else name
 
-/** A panel window's scale override; null follows the character's panel scale. */
+/**
+ * A panel window's scale override; null follows the character's panel scale. "Use default" wraps
+ * below the stepper when the row is too narrow for both, as on a phone.
+ */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun WindowScaleRow(
     scale: Float?,
@@ -357,11 +414,17 @@ private fun WindowScaleRow(
         val next = ((current + delta) * 10f).roundToInt() / 10f
         onSave(next.coerceIn(MIN_PANEL_SCALE, MAX_PANEL_SCALE))
     }
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Panel scale")
-        WarlockOutlinedButton(onClick = { step(-PANEL_SCALE_STEP) }, text = "-")
-        Text(if (scale == null) "Default" else formatPanelScale(current))
-        WarlockOutlinedButton(onClick = { step(PANEL_SCALE_STEP) }, text = "+")
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+        itemVerticalAlignment = Alignment.CenterVertically,
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            WarlockText("Panel scale")
+            WarlockOutlinedButton(onClick = { step(-PANEL_SCALE_STEP) }, text = "-")
+            WarlockText(if (scale == null) "Default" else formatPanelScale(current))
+            WarlockOutlinedButton(onClick = { step(PANEL_SCALE_STEP) }, text = "+")
+        }
         if (scale != null) {
             WarlockOutlinedButton(onClick = { onSave(null) }, text = "Use default")
         }
